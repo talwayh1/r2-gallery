@@ -82,43 +82,107 @@ app.route('/api', filesRouter);
 app.route('/api', uploadRouter);
 app.route('/api', adminRouter);
 
-// === Static frontend (SPA) ===
-app.get('*', async (c) => {
+// === OG (Open Graph) support for social sharing ===
+
+/** Detect social media bots/crawlers by User-Agent */
+function isBot(userAgent: string): boolean {
+  return /bot|crawler|spider|facebookexternalhit|Twitterbot|Slackbot|TelegramBot|WhatsApp|LinkedInBot|Pinterest|SkypeUriPreview|Googlebot|bingbot|Applebot|Baiduspider|YandexBot|Sogou|DuckDuckBot|Discordbot|redditbot|Embedly|Quora|showyoubot|outbrain|pinterest|slack|vkShare|W3C_Validator|whatsapp|flipboard|tumblr|bitly|skype|microsoft|teams/i.test(userAgent);
+}
+
+/** HTML-escape a string for safe embedding in meta tags */
+function esc(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/** Get MIME type for OG image:type meta tag (images only) */
+function getOGImageMime(filename: string): string | null {
+  const ext = filename.split('.').pop()?.toLowerCase();
+  const map: Record<string, string> = {
+    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+    gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
+    bmp: 'image/bmp', ico: 'image/x-icon',
+  };
+  return map[ext || ''] || null;
+}
+
+/** Serve SSR HTML with OG meta tags for bots, SPA for users */
+function serveSPA(c: any): Response | null {
   // @ts-ignore — Cloudflare Workers static assets binding
   const ASSETS = (globalThis as any).__STATIC_CONTENT;
   if (ASSETS) {
-    const url = new URL(c.req.url);
-    let path = url.pathname;
-    if (path === '/') path = '/index.html';
-
     // @ts-ignore
     const manifest: string | Record<string, string> | undefined = (globalThis as any).__STATIC_CONTENT_MANIFEST;
     if (manifest) {
       const parsedManifest = typeof manifest === 'string' ? JSON.parse(manifest) : manifest;
-      const entry = parsedManifest[path] || parsedManifest[path + '/index.html'];
-      if (entry) {
-        const asset = ASSETS.get(entry);
+      const indexEntry = parsedManifest['/index.html'];
+      if (indexEntry) {
+        const asset = ASSETS.get(indexEntry);
         if (asset) {
-          const contentType = getContentType(path);
           return new Response(asset, {
-            headers: { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=3600' },
+            headers: { 'Content-Type': 'text/html', 'Cache-Control': 'public, max-age=3600' },
           });
         }
       }
     }
+  }
+  return null;
+}
 
-    // SPA fallback
-    const indexEntry = manifest ? (typeof manifest === 'string' ? JSON.parse(manifest) : manifest)['/index.html'] : null;
-    if (indexEntry) {
-      const asset = ASSETS.get(indexEntry);
-      if (asset) {
-        return new Response(asset, {
-          headers: { 'Content-Type': 'text/html' },
-        });
-      }
-    }
+// /view/* — Social sharing URLs with OG tags for bots
+app.get('/view/*', async (c) => {
+  const userAgent = c.req.header('User-Agent') || '';
+  const filePath = decodeURIComponent(c.req.path.slice(6)); // Remove '/view/'
+
+  if (isBot(userAgent) && filePath) {
+    const host = c.req.header('Host') || 'tu.zhangyubi.cn';
+    const scheme = c.req.header('X-Forwarded-Proto') || 'https';
+    const base = `${scheme}://${host}`;
+    const imageUrl = `${base}/api/file?path=${encodeURIComponent(filePath)}`;
+    const pageUrl = `${base}/view/${encodeURIComponent(filePath)}`;
+    const fileName = filePath.split('/').pop() || filePath;
+    const ogMime = getOGImageMime(fileName);
+
+    return c.html(`<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${esc(fileName)} — R2 Gallery</title>
+  <meta property="og:title" content="${esc(fileName)}">
+  <meta property="og:description" content="查看图片 — R2 Gallery">
+  <meta property="og:image" content="${esc(imageUrl)}">
+  ${ogMime ? `<meta property="og:image:type" content="${esc(ogMime)}">` : ''}
+  <meta property="og:url" content="${esc(pageUrl)}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="R2 Gallery">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${esc(fileName)} — R2 Gallery">
+  <meta name="twitter:image" content="${esc(imageUrl)}">
+  <meta name="theme-color" content="#0f172a">
+</head>
+<body style="background:#0f172a;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0">
+  <div style="text-align:center;max-width:90vw">
+    <h1 style="font-size:1.5rem;margin-bottom:1rem">${esc(fileName)}</h1>
+    <img src="${esc(imageUrl)}" alt="${esc(fileName)}" style="max-width:90vw;max-height:75vh;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.4)">
+    <p style="margin-top:1rem"><a href="${esc(pageUrl)}" style="color:#60a5fa;text-decoration:none">在 R2 Gallery 中查看 →</a></p>
+  </div>
+</body>
+</html>`, 200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600',
+    });
   }
 
+  // Non-bot users: serve the SPA
+  const spaResponse = serveSPA(c);
+  if (spaResponse) return spaResponse;
+  return c.html(getFallbackHTML());
+});
+
+// === Static frontend (SPA fallback) ===
+app.get('*', async (c) => {
+  const spaResponse = serveSPA(c);
+  if (spaResponse) return spaResponse;
   return c.html(getFallbackHTML());
 });
 

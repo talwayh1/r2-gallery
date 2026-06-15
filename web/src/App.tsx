@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { FileItem, LayoutMode } from './types';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
@@ -28,6 +28,10 @@ export default function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [telegramBotUsername, setTelegramBotUsername] = useState<string | null>(null);
 
+  // Track pending /view/* deep link
+  const pendingViewRef = useRef<string | null>(null);
+  const initialDirSetRef = useRef(false);
+
   const loadFiles = useCallback(async (d: string) => {
     setLoading(true);
     try {
@@ -38,6 +42,23 @@ export default function App() {
       console.error('Failed to load files:', e);
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  // Handle /view/* deep links on mount
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path.startsWith('/view/')) {
+      const filePath = decodeURIComponent(path.slice(6));
+      if (filePath) {
+        pendingViewRef.current = filePath;
+        // Navigate to the parent directory
+        const parts = filePath.split('/');
+        parts.pop();
+        const parentDir = parts.join('/');
+        setDir(parentDir);
+        initialDirSetRef.current = true;
+      }
     }
   }, []);
 
@@ -67,6 +88,10 @@ export default function App() {
     setDir(path);
     setSearch('');
     if (isMobile) setSidebarOpen(false);
+    // Clear /view/* URL when navigating normally
+    if (window.location.pathname.startsWith('/view/')) {
+      window.history.replaceState(null, '', '/');
+    }
   }, [isMobile]);
 
   const filteredFiles = Object.fromEntries(
@@ -80,10 +105,43 @@ export default function App() {
     .filter(([, f]) => f.mime.startsWith('image/') || f.mime.startsWith('video/') || f.mime.startsWith('audio/'))
     .map(([, f]) => ({ path: f.path, mime: f.mime, size: f.size }));
 
+  // Auto-open lightbox for /view/* deep links
+  useEffect(() => {
+    if (pendingViewRef.current && mediaItems.length > 0 && !loading) {
+      const filePath = pendingViewRef.current;
+      const idx = mediaItems.findIndex(item => item.path === filePath);
+      if (idx >= 0) {
+        pendingViewRef.current = null;
+        setLightbox({ index: idx });
+      } else {
+        // File not found in current directory media items — clear pending
+        pendingViewRef.current = null;
+      }
+    }
+  }, [mediaItems, loading]);
+
   const openLightbox = useCallback((path: string, _mime: string) => {
     const idx = mediaItems.findIndex(item => item.path === path);
     setLightbox({ index: idx >= 0 ? idx : 0 });
+    // Update URL for sharing
+    window.history.replaceState(null, '', `/view/${encodeURIComponent(path)}`);
   }, [mediaItems]);
+
+  const handleLightboxNavigate = useCallback((newIndex: number) => {
+    setLightbox({ index: newIndex });
+    const newPath = mediaItems[newIndex]?.path;
+    if (newPath) {
+      window.history.replaceState(null, '', `/view/${encodeURIComponent(newPath)}`);
+    }
+  }, [mediaItems]);
+
+  const handleLightboxClose = useCallback(() => {
+    setLightbox(null);
+    // Restore clean URL
+    if (window.location.pathname.startsWith('/view/')) {
+      window.history.replaceState(null, '', '/');
+    }
+  }, []);
 
   const handleDelete = async (paths: string[]) => {
     const { deleteItems } = await import('./api');
@@ -186,8 +244,8 @@ export default function App() {
         <Lightbox
           items={mediaItems}
           index={lightbox.index}
-          onClose={() => setLightbox(null)}
-          onNavigate={(newIndex) => setLightbox({ index: newIndex })}
+          onClose={handleLightboxClose}
+          onNavigate={handleLightboxNavigate}
         />
       )}
       {showLogin && !user && (
@@ -201,7 +259,6 @@ export default function App() {
           onTelegramLogin={async (authData: Record<string, string>) => {
             const result = await telegramLogin(authData);
             if (result?.token) {
-              // Reload to pick up the new auth state
               window.location.reload();
             }
             return result;

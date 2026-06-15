@@ -62,17 +62,20 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   const url = getFileUrl(current.path);
   const name = current.path.split('/').pop() || '';
   const ext = name.split('.').pop()?.toUpperCase() || '';
+  // Shareable /view/ URL for social media
+  const viewUrl = `${window.location.origin}/view/${encodeURIComponent(current.path)}`;
+  // Direct file URL for embedding
   const directUrl = `${window.location.origin}/api/file?path=${encodeURIComponent(current.path)}`;
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(directUrl);
+      await navigator.clipboard.writeText(viewUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Fallback
       const input = document.createElement('input');
-      input.value = directUrl;
+      input.value = viewUrl;
       document.body.appendChild(input);
       input.select();
       document.execCommand('copy');
@@ -122,7 +125,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
         <button
           onClick={(e) => { e.stopPropagation(); handleCopyLink(); }}
           className={`p-2 rounded-lg transition-colors ${copied ? 'text-green-400' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
-          title={copied ? '已复制!' : '复制链接'}
+          title={copied ? '已复制!' : '复制分享链接'}
         >
           {copied ? (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -151,7 +154,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       {/* Info panel */}
       {showInfo && (
         <div
-          className="absolute top-16 right-4 bg-gray-900/95 backdrop-blur-md border border-white/10 rounded-xl p-4 z-10 min-w-[220px] text-sm"
+          className="absolute top-16 right-4 bg-gray-900/95 backdrop-blur-md border border-white/10 rounded-xl p-4 z-10 min-w-[260px] text-sm"
           onClick={(e) => e.stopPropagation()}
         >
           <h4 className="text-white font-medium mb-3">文件信息</h4>
@@ -176,26 +179,43 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
             </div>
           </div>
           <hr className="border-white/10 my-3" />
-          <button
-            onClick={handleCopyLink}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-white/80"
-          >
-            {copied ? (
-              <>
-                <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                已复制!
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                </svg>
-                复制直链
-              </>
-            )}
-          </button>
+          {/* Share link */}
+          <div className="space-y-2">
+            <button
+              onClick={handleCopyLink}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-white/80"
+            >
+              {copied ? (
+                <>
+                  <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  已复制!
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                  复制分享链接
+                </>
+              )}
+            </button>
+            {/* Direct image link */}
+            <button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(directUrl);
+                } catch { /* silent */ }
+              }}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors text-white/50 text-xs"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              复制图片直链
+            </button>
+          </div>
         </div>
       )}
 
