@@ -109,6 +109,17 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   const [imageDimensions, setImageDimensions] = useState<{ w: number; h: number } | null>(null);
   const [swipeHint, setSwipeHint] = useState<'left' | 'right' | 'down' | null>(null);
 
+  // === Slideshow state ===
+  const [slideshowPlaying, setSlideshowPlaying] = useState(false);
+  const [slideshowSpeed, setSlideshowSpeed] = useState(3); // seconds
+  const [slideshowShuffle, setSlideshowShuffle] = useState(false);
+  const [slideshowLoop, setSlideshowLoop] = useState(true);
+  const [slideshowProgress, setSlideshowProgress] = useState(0);
+  const [showSlideshowMenu, setShowSlideshowMenu] = useState(false);
+  const slideshowTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const slideshowProgressRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const playedIndicesRef = useRef<Set<number>>(new Set([index]));
+
   // === Zoom state ===
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -171,11 +182,133 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     }
   }, [hasNext, index, onNavigate, resetZoom]);
 
+  // === Slideshow logic ===
+  const getNextSlideshowIndex = useCallback(() => {
+    if (slideshowShuffle) {
+      // Pick a random unplayed index
+      const unplayed: number[] = [];
+      for (let i = 0; i < items.length; i++) {
+        if (!playedIndicesRef.current.has(i)) unplayed.push(i);
+      }
+      if (unplayed.length === 0) {
+        if (slideshowLoop) {
+          playedIndicesRef.current = new Set();
+          const all = items.map((_, i) => i).filter(i => i !== index);
+          return all.length > 0 ? all[Math.floor(Math.random() * all.length)] : index;
+        }
+        return -1; // done
+      }
+      const pick = unplayed[Math.floor(Math.random() * unplayed.length)];
+      playedIndicesRef.current.add(pick);
+      return pick;
+    }
+    // Sequential
+    if (index < items.length - 1) return index + 1;
+    if (slideshowLoop) return 0;
+    return -1;
+  }, [index, items.length, slideshowShuffle, slideshowLoop]);
+
+  const stopSlideshow = useCallback(() => {
+    setSlideshowPlaying(false);
+    if (slideshowTimerRef.current) {
+      clearInterval(slideshowTimerRef.current);
+      slideshowTimerRef.current = null;
+    }
+    if (slideshowProgressRef.current) {
+      clearInterval(slideshowProgressRef.current);
+      slideshowProgressRef.current = null;
+    }
+    setSlideshowProgress(0);
+  }, []);
+
+  const startSlideshow = useCallback(() => {
+    setSlideshowPlaying(true);
+    playedIndicesRef.current = new Set([index]);
+    resetZoom();
+  }, [index, resetZoom]);
+
+  const toggleSlideshow = useCallback(() => {
+    if (slideshowPlaying) stopSlideshow();
+    else startSlideshow();
+  }, [slideshowPlaying, stopSlideshow, startSlideshow]);
+
+  // Slideshow timer effect
+  useEffect(() => {
+    if (!slideshowPlaying) return;
+
+    const intervalMs = slideshowSpeed * 1000;
+    const progressStep = 50; // update every 50ms
+    let elapsed = 0;
+
+    // Progress bar updater
+    slideshowProgressRef.current = setInterval(() => {
+      elapsed += progressStep;
+      setSlideshowProgress((elapsed / intervalMs) * 100);
+    }, progressStep);
+
+    // Advance timer
+    slideshowTimerRef.current = setTimeout(() => {
+      const nextIdx = getNextSlideshowIndex();
+      if (nextIdx < 0) {
+        stopSlideshow();
+      } else {
+        resetZoom();
+        onNavigate(nextIdx);
+        setSlideshowProgress(0);
+      }
+    }, intervalMs);
+
+    return () => {
+      if (slideshowTimerRef.current) {
+        clearTimeout(slideshowTimerRef.current);
+        slideshowTimerRef.current = null;
+      }
+      if (slideshowProgressRef.current) {
+        clearInterval(slideshowProgressRef.current);
+        slideshowProgressRef.current = null;
+      }
+    };
+  }, [slideshowPlaying, slideshowSpeed, index, getNextSlideshowIndex, onNavigate, resetZoom, stopSlideshow]);
+
+  // Stop slideshow at end of non-looping list
+  useEffect(() => {
+    if (slideshowPlaying && !slideshowLoop && !slideshowShuffle && index >= items.length - 1) {
+      // Will stop on next advance attempt
+    }
+  }, [slideshowPlaying, slideshowLoop, slideshowShuffle, index, items.length]);
+
+  // Reset played indices when shuffle toggled
+  useEffect(() => {
+    playedIndicesRef.current = new Set([index]);
+  }, [slideshowShuffle, index]);
+
+  // Stop slideshow on unmount
+  useEffect(() => {
+    return () => {
+      if (slideshowTimerRef.current) clearTimeout(slideshowTimerRef.current);
+      if (slideshowProgressRef.current) clearInterval(slideshowProgressRef.current);
+    };
+  }, []);
+
+  // Close slideshow settings menu on outside click
+  useEffect(() => {
+    if (!showSlideshowMenu) return;
+    const close = () => setShowSlideshowMenu(false);
+    // Delay to avoid immediately closing from the button click
+    const timer = setTimeout(() => {
+      document.addEventListener('click', close);
+    }, 10);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', close);
+    };
+  }, [showSlideshowMenu]);
+
   // Disable swipe gestures when zoomed
   const swipeRef = useSwipeGesture({
     onSwipeLeft: goNext,
     onSwipeRight: goPrev,
-    onSwipeDown: onClose,
+    onSwipeDown: () => { stopSlideshow(); onClose(); },
     enabled: !isZoomed,
   });
 
@@ -329,6 +462,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
         if (isZoomed) {
           resetZoom();
         } else {
+          stopSlideshow();
           onClose();
         }
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goPrev(); }
@@ -352,6 +486,9 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
           a.download = name;
           a.click();
         }
+      } else if (e.key === ' ' || e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        toggleSlideshow();
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -360,7 +497,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [onClose, goPrev, goNext, url, name, isZoomed, scale, resetZoom]);
+  }, [onClose, goPrev, goNext, url, name, isZoomed, scale, resetZoom, toggleSlideshow]);
 
   // Reset state on navigation
   useEffect(() => {
@@ -369,7 +506,27 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     setImageLoaded(false);
     setImageDimensions(null);
     resetZoom();
+    setSlideshowProgress(0);
   }, [index, resetZoom]);
+
+  // Preload adjacent images for smoother navigation
+  useEffect(() => {
+    const preloadIndices = [index - 1, index + 1, index + 2];
+    const preloaded: HTMLImageElement[] = [];
+    for (const i of preloadIndices) {
+      if (i >= 0 && i < items.length && items[i]?.mime.startsWith('image/')) {
+        const img = new Image();
+        img.src = getFileUrl(items[i].path);
+        preloaded.push(img);
+      }
+    }
+    return () => {
+      // Cleanup: abort any pending loads
+      for (const img of preloaded) {
+        img.src = '';
+      }
+    };
+  }, [index, items]);
 
   if (!current) return null;
 
@@ -403,12 +560,12 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       ref={swipeRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm touch-pan-y"
       onClick={(e) => {
-        if (!isZoomed) onClose();
+        if (!isZoomed) { stopSlideshow(); onClose(); }
       }}
     >
       {/* Close button */}
       <button
-        onClick={onClose}
+        onClick={() => { stopSlideshow(); onClose(); }}
         className="absolute top-4 right-4 p-2 text-white/70 hover:text-white z-10"
         title="关闭 (Esc)"
       >
@@ -469,6 +626,86 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
             )}
           </>
         )}
+
+        {/* Slideshow play/pause */}
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleSlideshow(); }}
+          className={`p-2 rounded-lg transition-colors ${slideshowPlaying ? 'text-blue-400 bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+          title={slideshowPlaying ? '暂停幻灯片 (Space)' : '播放幻灯片 (Space)'}
+        >
+          {slideshowPlaying ? (
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          )}
+        </button>
+
+        {/* Slideshow settings (long-press or right-click) */}
+        <div className="relative">
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowSlideshowMenu(!showSlideshowMenu); }}
+            className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            title="幻灯片设置"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+          </button>
+          {showSlideshowMenu && (
+            <div
+              className="absolute right-0 top-full mt-1 bg-gray-900/95 backdrop-blur-md border border-white/10 rounded-xl p-3 z-20 min-w-[200px] text-sm"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h5 className="text-white/50 text-xs font-medium uppercase tracking-wider mb-2">幻灯片设置</h5>
+
+              {/* Speed */}
+              <div className="mb-3">
+                <label className="text-white/40 text-xs block mb-1">切换间隔</label>
+                <div className="flex gap-1">
+                  {[2, 3, 5, 10].map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setSlideshowSpeed(s)}
+                      className={`flex-1 px-2 py-1 text-xs rounded-md transition-colors ${
+                        slideshowSpeed === s
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-white/5 text-white/60 hover:bg-white/10'
+                      }`}
+                    >
+                      {s}s
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Loop toggle */}
+              <button
+                onClick={() => setSlideshowLoop(!slideshowLoop)}
+                className="w-full flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-white/5 transition-colors mb-1"
+              >
+                <span className="text-white/70 text-xs">循环播放</span>
+                <div className={`w-8 h-4 rounded-full transition-colors relative ${slideshowLoop ? 'bg-blue-500' : 'bg-white/20'}`}>
+                  <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${slideshowLoop ? 'left-4' : 'left-0.5'}`} />
+                </div>
+              </button>
+
+              {/* Shuffle toggle */}
+              <button
+                onClick={() => setSlideshowShuffle(!slideshowShuffle)}
+                className="w-full flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-white/5 transition-colors"
+              >
+                <span className="text-white/70 text-xs">随机顺序</span>
+                <div className={`w-8 h-4 rounded-full transition-colors relative ${slideshowShuffle ? 'bg-blue-500' : 'bg-white/20'}`}>
+                  <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${slideshowShuffle ? 'left-4' : 'left-0.5'}`} />
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Info toggle */}
         <button
@@ -654,10 +891,30 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
         )}
       </div>
 
+      {/* Slideshow progress bar */}
+      {slideshowPlaying && (
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10 z-20">
+          <div
+            className="h-full bg-blue-500 transition-all duration-75 ease-linear"
+            style={{ width: `${Math.min(slideshowProgress, 100)}%` }}
+          />
+        </div>
+      )}
+
+      {/* Slideshow status indicator */}
+      {slideshowPlaying && (
+        <div className="absolute bottom-3 right-4 flex items-center gap-2 bg-black/60 text-white/70 text-xs px-3 py-1.5 rounded-full z-10 pointer-events-none select-none">
+          <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+          幻灯片 · {slideshowSpeed}s
+          {slideshowShuffle && ' · 随机'}
+          {slideshowLoop && ' · 循环'}
+        </div>
+      )}
+
       {/* Desktop zoom hint */}
-      {isImage && !isZoomed && (
+      {isImage && !isZoomed && !slideshowPlaying && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden md:flex items-center gap-2 text-white/20 text-xs pointer-events-none select-none">
-          <span>滚轮缩放 · 双击放大 · +/- 键缩放</span>
+          <span>滚轮缩放 · 双击放大 · Space 幻灯片 · +/- 键缩放</span>
         </div>
       )}
 

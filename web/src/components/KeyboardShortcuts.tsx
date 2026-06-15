@@ -28,6 +28,9 @@ const shortcuts: { category: string; items: Shortcut[] }[] = [
       { keys: ['Esc'], description: '关闭灯箱' },
       { keys: ['I'], description: '切换文件信息面板' },
       { keys: ['D'], description: '下载当前文件' },
+      { keys: ['Space', 'S'], description: '播放/暂停幻灯片' },
+      { keys: ['+', '-'], description: '放大/缩小' },
+      { keys: ['0'], description: '重置缩放' },
     ],
   },
   {
