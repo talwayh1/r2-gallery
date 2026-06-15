@@ -14,15 +14,17 @@ interface Props {
   onNavigate: (index: number) => void;
 }
 
-/** Touch gesture hook for swipe navigation */
+/** Touch gesture hook for swipe navigation (only when not zoomed) */
 function useSwipeGesture({
   onSwipeLeft,
   onSwipeRight,
   onSwipeDown,
+  enabled,
 }: {
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
   onSwipeDown: () => void;
+  enabled: boolean;
 }) {
   const touchStart = useRef<{ x: number; y: number; time: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -32,19 +34,19 @@ function useSwipeGesture({
     if (!el) return;
 
     const handleTouchStart = (e: TouchEvent) => {
+      if (!enabled) return;
       const touch = e.touches[0];
       touchStart.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
-      if (!touchStart.current) return;
+      if (!enabled || !touchStart.current) return;
       const touch = e.changedTouches[0];
       const dx = touch.clientX - touchStart.current.x;
       const dy = touch.clientY - touchStart.current.y;
       const dt = Date.now() - touchStart.current.time;
       touchStart.current = null;
 
-      // Minimum swipe distance and max duration
       const minDist = 50;
       const maxDuration = 500;
       if (dt > maxDuration) return;
@@ -53,11 +55,9 @@ function useSwipeGesture({
       const absDy = Math.abs(dy);
 
       if (absDx > absDy && absDx > minDist) {
-        // Horizontal swipe
         if (dx < 0) onSwipeLeft();
         else onSwipeRight();
       } else if (absDy > absDx && absDy > minDist && dy > 0) {
-        // Downward swipe (only close on swipe down, not up)
         onSwipeDown();
       }
     };
@@ -68,7 +68,7 @@ function useSwipeGesture({
       el.removeEventListener('touchstart', handleTouchStart);
       el.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [onSwipeLeft, onSwipeRight, onSwipeDown]);
+  }, [onSwipeLeft, onSwipeRight, onSwipeDown, enabled]);
 
   return containerRef;
 }
@@ -78,6 +78,25 @@ function formatSize(bytes: number) {
   const units = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
+}
+
+/** Compute a human-readable aspect ratio string */
+function getAspectRatio(w: number, h: number): string {
+  function gcd(a: number, b: number): number {
+    return b === 0 ? a : gcd(b, a % b);
+  }
+  const d = gcd(w, h);
+  const rw = w / d;
+  const rh = h / d;
+  const ratio = w / h;
+  if (Math.abs(ratio - 16 / 9) < 0.02) return '16:9';
+  if (Math.abs(ratio - 4 / 3) < 0.02) return '4:3';
+  if (Math.abs(ratio - 3 / 2) < 0.02) return '3:2';
+  if (Math.abs(ratio - 1) < 0.02) return '1:1';
+  if (Math.abs(ratio - 21 / 9) < 0.02) return '21:9';
+  if (Math.abs(ratio - 9 / 16) < 0.02) return '9:16';
+  if (rw > 50 || rh > 50) return `${ratio.toFixed(2)}:1`;
+  return `${rw}:${rh}`;
 }
 
 export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
@@ -90,48 +109,249 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   const [imageDimensions, setImageDimensions] = useState<{ w: number; h: number } | null>(null);
   const [swipeHint, setSwipeHint] = useState<'left' | 'right' | 'down' | null>(null);
 
-  // Compute derived values (safe even if current is undefined)
+  // === Zoom state ===
+  const [scale, setScale] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const isDragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const dragOffsetStart = useRef({ x: 0, y: 0 });
+  const pinchStartDist = useRef(0);
+  const pinchStartScale = useRef(1);
+  const imgContainerRef = useRef<HTMLDivElement>(null);
+
+  const isZoomed = scale > 1.05;
+
+  // Compute derived values
   const url = current ? getFileUrl(current.path) : '';
   const name = current ? (current.path.split('/').pop() || '') : '';
   const ext = name.split('.').pop()?.toUpperCase() || '';
   const viewUrl = `${window.location.origin}/view/${encodeURIComponent(current?.path || '')}`;
   const directUrl = `${window.location.origin}/api/file?path=${encodeURIComponent(current?.path || '')}`;
 
+  // Reset zoom
+  const resetZoom = useCallback(() => {
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+  }, []);
+
+  // Zoom to a specific level centered on a point
+  const zoomAtPoint = useCallback((clientX: number, clientY: number, newScale: number) => {
+    const container = imgContainerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const cx = clientX - rect.left - rect.width / 2;
+    const cy = clientY - rect.top - rect.height / 2;
+
+    setScale((prevScale) => {
+      const clampedScale = Math.max(1, Math.min(newScale, 8));
+      const ratio = clampedScale / prevScale;
+      setOffset((prev) => ({
+        x: cx - ratio * (cx - prev.x),
+        y: cy - ratio * (cy - prev.y),
+      }));
+      return clampedScale;
+    });
+  }, []);
+
   const goPrev = useCallback(() => {
     if (hasPrev) {
+      resetZoom();
       onNavigate(index - 1);
       setSwipeHint('right');
       setTimeout(() => setSwipeHint(null), 300);
     }
-  }, [hasPrev, index, onNavigate]);
+  }, [hasPrev, index, onNavigate, resetZoom]);
 
   const goNext = useCallback(() => {
     if (hasNext) {
+      resetZoom();
       onNavigate(index + 1);
       setSwipeHint('left');
       setTimeout(() => setSwipeHint(null), 300);
     }
-  }, [hasNext, index, onNavigate]);
+  }, [hasNext, index, onNavigate, resetZoom]);
 
+  // Disable swipe gestures when zoomed
   const swipeRef = useSwipeGesture({
     onSwipeLeft: goNext,
     onSwipeRight: goPrev,
     onSwipeDown: onClose,
+    enabled: !isZoomed,
   });
+
+  // === Mouse wheel zoom ===
+  useEffect(() => {
+    const el = imgContainerRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Only zoom on images
+      if (!current?.mime.startsWith('image/')) return;
+      e.preventDefault();
+
+      const delta = e.deltaY > 0 ? -0.15 : 0.15;
+      const newScale = scale * (1 + delta);
+      zoomAtPoint(e.clientX, e.clientY, newScale);
+
+      // If zoomed back to 1, reset offset
+      if (newScale <= 1.05) {
+        setTimeout(() => resetZoom(), 50);
+      }
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [scale, current, zoomAtPoint, resetZoom]);
+
+  // === Pinch zoom (touch) ===
+  useEffect(() => {
+    const el = imgContainerRef.current;
+    if (!el || !current?.mime.startsWith('image/')) return;
+
+    const getTouchDist = (touches: TouchList) => {
+      if (touches.length < 2) return 0;
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    const getTouchCenter = (touches: TouchList) => {
+      if (touches.length < 2) return { x: touches[0]?.clientX || 0, y: touches[0]?.clientY || 0 };
+      return {
+        x: (touches[0].clientX + touches[1].clientX) / 2,
+        y: (touches[0].clientY + touches[1].clientY) / 2,
+      };
+    };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        pinchStartDist.current = getTouchDist(e.touches);
+        pinchStartScale.current = scale;
+      } else if (e.touches.length === 1 && isZoomed) {
+        // Dragging when zoomed
+        isDragging.current = true;
+        dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        dragOffsetStart.current = { ...offset };
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const dist = getTouchDist(e.touches);
+        const center = getTouchCenter(e.touches);
+        const newScale = pinchStartScale.current * (dist / pinchStartDist.current);
+        zoomAtPoint(center.x, center.y, newScale);
+      } else if (e.touches.length === 1 && isDragging.current && isZoomed) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - dragStart.current.x;
+        const dy = e.touches[0].clientY - dragStart.current.y;
+        setOffset({
+          x: dragOffsetStart.current.x + dx,
+          y: dragOffsetStart.current.y + dy,
+        });
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      isDragging.current = false;
+      if (e.touches.length < 2 && scale <= 1.05) {
+        resetZoom();
+      }
+    };
+
+    el.addEventListener('touchstart', handleTouchStart, { passive: false });
+    el.addEventListener('touchmove', handleTouchMove, { passive: false });
+    el.addEventListener('touchend', handleTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
+      el.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [scale, offset, isZoomed, current, zoomAtPoint, resetZoom]);
+
+  // === Mouse drag when zoomed ===
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!isZoomed) return;
+    isDragging.current = true;
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    dragOffsetStart.current = { ...offset };
+    e.preventDefault();
+  }, [isZoomed, offset]);
+
+  useEffect(() => {
+    if (!isZoomed) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current) return;
+      const dx = e.clientX - dragStart.current.x;
+      const dy = e.clientY - dragStart.current.y;
+      setOffset({
+        x: dragOffsetStart.current.x + dx,
+        y: dragOffsetStart.current.y + dy,
+      });
+    };
+
+    const handleMouseUp = () => {
+      isDragging.current = false;
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isZoomed]);
+
+  // === Double click/tap to toggle zoom ===
+  const lastClickTime = useRef(0);
+  const handleImageClick = useCallback((e: React.MouseEvent) => {
+    const now = Date.now();
+    if (now - lastClickTime.current < 300) {
+      // Double click
+      if (isZoomed) {
+        resetZoom();
+      } else {
+        zoomAtPoint(e.clientX, e.clientY, 2.5);
+      }
+      lastClickTime.current = 0;
+    } else {
+      lastClickTime.current = now;
+    }
+  }, [isZoomed, zoomAtPoint, resetZoom]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goPrev(); }
+      if (e.key === 'Escape') {
+        if (isZoomed) {
+          resetZoom();
+        } else {
+          onClose();
+        }
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goPrev(); }
       else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); goNext(); }
       else if (e.key === 'i') setShowInfo((s) => !s);
-      else if (e.key === 'd' || e.key === 'D') {
+      else if (e.key === '+' || e.key === '=') {
         e.preventDefault();
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = name;
-        a.click();
+        setScale((s) => Math.min(s * 1.3, 8));
+      } else if (e.key === '-') {
+        e.preventDefault();
+        const newScale = scale / 1.3;
+        if (newScale <= 1.05) resetZoom();
+        else setScale(newScale);
+      } else if (e.key === '0') {
+        resetZoom();
+      } else if (e.key === 'd' || e.key === 'D') {
+        if (!isZoomed) {
+          e.preventDefault();
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = name;
+          a.click();
+        }
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -140,7 +360,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [onClose, goPrev, goNext, url, name]);
+  }, [onClose, goPrev, goNext, url, name, isZoomed, scale, resetZoom]);
 
   // Reset state on navigation
   useEffect(() => {
@@ -148,7 +368,8 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     setShowInfo(false);
     setImageLoaded(false);
     setImageDimensions(null);
-  }, [index]);
+    resetZoom();
+  }, [index, resetZoom]);
 
   if (!current) return null;
 
@@ -158,7 +379,6 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback
       const input = document.createElement('input');
       input.value = viewUrl;
       document.body.appendChild(input);
@@ -176,11 +396,15 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     setImageLoaded(true);
   };
 
+  const isImage = current.mime.startsWith('image/');
+
   return (
     <div
       ref={swipeRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm touch-pan-y"
-      onClick={onClose}
+      onClick={(e) => {
+        if (!isZoomed) onClose();
+      }}
     >
       {/* Close button */}
       <button
@@ -206,6 +430,46 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
 
       {/* Action buttons */}
       <div className="absolute top-4 right-16 flex items-center gap-1 z-10">
+        {/* Zoom controls (images only) */}
+        {isImage && (
+          <>
+            <button
+              onClick={(e) => { e.stopPropagation(); setScale((s) => Math.min(s * 1.3, 8)); }}
+              className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              title="放大 (+)"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+              </svg>
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const newScale = scale / 1.3;
+                if (newScale <= 1.05) resetZoom();
+                else setScale(newScale);
+              }}
+              className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              title="缩小 (-)"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+              </svg>
+            </button>
+            {isZoomed && (
+              <button
+                onClick={(e) => { e.stopPropagation(); resetZoom(); }}
+                className="p-2 text-blue-400 hover:text-blue-300 hover:bg-white/10 rounded-lg transition-colors"
+                title="重置缩放 (0)"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+              </button>
+            )}
+          </>
+        )}
+
         {/* Info toggle */}
         <button
           onClick={(e) => { e.stopPropagation(); setShowInfo(!showInfo); }}
@@ -245,6 +509,13 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
           </svg>
         </a>
       </div>
+
+      {/* Zoom level indicator */}
+      {isImage && isZoomed && (
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 bg-black/70 text-white/80 text-xs px-3 py-1.5 rounded-full z-10 pointer-events-none select-none">
+          {Math.round(scale * 100)}% · 拖动平移 · 双击重置
+        </div>
+      )}
 
       {/* Info panel */}
       {showInfo && (
@@ -314,7 +585,6 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
                 </>
               )}
             </button>
-            {/* Direct image link */}
             <button
               onClick={async () => {
                 try {
@@ -369,30 +639,58 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-12 bg-gradient-to-t from-blue-500/30 to-transparent rounded-t-xl pointer-events-none animate-pulse" />
       )}
 
-      {/* Mobile swipe hint */}
+      {/* Mobile hints */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 text-white/30 text-xs md:hidden pointer-events-none select-none">
-        <span>← 滑动切换</span>
-        <span>·</span>
-        <span>下滑关闭</span>
-        <span>·</span>
-        <span>切换 →</span>
+        {isZoomed ? (
+          <span>双指缩放 · 拖动平移 · 双击重置</span>
+        ) : (
+          <>
+            <span>← 滑动切换</span>
+            <span>·</span>
+            <span>下滑关闭</span>
+            <span>·</span>
+            <span>切换 →</span>
+          </>
+        )}
       </div>
 
+      {/* Desktop zoom hint */}
+      {isImage && !isZoomed && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden md:flex items-center gap-2 text-white/20 text-xs pointer-events-none select-none">
+          <span>滚轮缩放 · 双击放大 · +/- 键缩放</span>
+        </div>
+      )}
+
       {/* Content */}
-      <div className="max-w-[90vw] max-h-[90vh] relative" onClick={(e) => e.stopPropagation()}>
-        {/* Loading spinner for lightbox image */}
-        {current.mime.startsWith('image/') && !imageLoaded && (
+      <div
+        ref={imgContainerRef}
+        className="max-w-[90vw] max-h-[90vh] relative"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (isImage) handleImageClick(e);
+          else if (!isZoomed) onClose();
+        }}
+        onMouseDown={handleMouseDown}
+        style={{ cursor: isZoomed ? 'grab' : 'default' }}
+      >
+        {/* Loading spinner */}
+        {isImage && !imageLoaded && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white/50" />
           </div>
         )}
 
-        {current.mime.startsWith('image/') ? (
+        {isImage ? (
           <img
             key={current.path}
             src={url}
             alt={name}
             className={`max-w-full max-h-[90vh] object-contain rounded-lg transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            style={{
+              transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+              transition: isDragging.current ? 'none' : 'transform 0.15s ease-out',
+              transformOrigin: 'center center',
+            }}
             draggable={false}
             onLoad={handleImageLoad}
           />
@@ -424,25 +722,4 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       </div>
     </div>
   );
-}
-
-/** Compute a human-readable aspect ratio string */
-function getAspectRatio(w: number, h: number): string {
-  function gcd(a: number, b: number): number {
-    return b === 0 ? a : gcd(b, a % b);
-  }
-  const d = gcd(w, h);
-  const rw = w / d;
-  const rh = h / d;
-  // Simplify common ratios
-  const ratio = w / h;
-  if (Math.abs(ratio - 16 / 9) < 0.02) return '16:9';
-  if (Math.abs(ratio - 4 / 3) < 0.02) return '4:3';
-  if (Math.abs(ratio - 3 / 2) < 0.02) return '3:2';
-  if (Math.abs(ratio - 1) < 0.02) return '1:1';
-  if (Math.abs(ratio - 21 / 9) < 0.02) return '21:9';
-  if (Math.abs(ratio - 9 / 16) < 0.02) return '9:16';
-  // For large numbers, simplify to common approximations
-  if (rw > 50 || rh > 50) return `${ratio.toFixed(2)}:1`;
-  return `${rw}:${rh}`;
 }

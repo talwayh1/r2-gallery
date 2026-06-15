@@ -354,6 +354,8 @@ export default function App() {
                   onOpen={openLightbox}
                   onDelete={handleDelete}
                   onRename={handleRename}
+                  selected={selected}
+                  onSelect={handleSelect}
                 />
               )}
             </UploadZone>
@@ -379,6 +381,8 @@ export default function App() {
                 currentDir={dir}
                 onNavigate={navigate}
                 onOpen={openLightbox}
+                selected={selected}
+                onSelect={handleSelect}
               />
             )
           )}
