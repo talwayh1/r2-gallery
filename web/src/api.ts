@@ -129,3 +129,38 @@ export async function getThumbnail(dir: string): Promise<{ path: string | null; 
   const res = await fetch(`${API_BASE}/thumbnail?dir=${encodeURIComponent(dir)}`);
   return res.json();
 }
+
+// --- Global Search ---
+export interface SearchResult {
+  path: string;
+  name: string;
+  mime: string;
+  size: number;
+  mtime: number;
+  dir: string;
+}
+
+export async function searchFiles(query: string, limit?: number): Promise<{ results: SearchResult[]; query: string; total: number }> {
+  const params = new URLSearchParams({ q: query });
+  if (limit) params.set('limit', String(limit));
+  const res = await fetch(`${API_BASE}/search?${params}`);
+  return res.json();
+}
+
+// --- Discover ---
+export interface DiscoverFile {
+  path: string;
+  name: string;
+  mime: string;
+  size: number;
+  mtime: number;
+  dir: string;
+}
+
+export async function discoverMedia(limit?: number, offset?: number): Promise<{ files: DiscoverFile[]; total: number; hasMore: boolean }> {
+  const params = new URLSearchParams();
+  if (limit) params.set('limit', String(limit));
+  if (offset) params.set('offset', String(offset));
+  const res = await fetch(`${API_BASE}/discover?${params}`);
+  return res.json();
+}

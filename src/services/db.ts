@@ -90,6 +90,31 @@ export async function renameFileMetadata(db: D1Database, oldPath: string, newPat
   await db.prepare('UPDATE file_metadata SET path = ? WHERE path = ?').bind(newPath, oldPath).run();
 }
 
+/** Global search across all files matching a query (by filename) */
+export async function searchFiles(db: D1Database, query: string, limit: number = 50): Promise<FileMetadata[]> {
+  const pattern = `%${query}%`;
+  const result = await db.prepare(
+    "SELECT * FROM file_metadata WHERE mime != 'directory' AND path LIKE ? ORDER BY mtime DESC LIMIT ?"
+  ).bind(pattern, limit).all<FileMetadata>();
+  return result.results;
+}
+
+/** Get recent image/video files across all directories for the discover feature */
+export async function getRecentMedia(db: D1Database, limit: number = 30, offset: number = 0): Promise<FileMetadata[]> {
+  const result = await db.prepare(
+    "SELECT * FROM file_metadata WHERE mime LIKE 'image/%' OR mime LIKE 'video/%' ORDER BY mtime DESC LIMIT ? OFFSET ?"
+  ).bind(limit, offset).all<FileMetadata>();
+  return result.results;
+}
+
+/** Get total count of media files */
+export async function getMediaCount(db: D1Database): Promise<number> {
+  const row = await db.prepare(
+    "SELECT COUNT(*) as count FROM file_metadata WHERE mime LIKE 'image/%' OR mime LIKE 'video/%'"
+  ).first<{ count: number }>();
+  return row?.count ?? 0;
+}
+
 export async function getSetting(db: D1Database, key: string): Promise<string | null> {
   const row = await db.prepare('SELECT value FROM settings WHERE key = ?').bind(key).first<{ value: string }>();
   return row?.value ?? null;

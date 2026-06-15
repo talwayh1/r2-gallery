@@ -14,7 +14,7 @@ const shortcuts: { category: string; items: Shortcut[] }[] = [
     category: '全局',
     items: [
       { keys: ['?'], description: '显示/隐藏快捷键帮助' },
-      { keys: ['/'], description: '聚焦搜索框' },
+      { keys: ['/'], description: '全局搜索' },
       { keys: ['R'], description: '刷新文件列表' },
       { keys: ['G'], description: '切换网格/列表视图' },
       { keys: ['T'], description: '切换亮色/暗色主题' },

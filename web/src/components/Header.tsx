@@ -17,13 +17,15 @@ interface Props {
   onLoginClick?: () => void;
   onShortcutsClick?: () => void;
   onCreateFolder?: () => void;
+  onSearchClick?: () => void;
+  onDiscoverClick?: () => void;
 }
 
 export default function Header({
   dir, layout, theme, search, user, sidebarOpen,
   onNavigate, onLayoutChange, onThemeToggle, onSearchChange,
   onSidebarToggle, onLogout, onRefresh, onLoginClick, onShortcutsClick,
-  onCreateFolder,
+  onCreateFolder, onSearchClick, onDiscoverClick,
 }: Props) {
   const breadcrumbs = dir ? dir.split('/') : [];
 
@@ -55,13 +57,30 @@ export default function Header({
       <div className="flex-1" />
 
       <div className="flex items-center gap-2">
-        <input
-          type="text"
-          placeholder="搜索..."
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="w-40 px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
-        />
+        <button
+          onClick={onSearchClick}
+          className="flex items-center gap-2 w-40 px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:border-blue-400 dark:hover:border-blue-500 transition-colors cursor-text"
+          title="搜索所有文件 (/)"
+        >
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <span className="truncate">搜索...</span>
+          <kbd className="ml-auto text-[10px] bg-gray-200 dark:bg-gray-600 px-1 py-0.5 rounded">/</kbd>
+        </button>
+
+        {/* Discover button */}
+        {onDiscoverClick && (
+          <button
+            onClick={onDiscoverClick}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            title="发现"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+            </svg>
+          </button>
+        )}
 
         {/* Create folder (admin only) */}
         {user && onCreateFolder && (

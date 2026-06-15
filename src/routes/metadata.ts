@@ -172,6 +172,75 @@ metadata.get('/exif', async (c) => {
   }
 });
 
+// GET /api/search?q=term
+// Global search across all directories
+metadata.get('/search', async (c) => {
+  const query = c.req.query('q');
+  if (!query || query.length < 2) {
+    return c.json({ results: [], query: query || '' });
+  }
+
+  const database = c.env.DB;
+  const limit = parseInt(c.req.query('limit') || '50');
+
+  try {
+    const { searchFiles } = await import('../services/db');
+    const results = await searchFiles(database, query, Math.min(limit, 100));
+
+    // Map to client-friendly format
+    const files = results.map((r) => ({
+      path: r.path,
+      name: r.path.split('/').pop() || r.path,
+      mime: r.mime,
+      size: r.size,
+      mtime: r.mtime,
+      // Compute the parent directory
+      dir: r.path.includes('/') ? r.path.substring(0, r.path.lastIndexOf('/')) : '',
+    }));
+
+    return c.json({ results: files, query, total: files.length });
+  } catch (err: any) {
+    console.error('Search error:', err);
+    return c.json({ error: 'Search failed', results: [] }, 500);
+  }
+});
+
+// GET /api/discover?limit=30&offset=0
+// Returns recent media files across all directories for gallery browsing
+metadata.get('/discover', async (c) => {
+  const database = c.env.DB;
+  const limit = Math.min(parseInt(c.req.query('limit') || '30'), 100);
+  const offset = Math.max(parseInt(c.req.query('offset') || '0'), 0);
+
+  try {
+    const { getRecentMedia, getMediaCount } = await import('../services/db');
+    const [results, total] = await Promise.all([
+      getRecentMedia(database, limit, offset),
+      getMediaCount(database),
+    ]);
+
+    const files = results.map((r) => ({
+      path: r.path,
+      name: r.path.split('/').pop() || r.path,
+      mime: r.mime,
+      size: r.size,
+      mtime: r.mtime,
+      dir: r.path.includes('/') ? r.path.substring(0, r.path.lastIndexOf('/')) : '',
+    }));
+
+    return c.json({
+      files,
+      total,
+      limit,
+      offset,
+      hasMore: offset + limit < total,
+    });
+  } catch (err: any) {
+    console.error('Discover error:', err);
+    return c.json({ error: 'Failed to load discover feed', files: [] }, 500);
+  }
+});
+
 // GET /api/thumbnail?dir=photos
 // Returns the URL of the first image in a directory (for folder thumbnails)
 metadata.get('/thumbnail', async (c) => {

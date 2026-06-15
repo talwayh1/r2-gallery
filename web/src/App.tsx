@@ -16,6 +16,8 @@ import BulkActions from './components/BulkActions';
 import TypeFilter, { matchFilter } from './components/TypeFilter';
 import type { TypeFilter as TypeFilterKind } from './components/TypeFilter';
 import CreateFolder from './components/CreateFolder';
+import SearchOverlay from './components/SearchOverlay';
+import DiscoverPage from './components/DiscoverPage';
 
 export default function App() {
   const { user, loading: authLoading, login, logout } = useAuth();
@@ -39,6 +41,8 @@ export default function App() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [typeFilter, setTypeFilter] = useState<TypeFilterKind>('all');
   const [showCreateFolder, setShowCreateFolder] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showDiscover, setShowDiscover] = useState(false);
 
   // Track pending /view/* deep link
   const pendingViewRef = useRef<string | null>(null);
@@ -116,8 +120,7 @@ export default function App() {
         setShowShortcuts((s) => !s);
       } else if (e.key === '/' && !e.shiftKey) {
         e.preventDefault();
-        const input = document.querySelector<HTMLInputElement>('input[placeholder="搜索..."]');
-        input?.focus();
+        setShowSearch(true);
       } else if (e.key === 'r' || e.key === 'R') {
         if (!e.ctrlKey && !e.metaKey) {
           e.preventDefault();
@@ -303,6 +306,8 @@ export default function App() {
         onLoginClick={() => setShowLogin(true)}
         onShortcutsClick={() => setShowShortcuts(true)}
         onCreateFolder={user ? () => setShowCreateFolder(true) : undefined}
+        onSearchClick={() => setShowSearch(true)}
+        onDiscoverClick={() => setShowDiscover(true)}
       />
       <div className="flex flex-1 overflow-hidden relative">
         {/* Mobile sidebar overlay */}
@@ -435,6 +440,20 @@ export default function App() {
           currentDir={dir}
           onConfirm={handleCreateFolder}
           onClose={() => setShowCreateFolder(false)}
+        />
+      )}
+      {showSearch && (
+        <SearchOverlay
+          onClose={() => setShowSearch(false)}
+          onNavigate={(d) => { navigate(d); setShowSearch(false); }}
+          onOpenFile={(path, mime) => { openLightbox(path, mime); setShowSearch(false); }}
+        />
+      )}
+      {showDiscover && (
+        <DiscoverPage
+          onClose={() => setShowDiscover(false)}
+          onNavigate={(d) => { navigate(d); setShowDiscover(false); }}
+          onOpenFile={(path, mime) => { openLightbox(path, mime); setShowDiscover(false); }}
         />
       )}
     </div>
