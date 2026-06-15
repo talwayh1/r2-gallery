@@ -27,6 +27,8 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   const hasNext = index < items.length - 1;
   const [copied, setCopied] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageDimensions, setImageDimensions] = useState<{ w: number; h: number } | null>(null);
 
   const goPrev = useCallback(() => {
     if (hasPrev) onNavigate(index - 1);
@@ -51,10 +53,12 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     };
   }, [onClose, goPrev, goNext]);
 
-  // Reset copied state on navigation
+  // Reset state on navigation
   useEffect(() => {
     setCopied(false);
     setShowInfo(false);
+    setImageLoaded(false);
+    setImageDimensions(null);
   }, [index]);
 
   if (!current) return null;
@@ -85,6 +89,12 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     }
   };
 
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    setImageDimensions({ w: img.naturalWidth, h: img.naturalHeight });
+    setImageLoaded(true);
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
@@ -106,6 +116,9 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
         <span className="font-medium text-white/90">{name}</span>
         {ext && <span className="px-1.5 py-0.5 text-[10px] bg-white/10 rounded">{ext}</span>}
         {current.size ? <span className="text-xs text-white/50">{formatSize(current.size)}</span> : null}
+        {imageDimensions && (
+          <span className="text-xs text-white/40">{imageDimensions.w} × {imageDimensions.h}</span>
+        )}
         <span className="text-white/40">({index + 1} / {items.length})</span>
       </div>
 
@@ -173,6 +186,24 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
                 <span>{formatSize(current.size)}</span>
               </div>
             ) : null}
+            {imageDimensions && (
+              <div className="flex justify-between gap-4">
+                <span className="text-white/40">尺寸</span>
+                <span>{imageDimensions.w} × {imageDimensions.h} px</span>
+              </div>
+            )}
+            {imageDimensions && (
+              <div className="flex justify-between gap-4">
+                <span className="text-white/40">宽高比</span>
+                <span>{getAspectRatio(imageDimensions.w, imageDimensions.h)}</span>
+              </div>
+            )}
+            {imageDimensions && (
+              <div className="flex justify-between gap-4">
+                <span className="text-white/40">百万像素</span>
+                <span>{((imageDimensions.w * imageDimensions.h) / 1_000_000).toFixed(1)} MP</span>
+              </div>
+            )}
             <div className="flex justify-between gap-4">
               <span className="text-white/40">路径</span>
               <span className="text-right break-all text-xs">{current.path}</span>
@@ -246,14 +277,22 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       )}
 
       {/* Content */}
-      <div className="max-w-[90vw] max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+      <div className="max-w-[90vw] max-h-[90vh] relative" onClick={(e) => e.stopPropagation()}>
+        {/* Loading spinner for lightbox image */}
+        {current.mime.startsWith('image/') && !imageLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white/50" />
+          </div>
+        )}
+
         {current.mime.startsWith('image/') ? (
           <img
             key={current.path}
             src={url}
             alt={name}
-            className="max-w-full max-h-[90vh] object-contain rounded-lg"
+            className={`max-w-full max-h-[90vh] object-contain rounded-lg transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
             draggable={false}
+            onLoad={handleImageLoad}
           />
         ) : current.mime.startsWith('video/') ? (
           <video
@@ -283,4 +322,25 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       </div>
     </div>
   );
+}
+
+/** Compute a human-readable aspect ratio string */
+function getAspectRatio(w: number, h: number): string {
+  function gcd(a: number, b: number): number {
+    return b === 0 ? a : gcd(b, a % b);
+  }
+  const d = gcd(w, h);
+  const rw = w / d;
+  const rh = h / d;
+  // Simplify common ratios
+  const ratio = w / h;
+  if (Math.abs(ratio - 16 / 9) < 0.02) return '16:9';
+  if (Math.abs(ratio - 4 / 3) < 0.02) return '4:3';
+  if (Math.abs(ratio - 3 / 2) < 0.02) return '3:2';
+  if (Math.abs(ratio - 1) < 0.02) return '1:1';
+  if (Math.abs(ratio - 21 / 9) < 0.02) return '21:9';
+  if (Math.abs(ratio - 9 / 16) < 0.02) return '9:16';
+  // For large numbers, simplify to common approximations
+  if (rw > 50 || rh > 50) return `${ratio.toFixed(2)}:1`;
+  return `${rw}:${rh}`;
 }

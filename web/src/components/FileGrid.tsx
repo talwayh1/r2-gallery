@@ -25,6 +25,23 @@ function getIcon(mime: string) {
   return '📎';
 }
 
+/** Badge label for media types */
+function getTypeBadge(mime: string): string | null {
+  if (mime.startsWith('video/')) return 'VIDEO';
+  if (mime.startsWith('audio/')) return 'AUDIO';
+  if (mime === 'application/pdf') return 'PDF';
+  if (mime.includes('zip') || mime.includes('rar') || mime.includes('7z')) return 'ZIP';
+  return null;
+}
+
+/** Badge color classes */
+function getBadgeColor(mime: string): string {
+  if (mime.startsWith('video/')) return 'bg-purple-500/90 text-white';
+  if (mime.startsWith('audio/')) return 'bg-green-500/90 text-white';
+  if (mime === 'application/pdf') return 'bg-red-500/90 text-white';
+  return 'bg-gray-500/90 text-white';
+}
+
 function formatSize(bytes: number) {
   if (bytes === 0) return '';
   const units = ['B', 'KB', 'MB', 'GB'];
@@ -35,6 +52,50 @@ function formatSize(bytes: number) {
 function formatDate(ts: number) {
   if (!ts) return '';
   return new Date(ts * 1000).toLocaleDateString();
+}
+
+/** Get file extension for badge display */
+function getExtBadge(name: string): string | null {
+  const ext = name.split('.').pop()?.toUpperCase();
+  if (!ext || ext.length > 5) return null;
+  return ext;
+}
+
+/**
+ * Image thumbnail with loading skeleton, fade-in, and error fallback.
+ * Uses native <img> with loading="lazy" for efficient loading.
+ */
+function ImageThumbnail({ src, alt, onClick }: { src: string; alt: string; onClick: () => void }) {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+
+  if (error) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500">
+        <svg className="w-8 h-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+            d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span className="text-[10px]">加载失败</span>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Shimmer placeholder — visible until image loads */}
+      {!loaded && <div className="shimmer absolute inset-0 rounded-xl" />}
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        onClick={onClick}
+        className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        onLoad={() => setLoaded(true)}
+        onError={() => setError(true)}
+      />
+    </>
+  );
 }
 
 export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, onDelete, onRename }: Props) {
@@ -129,7 +190,7 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
       {/* Directories */}
       {sortedDirs.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Folders</h3>
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">文件夹</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
             {sortedDirs.map((item) => (
               <button
@@ -151,13 +212,14 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
       {/* Files */}
       {sortedFiles.length > 0 && (
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Files</h3>
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">文件</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
             {sortedFiles.map((file) => {
               const isImage = file.mime.startsWith('image/');
               const isVideo = file.mime.startsWith('video/');
               const isSelected = selected.has(file.path);
-              const thumbUrl = isImage ? getFileUrl(file.path) + '&resize=320' : null;
+              const badge = getTypeBadge(file.mime);
+              const extBadge = !isImage ? getExtBadge(file.name) : null;
 
               return (
                 <button
@@ -176,21 +238,37 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
                 >
                   <div className="w-full aspect-square flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-xl overflow-hidden relative">
                     {isImage ? (
-                      <img
-                        src={thumbUrl!}
+                      <ImageThumbnail
+                        src={getFileUrl(file.path)}
                         alt={file.name}
-                        loading="lazy"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
+                        onClick={() => onOpen(file.path, file.mime)}
                       />
                     ) : isVideo ? (
-                      <div className="w-full h-full flex items-center justify-center bg-gray-800 text-white text-4xl">
-                        ▶
-                      </div>
+                      <>
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 text-white text-4xl">
+                          ▶
+                        </div>
+                        {/* Video duration badge placeholder */}
+                        <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-medium bg-black/70 text-white rounded">
+                          VIDEO
+                        </span>
+                      </>
                     ) : (
                       <span className="text-4xl">{getIcon(file.mime)}</span>
+                    )}
+
+                    {/* Type badge for non-image files */}
+                    {!isImage && badge && (
+                      <span className={`absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-bold rounded ${getBadgeColor(file.mime)}`}>
+                        {badge}
+                      </span>
+                    )}
+
+                    {/* Ext badge for generic files */}
+                    {!isImage && !badge && extBadge && (
+                      <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-bold rounded bg-gray-600/80 text-white">
+                        {extBadge}
+                      </span>
                     )}
                   </div>
                   {renaming?.path === file.path ? (
@@ -234,8 +312,8 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
           <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
           </svg>
-          <p className="text-lg font-medium">No files</p>
-          <p className="text-sm">Drop files here to upload</p>
+          <p className="text-lg font-medium">暂无文件</p>
+          <p className="text-sm">拖拽文件到此处上传</p>
         </div>
       )}
 
@@ -251,13 +329,13 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
               className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={() => { setRenaming({ path: contextMenu.path, name: contextMenu.name }); setContextMenu(null); }}
             >
-              Rename
+              重命名
             </button>
             <button
               className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-500"
               onClick={() => { onDelete?.([contextMenu.path]); setContextMenu(null); }}
             >
-              Delete
+              删除
             </button>
           </div>
         </>
