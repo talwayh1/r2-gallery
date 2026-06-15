@@ -6,7 +6,8 @@ export async function initDatabase(db: D1Database): Promise<void> {
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'user',
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    telegram_id TEXT
   )`).run();
 
   await db.prepare(`CREATE TABLE IF NOT EXISTS file_metadata (
@@ -23,12 +24,25 @@ export async function initDatabase(db: D1Database): Promise<void> {
   )`).run();
 
   await db.prepare(`CREATE INDEX IF NOT EXISTS idx_file_metadata_path ON file_metadata(path)`).run();
+  await db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id)`).run();
 }
 
 export async function getUserByUsername(db: D1Database, username: string): Promise<User | null> {
   return db.prepare('SELECT * FROM users WHERE username = ?').bind(username).first<User>();
 }
 
+export async function getUserByTelegramId(db: D1Database, telegramId: string): Promise<User | null> {
+  return db.prepare('SELECT * FROM users WHERE telegram_id = ?').bind(telegramId).first<User>();
+}
+
+export async function createTelegramUser(db: D1Database, telegramId: string, displayName: string): Promise<User> {
+  const username = `tg_${telegramId}`;
+  const password_hash = 'telegram_auth_no_password';
+  await db.prepare(
+    'INSERT INTO users (username, password_hash, role, telegram_id) VALUES (?, ?, ?, ?)'
+  ).bind(username, password_hash, 'user', telegramId).run();
+  return db.prepare('SELECT * FROM users WHERE telegram_id = ?').bind(telegramId).first<User>() as Promise<User>;
+}
 export async function createUser(db: D1Database, username: string, password_hash: string, role: string = 'user'): Promise<void> {
   await db.prepare('INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)').bind(username, password_hash, role).run();
 }

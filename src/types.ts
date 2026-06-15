@@ -3,6 +3,8 @@ export interface AppBindings {
   DB: D1Database;
   JWT_SECRET: string;
   ADMIN_PASSWORD?: string;
+  TELEGRAM_BOT_TOKEN?: string;
+  TELEGRAM_BOT_USERNAME?: string;
 }
 
 export interface FileInfo {

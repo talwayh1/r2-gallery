@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { AppBindings, Variables } from './types';
-import { loginHandler, hashPassword } from './auth';
+import { loginHandler, hashPassword, telegramLoginHandler } from './auth';
 import * as db from './services/db';
 import filesRouter from './routes/files';
 import uploadRouter from './routes/upload';
@@ -46,6 +46,13 @@ app.use('*', async (c, next) => {
 // Health check
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
 
+// Public config (for frontend)
+app.get('/api/config', (c) => {
+  return c.json({
+    telegramBotUsername: c.env.TELEGRAM_BOT_USERNAME || null,
+  });
+});
+
 // Ping — check auth status
 app.get('/api/ping', async (c) => {
   const authHeader = c.req.header('Authorization');
@@ -66,6 +73,9 @@ app.get('/api/ping', async (c) => {
 
 // Login
 app.post('/api/login', loginHandler);
+
+// Telegram Login
+app.post('/api/auth/telegram', telegramLoginHandler);
 
 // === Protected routes ===
 app.route('/api', filesRouter);

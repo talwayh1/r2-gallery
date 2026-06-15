@@ -1,5 +1,6 @@
 import type { Context, Next } from 'hono';
 import type { AppBindings, Variables, User } from './types';
+import * as db from './services/db';
 
 // Base64url encode/decode
 function base64url(data: Uint8Array | string): string {
@@ -142,6 +143,81 @@ export async function ensureAdmin(c: Context<{ Bindings: AppBindings; Variables:
     return c.json({ error: 'Admin access required' }, 403);
   }
   await next();
+}
+
+/**
+ * Verify Telegram Login Widget data.
+ * https://core.telegram.org/widgets/login#checking-authorization
+ */
+async function verifyTelegramAuth(botToken: string, data: Record<string, string>): Promise<boolean> {
+  const { hash, ...rest } = data;
+  if (!hash) return false;
+
+  // Sort keys and build data-check-string
+  const dataCheckString = Object.keys(rest)
+    .sort()
+    .map(key => `${key}=${rest[key]}`)
+    .join('\n');
+
+  // HMAC-SHA-256 with secret_key = SHA-256(botToken)
+  const secretKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(botToken));
+  const key = await crypto.subtle.importKey(
+    'raw', secretKey, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(dataCheckString));
+  const computedHash = [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
+
+  return computedHash === hash;
+}
+
+/**
+ * POST /api/auth/telegram
+ * Handles Telegram Login Widget callback
+ */
+export async function telegramLoginHandler(c: Context<{ Bindings: AppBindings; Variables: Variables }>) {
+  const botToken = c.env.TELEGRAM_BOT_TOKEN;
+  if (!botToken) {
+    return c.json({ error: 'Telegram login not configured' }, 501);
+  }
+
+  const body = await c.req.json<Record<string, string>>();
+  const telegramId = body.id;
+  if (!telegramId) {
+    return c.json({ error: 'Missing Telegram user ID' }, 400);
+  }
+
+  // Verify auth data from Telegram
+  const valid = await verifyTelegramAuth(botToken, body);
+  if (!valid) {
+    return c.json({ error: 'Invalid Telegram auth data' }, 401);
+  }
+
+  // Check auth_date (must be within 24 hours)
+  const authDate = parseInt(body.auth_date || '0', 10);
+  const now = Math.floor(Date.now() / 1000);
+  if (now - authDate > 86400) {
+    return c.json({ error: 'Telegram auth data expired' }, 401);
+  }
+
+  const database = c.env.DB;
+
+  // Find or create user
+  let user = await db.getUserByTelegramId(database, telegramId);
+  if (!user) {
+    const displayName = [body.first_name, body.last_name].filter(Boolean).join(' ') || `user_${telegramId}`;
+    user = await db.createTelegramUser(database, telegramId, displayName);
+  }
+
+  const token = await createToken(c.env.JWT_SECRET, {
+    sub: user.id,
+    role: user.role,
+    username: user.username,
+  });
+
+  return c.json({
+    token,
+    user: { id: user.id, username: user.username, role: user.role },
+  });
 }
 
 export { hashPassword, verifyPassword };

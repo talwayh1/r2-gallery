@@ -1,15 +1,51 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface Props {
   onLogin: (username: string, password: string) => Promise<any>;
+  onTelegramLogin?: (authData: Record<string, string>) => Promise<any>;
   onClose?: () => void;
+  telegramBotUsername?: string;
 }
 
-export default function Login({ onLogin, onClose }: Props) {
+export default function Login({ onLogin, onTelegramLogin, onClose, telegramBotUsername }: Props) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const telegramRef = useRef<HTMLDivElement>(null);
+
+  // Load Telegram Login Widget script
+  useEffect(() => {
+    if (!telegramBotUsername || !telegramRef.current) return;
+
+    // Clear any existing content
+    telegramRef.current.innerHTML = '';
+
+    const script = document.createElement('script');
+    script.src = 'https://telegram.org/js/telegram-widget.js?22';
+    script.setAttribute('data-telegram-login', telegramBotUsername);
+    script.setAttribute('data-size', 'large');
+    script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+    script.setAttribute('data-request-access', 'write');
+    script.async = true;
+
+    telegramRef.current.appendChild(script);
+
+    // Define global callback
+    (window as any).onTelegramAuth = (user: Record<string, string>) => {
+      if (onTelegramLogin) {
+        setLoading(true);
+        setError('');
+        onTelegramLogin(user)
+          .catch((err: any) => setError(err.message || 'Telegram login failed'))
+          .finally(() => setLoading(false));
+      }
+    };
+
+    return () => {
+      delete (window as any).onTelegramAuth;
+    };
+  }, [telegramBotUsername, onTelegramLogin]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +82,22 @@ export default function Login({ onLogin, onClose }: Props) {
             {error}
           </div>
         )}
+
+        {/* Telegram Login */}
+        {telegramBotUsername && (
+          <div className="mb-6">
+            <div ref={telegramRef} className="flex justify-center" />
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white dark:bg-gray-800 text-gray-500">或使用密码登录</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4">
           <input
             type="text"

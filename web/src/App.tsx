@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { FileItem, LayoutMode } from './types';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
-import { listFiles } from './api';
+import { listFiles, telegramLogin, getConfig } from './api';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import FileGrid from './components/FileGrid';
@@ -21,10 +21,12 @@ export default function App() {
   const [layout, setLayout] = useState<LayoutMode>(() => {
     return (localStorage.getItem('layout') as LayoutMode) || 'grid';
   });
-  const [lightbox, setLightbox] = useState<{ path: string; mime: string } | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [lightbox, setLightbox] = useState<{ index: number } | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   const [search, setSearch] = useState('');
   const [showLogin, setShowLogin] = useState(false);
+  const [telegramBotUsername, setTelegramBotUsername] = useState<string | null>(null);
 
   const loadFiles = useCallback(async (d: string) => {
     setLoading(true);
@@ -39,25 +41,61 @@ export default function App() {
     }
   }, []);
 
-  // Load files immediately (public access, no login required)
   useEffect(() => {
     loadFiles(dir);
   }, [dir, loadFiles]);
 
+  // Fetch public config (Telegram bot username)
+  useEffect(() => {
+    getConfig().then((data) => {
+      if (data.telegramBotUsername) setTelegramBotUsername(data.telegramBotUsername);
+    }).catch(console.error);
+  }, []);
+
+  // Track viewport size
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) setSidebarOpen(false);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const navigate = useCallback((path: string) => {
     setDir(path);
     setSearch('');
-  }, []);
-
-  const openLightbox = useCallback((path: string, mime: string) => {
-    setLightbox({ path, mime });
-  }, []);
+    if (isMobile) setSidebarOpen(false);
+  }, [isMobile]);
 
   const filteredFiles = Object.fromEntries(
     Object.entries(files).filter(([name]) =>
       !search || name.toLowerCase().includes(search.toLowerCase())
     )
   );
+
+  // Build media items list for lightbox navigation
+  const mediaItems = Object.entries(filteredFiles)
+    .filter(([, f]) => f.mime.startsWith('image/') || f.mime.startsWith('video/') || f.mime.startsWith('audio/'))
+    .map(([, f]) => ({ path: f.path, mime: f.mime }));
+
+  const openLightbox = useCallback((path: string, _mime: string) => {
+    const idx = mediaItems.findIndex(item => item.path === path);
+    setLightbox({ index: idx >= 0 ? idx : 0 });
+  }, [mediaItems]);
+
+  const handleDelete = async (paths: string[]) => {
+    const { deleteItems } = await import('./api');
+    await deleteItems(paths);
+    loadFiles(dir);
+  };
+
+  const handleRename = async (path: string, name: string) => {
+    const { renameItem } = await import('./api');
+    await renameItem(path, name);
+    loadFiles(dir);
+  };
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
@@ -68,6 +106,7 @@ export default function App() {
         search={search}
         user={user}
         sidebarOpen={sidebarOpen}
+        onNavigate={navigate}
         onLayoutChange={(l) => { setLayout(l); localStorage.setItem('layout', l); }}
         onThemeToggle={toggleTheme}
         onSearchChange={setSearch}
@@ -76,10 +115,19 @@ export default function App() {
         onRefresh={() => loadFiles(dir)}
         onLoginClick={() => setShowLogin(true)}
       />
-      <div className="flex flex-1 overflow-hidden">
-        {sidebarOpen && (
-          <Sidebar currentDir={dir} onNavigate={navigate} />
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Mobile sidebar overlay */}
+        {isMobile && sidebarOpen && (
+          <div className="fixed inset-0 z-30 bg-black/40 top-14" onClick={() => setSidebarOpen(false)} />
         )}
+        {/* Sidebar */}
+        <div className={`
+          ${sidebarOpen ? 'block' : 'hidden'}
+          ${isMobile ? 'fixed left-0 top-14 bottom-0 z-40 shadow-xl' : ''}
+        `}>
+          <Sidebar currentDir={dir} onNavigate={navigate} />
+        </div>
+        {/* Main content */}
         <main className="flex-1 overflow-auto p-4">
           {user ? (
             <UploadZone dir={dir} onUpload={() => loadFiles(dir)}>
@@ -94,16 +142,8 @@ export default function App() {
                   currentDir={dir}
                   onNavigate={navigate}
                   onOpen={openLightbox}
-                  onDelete={async (paths) => {
-                    const { deleteItems } = await import('./api');
-                    await deleteItems(paths);
-                    loadFiles(dir);
-                  }}
-                  onRename={async (path, name) => {
-                    const { renameItem } = await import('./api');
-                    await renameItem(path, name);
-                    loadFiles(dir);
-                  }}
+                  onDelete={handleDelete}
+                  onRename={handleRename}
                 />
               ) : (
                 <FileList
@@ -112,21 +152,12 @@ export default function App() {
                   currentDir={dir}
                   onNavigate={navigate}
                   onOpen={openLightbox}
-                  onDelete={async (paths) => {
-                    const { deleteItems } = await import('./api');
-                    await deleteItems(paths);
-                    loadFiles(dir);
-                  }}
-                  onRename={async (path, name) => {
-                    const { renameItem } = await import('./api');
-                    await renameItem(path, name);
-                    loadFiles(dir);
-                  }}
+                  onDelete={handleDelete}
+                  onRename={handleRename}
                 />
               )}
             </UploadZone>
           ) : (
-            /* Public view: browse only, no upload/delete/rename */
             loading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
@@ -151,18 +182,28 @@ export default function App() {
           )}
         </main>
       </div>
-      {lightbox && (
+      {lightbox && mediaItems.length > 0 && (
         <Lightbox
-          path={lightbox.path}
-          mime={lightbox.mime}
+          items={mediaItems}
+          index={lightbox.index}
           onClose={() => setLightbox(null)}
+          onNavigate={(newIndex) => setLightbox({ index: newIndex })}
         />
       )}
       {showLogin && !user && (
         <Login
+          telegramBotUsername={telegramBotUsername || undefined}
           onLogin={async (username: string, password: string) => {
             const result = await login(username, password);
             if (result?.token) setShowLogin(false);
+            return result;
+          }}
+          onTelegramLogin={async (authData: Record<string, string>) => {
+            const result = await telegramLogin(authData);
+            if (result?.token) {
+              // Reload to pick up the new auth state
+              window.location.reload();
+            }
             return result;
           }}
           onClose={() => setShowLogin(false)}

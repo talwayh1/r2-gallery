@@ -7,6 +7,7 @@ interface Props {
   search: string;
   user: string | null;
   sidebarOpen: boolean;
+  onNavigate: (path: string) => void;
   onLayoutChange: (l: LayoutMode) => void;
   onThemeToggle: () => void;
   onSearchChange: (s: string) => void;
@@ -18,7 +19,7 @@ interface Props {
 
 export default function Header({
   dir, layout, theme, search, user, sidebarOpen,
-  onLayoutChange, onThemeToggle, onSearchChange,
+  onNavigate, onLayoutChange, onThemeToggle, onSearchChange,
   onSidebarToggle, onLogout, onRefresh, onLoginClick,
 }: Props) {
   const breadcrumbs = dir ? dir.split('/') : [];
@@ -109,8 +110,4 @@ export default function Header({
       </div>
     </header>
   );
-
-  function onNavigate(path: string) {
-    window.dispatchEvent(new CustomEvent('navigate', { detail: path }));
-  }
 }

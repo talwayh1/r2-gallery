@@ -81,6 +81,11 @@ export async function renameItem(path: string, name: string) {
   return res.json();
 }
 
+export async function getConfig() {
+  const res = await fetch(`${API_BASE}/config`);
+  return res.json();
+}
+
 export async function checkAuth() {
   try {
     const res = await request('/ping');
@@ -88,4 +93,14 @@ export async function checkAuth() {
   } catch {
     return null;
   }
+}
+
+export async function telegramLogin(authData: Record<string, string>) {
+  const res = await request('/auth/telegram', {
+    method: 'POST',
+    body: JSON.stringify(authData),
+  });
+  const data = await res.json();
+  if (data.token) localStorage.setItem('token', data.token);
+  return data;
 }
