@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { FileItem, LayoutMode } from './types';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
-import { listFiles, telegramLogin, getConfig } from './api';
+import { listFiles, telegramLogin, getConfig, mkdir, getFileUrl } from './api';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import FileGrid from './components/FileGrid';
@@ -11,6 +11,10 @@ import Lightbox from './components/Lightbox';
 import UploadZone from './components/UploadZone';
 import Login from './components/Login';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
+import BulkActions from './components/BulkActions';
+import TypeFilter, { matchFilter } from './components/TypeFilter';
+import type { TypeFilter as TypeFilterKind } from './components/TypeFilter';
+import CreateFolder from './components/CreateFolder';
 
 export default function App() {
   const { user, loading: authLoading, login, logout } = useAuth();
@@ -29,6 +33,11 @@ export default function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [telegramBotUsername, setTelegramBotUsername] = useState<string | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // New features state
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [typeFilter, setTypeFilter] = useState<TypeFilterKind>('all');
+  const [showCreateFolder, setShowCreateFolder] = useState(false);
 
   // Track pending /view/* deep link
   const pendingViewRef = useRef<string | null>(null);
@@ -67,6 +76,12 @@ export default function App() {
   useEffect(() => {
     loadFiles(dir);
   }, [dir, loadFiles]);
+
+  // Clear selection and type filter when directory changes
+  useEffect(() => {
+    setSelected(new Set());
+    setTypeFilter('all');
+  }, [dir]);
 
   // Fetch public config (Telegram bot username)
   useEffect(() => {
@@ -117,11 +132,19 @@ export default function App() {
           e.preventDefault();
           toggleTheme();
         }
+      } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
+        // Ctrl+A — select all files (prevent browser default)
+        e.preventDefault();
+        const filteredKeys = Object.keys(filteredFiles);
+        setSelected(new Set(filteredKeys));
+      } else if (e.key === 'Escape' && selected.size > 0) {
+        e.preventDefault();
+        setSelected(new Set());
       }
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [lightbox, dir, layout, loadFiles, toggleTheme]);
+  }, [lightbox, dir, layout, loadFiles, toggleTheme, selected.size, files]);
 
   const navigate = useCallback((path: string) => {
     setDir(path);
@@ -133,10 +156,13 @@ export default function App() {
     }
   }, [isMobile]);
 
+  // Apply type filter + search filter
   const filteredFiles = Object.fromEntries(
-    Object.entries(files).filter(([name]) =>
-      !search || name.toLowerCase().includes(search.toLowerCase())
-    )
+    Object.entries(files).filter(([name, f]) => {
+      if (search && !name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (typeFilter !== 'all' && !matchFilter(f.mime, typeFilter)) return false;
+      return true;
+    })
   );
 
   // Build media items list for lightbox navigation
@@ -194,6 +220,54 @@ export default function App() {
     loadFiles(dir);
   };
 
+  // Selection handlers
+  const handleSelect = useCallback((path: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    setSelected(new Set(Object.keys(filteredFiles)));
+  }, [filteredFiles]);
+
+  const handleDeselectAll = useCallback(() => {
+    setSelected(new Set());
+  }, []);
+
+  // Batch operations
+  const handleBatchDelete = async () => {
+    if (selected.size === 0) return;
+    const paths = Array.from(selected);
+    await handleDelete(paths);
+    setSelected(new Set());
+  };
+
+  const handleBatchDownload = () => {
+    if (selected.size === 0) return;
+    // Download each file individually (browsers don't support multi-file download natively)
+    const paths = Array.from(selected);
+    paths.forEach((path, i) => {
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.href = getFileUrl(path) + '&download=1';
+        a.download = path.split('/').pop() || 'file';
+        a.click();
+      }, i * 300); // Stagger downloads to avoid browser blocking
+    });
+  };
+
+  // Create folder
+  const handleCreateFolder = async (name: string) => {
+    const folderPath = dir ? `${dir}/${name}` : name;
+    await mkdir(folderPath);
+    setShowCreateFolder(false);
+    loadFiles(dir);
+  };
+
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <Header
@@ -212,6 +286,7 @@ export default function App() {
         onRefresh={() => loadFiles(dir)}
         onLoginClick={() => setShowLogin(true)}
         onShortcutsClick={() => setShowShortcuts(true)}
+        onCreateFolder={user ? () => setShowCreateFolder(true) : undefined}
       />
       <div className="flex flex-1 overflow-hidden relative">
         {/* Mobile sidebar overlay */}
@@ -227,6 +302,15 @@ export default function App() {
         </div>
         {/* Main content */}
         <main className="flex-1 overflow-auto p-4">
+          {/* Type filter bar */}
+          <div className="mb-3">
+            <TypeFilter
+              files={files}
+              active={typeFilter}
+              onChange={setTypeFilter}
+            />
+          </div>
+
           {user ? (
             <UploadZone dir={dir} onUpload={() => loadFiles(dir)}>
               {loading ? (
@@ -242,6 +326,8 @@ export default function App() {
                   onOpen={openLightbox}
                   onDelete={handleDelete}
                   onRename={handleRename}
+                  selected={selected}
+                  onSelect={handleSelect}
                 />
               ) : (
                 <FileList
@@ -267,6 +353,8 @@ export default function App() {
                 currentDir={dir}
                 onNavigate={navigate}
                 onOpen={openLightbox}
+                selected={selected}
+                onSelect={handleSelect}
               />
             ) : (
               <FileList
@@ -280,6 +368,19 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {/* Bulk selection action bar */}
+      {selected.size > 0 && (
+        <BulkActions
+          selectedCount={selected.size}
+          totalCount={Object.keys(filteredFiles).length}
+          onDelete={handleBatchDelete}
+          onDownload={handleBatchDownload}
+          onSelectAll={handleSelectAll}
+          onDeselectAll={handleDeselectAll}
+        />
+      )}
+
       {lightbox && mediaItems.length > 0 && (
         <Lightbox
           items={mediaItems}
@@ -308,6 +409,13 @@ export default function App() {
       )}
       {showShortcuts && (
         <KeyboardShortcuts onClose={() => setShowShortcuts(false)} />
+      )}
+      {showCreateFolder && (
+        <CreateFolder
+          currentDir={dir}
+          onConfirm={handleCreateFolder}
+          onClose={() => setShowCreateFolder(false)}
+        />
       )}
     </div>
   );

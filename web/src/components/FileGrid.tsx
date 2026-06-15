@@ -10,6 +10,8 @@ interface Props {
   onOpen: (path: string, mime: string) => void;
   onDelete?: (paths: string[]) => void;
   onRename?: (path: string, name: string) => void;
+  selected?: Set<string>;
+  onSelect?: (path: string) => void;
 }
 
 type SortKey = 'name' | 'size' | 'date';
@@ -98,12 +100,25 @@ function ImageThumbnail({ src, alt, onClick }: { src: string; alt: string; onCli
   );
 }
 
-export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, onDelete, onRename }: Props) {
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, onDelete, onRename, selected: externalSelected, onSelect }: Props) {
+  const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  // Use external selection state when provided, otherwise use internal
+  const selected = externalSelected ?? internalSelected;
+  const isSelectionMode = selected.size > 0;
+
+  const setSelected = (fn: (prev: Set<string>) => Set<string>) => {
+    if (externalSelected !== undefined && onSelect) {
+      // In external mode, we need parent to handle state
+      // We'll call onSelect for individual toggles
+      return;
+    }
+    setInternalSelected(fn);
+  };
 
   // Build and sort items
   const dirItems = dirs.map((name) => ({
@@ -140,16 +155,41 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
     setContextMenu({ x: e.clientX, y: e.clientY, path, name, isDir });
   };
 
-  const handleClick = (e: React.MouseEvent, path: string) => {
+  const handleCardClick = (e: React.MouseEvent, path: string, mime: string) => {
+    // If selection mode is active or Shift key, toggle selection
+    if (isSelectionMode || e.shiftKey) {
+      e.preventDefault();
+      if (onSelect) {
+        onSelect(path);
+      } else {
+        setInternalSelected((prev) => {
+          const next = new Set(prev);
+          if (next.has(path)) next.delete(path);
+          else next.add(path);
+          return next;
+        });
+      }
+      return;
+    }
+    // Ctrl/Meta + click to enter selection mode
     if (e.ctrlKey || e.metaKey) {
-      setSelected((prev) => {
-        const next = new Set(prev);
-        if (next.has(path)) next.delete(path);
-        else next.add(path);
-        return next;
-      });
-    } else {
-      setSelected(new Set());
+      e.preventDefault();
+      if (onSelect) {
+        onSelect(path);
+      } else {
+        setInternalSelected((prev) => {
+          const next = new Set(prev);
+          next.add(path);
+          return next;
+        });
+      }
+      return;
+    }
+    // Normal click — open media
+    const isImage = mime.startsWith('image/');
+    const isVideo = mime.startsWith('video/');
+    if (isImage || isVideo) {
+      onOpen(path, mime);
     }
   };
 
@@ -224,13 +264,10 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
               return (
                 <button
                   key={file.path}
-                  onClick={(e) => {
-                    handleClick(e, file.path);
-                    if (isImage || isVideo) onOpen(file.path, file.mime);
-                  }}
+                  onClick={(e) => handleCardClick(e, file.path, file.mime)}
                   onDoubleClick={() => onOpen(file.path, file.mime)}
                   onContextMenu={(e) => handleContextMenu(e, file.path, file.name, false)}
-                  className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-colors group ${
+                  className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-colors group relative ${
                     isSelected
                       ? 'bg-blue-100 dark:bg-blue-900/30 ring-2 ring-blue-500'
                       : 'hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -241,14 +278,13 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
                       <ImageThumbnail
                         src={getFileUrl(file.path)}
                         alt={file.name}
-                        onClick={() => onOpen(file.path, file.mime)}
+                        onClick={() => handleCardClick(new MouseEvent('click') as any, file.path, file.mime)}
                       />
                     ) : isVideo ? (
                       <>
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 text-white text-4xl">
                           ▶
                         </div>
-                        {/* Video duration badge placeholder */}
                         <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-medium bg-black/70 text-white rounded">
                           VIDEO
                         </span>
@@ -270,6 +306,38 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
                         {extBadge}
                       </span>
                     )}
+
+                    {/* Selection checkbox overlay */}
+                    <div
+                      className={`absolute top-1.5 left-1.5 transition-opacity ${
+                        isSelectionMode ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onSelect) {
+                          onSelect(file.path);
+                        } else {
+                          setInternalSelected((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(file.path)) next.delete(file.path);
+                            else next.add(file.path);
+                            return next;
+                          });
+                        }
+                      }}
+                    >
+                      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                        isSelected
+                          ? 'bg-blue-500 border-blue-500'
+                          : 'bg-white/80 dark:bg-gray-800/80 border-gray-300 dark:border-gray-500 hover:border-blue-400'
+                      }`}>
+                        {isSelected && (
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   {renaming?.path === file.path ? (
                     <input

@@ -16,12 +16,14 @@ interface Props {
   onRefresh: () => void;
   onLoginClick?: () => void;
   onShortcutsClick?: () => void;
+  onCreateFolder?: () => void;
 }
 
 export default function Header({
   dir, layout, theme, search, user, sidebarOpen,
   onNavigate, onLayoutChange, onThemeToggle, onSearchChange,
   onSidebarToggle, onLogout, onRefresh, onLoginClick, onShortcutsClick,
+  onCreateFolder,
 }: Props) {
   const breadcrumbs = dir ? dir.split('/') : [];
 
@@ -60,6 +62,19 @@ export default function Header({
           onChange={(e) => onSearchChange(e.target.value)}
           className="w-40 px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
         />
+
+        {/* Create folder (admin only) */}
+        {user && onCreateFolder && (
+          <button
+            onClick={onCreateFolder}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            title="新建文件夹"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+            </svg>
+          </button>
+        )}
 
         <button onClick={onRefresh} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="刷新">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
