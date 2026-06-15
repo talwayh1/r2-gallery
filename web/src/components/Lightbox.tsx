@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
-import { getFileUrl } from '../api';
+import { getFileUrl, getExif, type ExifData } from '../api';
 
 interface MediaItem {
   path: string;
@@ -105,6 +105,8 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   const hasNext = index < items.length - 1;
   const [copied, setCopied] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [exifData, setExifData] = useState<ExifData | null>(null);
+  const [exifLoading, setExifLoading] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageDimensions, setImageDimensions] = useState<{ w: number; h: number } | null>(null);
   const [swipeHint, setSwipeHint] = useState<'left' | 'right' | 'down' | null>(null);
@@ -503,11 +505,34 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   useEffect(() => {
     setCopied(false);
     setShowInfo(false);
+    setExifData(null);
+    setExifLoading(false);
     setImageLoaded(false);
     setImageDimensions(null);
     resetZoom();
     setSlideshowProgress(0);
   }, [index, resetZoom]);
+
+  // Fetch EXIF data when info panel is shown for an image
+  useEffect(() => {
+    if (!showInfo || !current || !current.mime.startsWith('image/')) {
+      return;
+    }
+    let cancelled = false;
+    setExifLoading(true);
+    setExifData(null);
+    getExif(current.path)
+      .then((data) => {
+        if (!cancelled) {
+          setExifData(data.exif);
+          setExifLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setExifLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [showInfo, current]);
 
   // Preload adjacent images for smoother navigation
   useEffect(() => {
@@ -799,6 +824,85 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
               <span className="text-right break-all text-xs">{current.path}</span>
             </div>
           </div>
+
+          {/* EXIF data */}
+          {current.mime.startsWith('image/') && (exifData || exifLoading) && (
+            <>
+              <hr className="border-white/10 my-3" />
+              <h4 className="text-white/80 font-medium text-xs uppercase tracking-wider mb-2">📷 拍摄信息</h4>
+              {exifLoading ? (
+                <div className="text-white/40 text-xs flex items-center gap-2">
+                  <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  解析 EXIF 数据中...
+                </div>
+              ) : exifData ? (
+                <div className="space-y-1.5 text-white/70 text-xs">
+                  {exifData.camera && (
+                    <div className="flex justify-between gap-3">
+                      <span className="text-white/40">相机</span>
+                      <span className="text-right">{exifData.camera}</span>
+                    </div>
+                  )}
+                  {exifData.lens && (
+                    <div className="flex justify-between gap-3">
+                      <span className="text-white/40">镜头</span>
+                      <span className="text-right">{exifData.lens}</span>
+                    </div>
+                  )}
+                  {(exifData.focalLength || exifData.aperture) && (
+                    <div className="flex justify-between gap-3">
+                      <span className="text-white/40">参数</span>
+                      <span className="text-right">
+                        {exifData.focalLength}{exifData.aperture ? ` ${exifData.aperture}` : ''}
+                      </span>
+                    </div>
+                  )}
+                  {(exifData.shutterSpeed || exifData.iso) && (
+                    <div className="flex justify-between gap-3">
+                      <span className="text-white/40">曝光</span>
+                      <span className="text-right">
+                        {exifData.shutterSpeed}{exifData.iso ? ` ISO ${exifData.iso}` : ''}
+                      </span>
+                    </div>
+                  )}
+                  {exifData.dateTaken && (
+                    <div className="flex justify-between gap-3">
+                      <span className="text-white/40">拍摄时间</span>
+                      <span className="text-right">
+                        {new Date(exifData.dateTaken).toLocaleString('zh-CN', {
+                          year: 'numeric', month: '2-digit', day: '2-digit',
+                          hour: '2-digit', minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  {exifData.software && (
+                    <div className="flex justify-between gap-3">
+                      <span className="text-white/40">软件</span>
+                      <span className="text-right">{exifData.software}</span>
+                    </div>
+                  )}
+                  {exifData.gps && (
+                    <div className="flex justify-between gap-3">
+                      <span className="text-white/40">位置</span>
+                      <a
+                        href={`https://maps.google.com/maps?q=${exifData.gps.lat},${exifData.gps.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 text-right underline underline-offset-2"
+                      >
+                        📍 {exifData.gps.lat.toFixed(4)}, {exifData.gps.lng.toFixed(4)}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </>
+          )}
+
           <hr className="border-white/10 my-3" />
           {/* Share link */}
           <div className="space-y-2">

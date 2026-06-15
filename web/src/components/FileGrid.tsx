@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { FileItem } from '../types';
 import { getFileUrl } from '../api';
+import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
 
 interface Props {
   files: Record<string, FileItem>;
@@ -161,6 +162,9 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
+  // Folder thumbnail images
+  const folderThumbs = useFolderThumbnails(dirs, currentDir);
+
   // Use external selection state when provided, otherwise use internal
   const selected = externalSelected ?? internalSelected;
   const isSelectionMode = selected.size > 0;
@@ -293,8 +297,22 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
                 onContextMenu={(e) => handleContextMenu(e, item.path, item.name, true)}
                 className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
               >
-                <div className="w-16 h-16 flex items-center justify-center text-3xl bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
-                  📁
+                <div className="w-full aspect-square flex items-center justify-center bg-yellow-50 dark:bg-yellow-900/20 rounded-xl overflow-hidden relative">
+                  {folderThumbs[item.path] ? (
+                    <>
+                      <img
+                        src={folderThumbs[item.path]}
+                        alt=""
+                        className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                        <span className="text-2xl drop-shadow-lg">📁</span>
+                      </div>
+                    </>
+                  ) : (
+                    <span className="text-3xl">📁</span>
+                  )}
                 </div>
                 <span className="text-sm text-center truncate w-full group-hover:text-blue-500">{item.name}</span>
               </button>

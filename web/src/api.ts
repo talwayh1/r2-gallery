@@ -104,3 +104,28 @@ export async function telegramLogin(authData: Record<string, string>) {
   if (data.token) localStorage.setItem('token', data.token);
   return data;
 }
+
+export interface ExifData {
+  camera?: string;
+  lens?: string;
+  focalLength?: string;
+  aperture?: string;
+  shutterSpeed?: string;
+  iso?: number;
+  dateTaken?: string;
+  width?: number;
+  height?: number;
+  gps?: { lat: number; lng: number };
+  software?: string;
+  orientation?: number;
+}
+
+export async function getExif(path: string): Promise<{ exif: ExifData | null; message?: string }> {
+  const res = await fetch(`${API_BASE}/exif?path=${encodeURIComponent(path)}`);
+  return res.json();
+}
+
+export async function getThumbnail(dir: string): Promise<{ path: string | null; url: string | null }> {
+  const res = await fetch(`${API_BASE}/thumbnail?dir=${encodeURIComponent(dir)}`);
+  return res.json();
+}

@@ -6,6 +6,7 @@ import * as db from './services/db';
 import filesRouter from './routes/files';
 import uploadRouter from './routes/upload';
 import adminRouter from './routes/admin';
+import metadataRouter from './routes/metadata';
 
 const app = new Hono<{ Bindings: AppBindings; Variables: Variables }>();
 
@@ -76,6 +77,9 @@ app.post('/api/login', loginHandler);
 
 // Telegram Login
 app.post('/api/auth/telegram', telegramLoginHandler);
+
+// === Public metadata endpoints ===
+app.route('/api', metadataRouter);
 
 // === Protected routes ===
 app.route('/api', filesRouter);
