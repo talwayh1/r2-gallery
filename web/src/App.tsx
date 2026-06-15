@@ -78,7 +78,7 @@ export default function App() {
   // Build media items list for lightbox navigation
   const mediaItems = Object.entries(filteredFiles)
     .filter(([, f]) => f.mime.startsWith('image/') || f.mime.startsWith('video/') || f.mime.startsWith('audio/'))
-    .map(([, f]) => ({ path: f.path, mime: f.mime }));
+    .map(([, f]) => ({ path: f.path, mime: f.mime, size: f.size }));
 
   const openLightbox = useCallback((path: string, _mime: string) => {
     const idx = mediaItems.findIndex(item => item.path === path);
