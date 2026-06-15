@@ -1,0 +1,20 @@
+{
+  "name": "r2-gallery",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "cd web && npm run build && cd .. && wrangler deploy",
+    "build:web": "cd web && npm run build",
+    "db:init": "wrangler d1 execute r2-gallery-db --file=./migrations/0001_init.sql",
+    "db:init:local": "wrangler d1 execute r2-gallery-db --local --file=./migrations/0001_init.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241218.0",
+    "typescript": "^5.3.0",
+    "wrangler": "^4.0.0"
+  },
+  "dependencies": {
+    "hono": "^4.0.0"
+  }
+}

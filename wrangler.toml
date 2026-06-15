@@ -1,0 +1,27 @@
+name = "r2-gallery"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "r2-gallery"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "r2-gallery-db"
+database_id = "b329d70d-1adb-4e2c-a984-4cccbf091436"
+migrations_dir = "./migrations"
+
+[vars]
+ADMIN_PASSWORD = "admin"
+JWT_SECRET = "change-me-to-a-random-32-char-string"
+
+[[routes]]
+pattern = "tu.zhangyubi.cn/*"
+zone_name = "zhangyubi.cn"
