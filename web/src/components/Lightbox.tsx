@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { getFileUrl } from '../api';
 
 interface MediaItem {
@@ -12,6 +12,65 @@ interface Props {
   index: number;
   onClose: () => void;
   onNavigate: (index: number) => void;
+}
+
+/** Touch gesture hook for swipe navigation */
+function useSwipeGesture({
+  onSwipeLeft,
+  onSwipeRight,
+  onSwipeDown,
+}: {
+  onSwipeLeft: () => void;
+  onSwipeRight: () => void;
+  onSwipeDown: () => void;
+}) {
+  const touchStart = useRef<{ x: number; y: number; time: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      touchStart.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!touchStart.current) return;
+      const touch = e.changedTouches[0];
+      const dx = touch.clientX - touchStart.current.x;
+      const dy = touch.clientY - touchStart.current.y;
+      const dt = Date.now() - touchStart.current.time;
+      touchStart.current = null;
+
+      // Minimum swipe distance and max duration
+      const minDist = 50;
+      const maxDuration = 500;
+      if (dt > maxDuration) return;
+
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+
+      if (absDx > absDy && absDx > minDist) {
+        // Horizontal swipe
+        if (dx < 0) onSwipeLeft();
+        else onSwipeRight();
+      } else if (absDy > absDx && absDy > minDist && dy > 0) {
+        // Downward swipe (only close on swipe down, not up)
+        onSwipeDown();
+      }
+    };
+
+    el.addEventListener('touchstart', handleTouchStart, { passive: true });
+    el.addEventListener('touchend', handleTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [onSwipeLeft, onSwipeRight, onSwipeDown]);
+
+  return containerRef;
 }
 
 function formatSize(bytes: number) {
@@ -29,21 +88,51 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   const [showInfo, setShowInfo] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageDimensions, setImageDimensions] = useState<{ w: number; h: number } | null>(null);
+  const [swipeHint, setSwipeHint] = useState<'left' | 'right' | 'down' | null>(null);
+
+  // Compute derived values (safe even if current is undefined)
+  const url = current ? getFileUrl(current.path) : '';
+  const name = current ? (current.path.split('/').pop() || '') : '';
+  const ext = name.split('.').pop()?.toUpperCase() || '';
+  const viewUrl = `${window.location.origin}/view/${encodeURIComponent(current?.path || '')}`;
+  const directUrl = `${window.location.origin}/api/file?path=${encodeURIComponent(current?.path || '')}`;
 
   const goPrev = useCallback(() => {
-    if (hasPrev) onNavigate(index - 1);
+    if (hasPrev) {
+      onNavigate(index - 1);
+      setSwipeHint('right');
+      setTimeout(() => setSwipeHint(null), 300);
+    }
   }, [hasPrev, index, onNavigate]);
 
   const goNext = useCallback(() => {
-    if (hasNext) onNavigate(index + 1);
+    if (hasNext) {
+      onNavigate(index + 1);
+      setSwipeHint('left');
+      setTimeout(() => setSwipeHint(null), 300);
+    }
   }, [hasNext, index, onNavigate]);
 
+  const swipeRef = useSwipeGesture({
+    onSwipeLeft: goNext,
+    onSwipeRight: goPrev,
+    onSwipeDown: onClose,
+  });
+
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
       else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goPrev(); }
       else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); goNext(); }
       else if (e.key === 'i') setShowInfo((s) => !s);
+      else if (e.key === 'd' || e.key === 'D') {
+        e.preventDefault();
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        a.click();
+      }
     };
     document.addEventListener('keydown', handleKeyDown);
     document.body.style.overflow = 'hidden';
@@ -51,7 +140,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [onClose, goPrev, goNext]);
+  }, [onClose, goPrev, goNext, url, name]);
 
   // Reset state on navigation
   useEffect(() => {
@@ -62,14 +151,6 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   }, [index]);
 
   if (!current) return null;
-
-  const url = getFileUrl(current.path);
-  const name = current.path.split('/').pop() || '';
-  const ext = name.split('.').pop()?.toUpperCase() || '';
-  // Shareable /view/ URL for social media
-  const viewUrl = `${window.location.origin}/view/${encodeURIComponent(current.path)}`;
-  // Direct file URL for embedding
-  const directUrl = `${window.location.origin}/api/file?path=${encodeURIComponent(current.path)}`;
 
   const handleCopyLink = async () => {
     try {
@@ -97,7 +178,8 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
+      ref={swipeRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm touch-pan-y"
       onClick={onClose}
     >
       {/* Close button */}
@@ -156,7 +238,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
           download={name}
           onClick={(e) => e.stopPropagation()}
           className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-          title="下载"
+          title="下载 (D)"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -275,6 +357,26 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
           </svg>
         </button>
       )}
+
+      {/* Swipe direction indicators */}
+      {swipeHint === 'left' && (
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-16 h-32 bg-gradient-to-r from-blue-500/30 to-transparent rounded-r-xl pointer-events-none animate-pulse" />
+      )}
+      {swipeHint === 'right' && (
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-16 h-32 bg-gradient-to-l from-blue-500/30 to-transparent rounded-l-xl pointer-events-none animate-pulse" />
+      )}
+      {swipeHint === 'down' && (
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-12 bg-gradient-to-t from-blue-500/30 to-transparent rounded-t-xl pointer-events-none animate-pulse" />
+      )}
+
+      {/* Mobile swipe hint */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 text-white/30 text-xs md:hidden pointer-events-none select-none">
+        <span>← 滑动切换</span>
+        <span>·</span>
+        <span>下滑关闭</span>
+        <span>·</span>
+        <span>切换 →</span>
+      </div>
 
       {/* Content */}
       <div className="max-w-[90vw] max-h-[90vh] relative" onClick={(e) => e.stopPropagation()}>

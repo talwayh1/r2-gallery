@@ -10,6 +10,7 @@ import FileList from './components/FileList';
 import Lightbox from './components/Lightbox';
 import UploadZone from './components/UploadZone';
 import Login from './components/Login';
+import KeyboardShortcuts from './components/KeyboardShortcuts';
 
 export default function App() {
   const { user, loading: authLoading, login, logout } = useAuth();
@@ -27,6 +28,7 @@ export default function App() {
   const [search, setSearch] = useState('');
   const [showLogin, setShowLogin] = useState(false);
   const [telegramBotUsername, setTelegramBotUsername] = useState<string | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Track pending /view/* deep link
   const pendingViewRef = useRef<string | null>(null);
@@ -83,6 +85,43 @@ export default function App() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Global keyboard shortcuts (non-lightbox)
+  useEffect(() => {
+    if (lightbox) return; // Lightbox has its own handler
+
+    const handleKey = (e: KeyboardEvent) => {
+      // Ignore when typing in inputs
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+        e.preventDefault();
+        setShowShortcuts((s) => !s);
+      } else if (e.key === '/' && !e.shiftKey) {
+        e.preventDefault();
+        const input = document.querySelector<HTMLInputElement>('input[placeholder="搜索..."]');
+        input?.focus();
+      } else if (e.key === 'r' || e.key === 'R') {
+        if (!e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          loadFiles(dir);
+        }
+      } else if (e.key === 'g' || e.key === 'G') {
+        e.preventDefault();
+        const newLayout = layout === 'grid' ? 'rows' : 'grid';
+        setLayout(newLayout);
+        localStorage.setItem('layout', newLayout);
+      } else if (e.key === 't' || e.key === 'T') {
+        if (!e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          toggleTheme();
+        }
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [lightbox, dir, layout, loadFiles, toggleTheme]);
 
   const navigate = useCallback((path: string) => {
     setDir(path);
@@ -172,6 +211,7 @@ export default function App() {
         onLogout={logout}
         onRefresh={() => loadFiles(dir)}
         onLoginClick={() => setShowLogin(true)}
+        onShortcutsClick={() => setShowShortcuts(true)}
       />
       <div className="flex flex-1 overflow-hidden relative">
         {/* Mobile sidebar overlay */}
@@ -265,6 +305,9 @@ export default function App() {
           }}
           onClose={() => setShowLogin(false)}
         />
+      )}
+      {showShortcuts && (
+        <KeyboardShortcuts onClose={() => setShowShortcuts(false)} />
       )}
     </div>
   );

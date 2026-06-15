@@ -15,12 +15,13 @@ interface Props {
   onLogout: () => void;
   onRefresh: () => void;
   onLoginClick?: () => void;
+  onShortcutsClick?: () => void;
 }
 
 export default function Header({
   dir, layout, theme, search, user, sidebarOpen,
   onNavigate, onLayoutChange, onThemeToggle, onSearchChange,
-  onSidebarToggle, onLogout, onRefresh, onLoginClick,
+  onSidebarToggle, onLogout, onRefresh, onLoginClick, onShortcutsClick,
 }: Props) {
   const breadcrumbs = dir ? dir.split('/') : [];
 
@@ -92,6 +93,17 @@ export default function Header({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
             </svg>
           )}
+        </button>
+
+        <button
+          onClick={onShortcutsClick}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+          title="键盘快捷键 (?)"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
         </button>
 
         {user ? (
