@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { FileItem } from '../types';
 import { getFileUrl } from '../api';
 
@@ -97,6 +97,60 @@ function ImageThumbnail({ src, alt, onClick }: { src: string; alt: string; onCli
         onError={() => setError(true)}
       />
     </>
+  );
+}
+
+/**
+ * Video thumbnail with hover-to-preview.
+ * Shows a play icon by default; on hover, loads and plays the video muted.
+ */
+function VideoThumbnail({ src, onClick }: { src: string; onClick: () => void }) {
+  const [hovering, setHovering] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (hovering && videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => { /* ignore autoplay block */ });
+    } else if (!hovering && videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  }, [hovering]);
+
+  return (
+    <div
+      className="w-full h-full relative"
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+    >
+      {/* Default play icon background */}
+      <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 text-white transition-opacity duration-300 ${hovering && videoLoaded ? 'opacity-0' : 'opacity-100'}`}>
+        <svg className="w-12 h-12 text-white/60" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </div>
+
+      {/* Video preview (loaded on hover) */}
+      {hovering && (
+        <video
+          ref={videoRef}
+          src={src}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          className={`video-preview video-preview-fade transition-opacity duration-300 ${videoLoaded ? 'opacity-100' : 'opacity-0'}`}
+          onLoadedData={() => setVideoLoaded(true)}
+        />
+      )}
+
+      {/* VIDEO badge */}
+      <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-medium bg-black/70 text-white rounded z-10">
+        VIDEO
+      </span>
+    </div>
   );
 }
 
@@ -281,27 +335,23 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
                         onClick={() => handleCardClick(new MouseEvent('click') as any, file.path, file.mime)}
                       />
                     ) : isVideo ? (
-                      <>
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 text-white text-4xl">
-                          ▶
-                        </div>
-                        <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-medium bg-black/70 text-white rounded">
-                          VIDEO
-                        </span>
-                      </>
+                      <VideoThumbnail
+                        src={getFileUrl(file.path)}
+                        onClick={() => handleCardClick(new MouseEvent('click') as any, file.path, file.mime)}
+                      />
                     ) : (
                       <span className="text-4xl">{getIcon(file.mime)}</span>
                     )}
 
-                    {/* Type badge for non-image files */}
-                    {!isImage && badge && (
+                    {/* Type badge for non-image, non-video files (video has its own badge) */}
+                    {!isImage && !isVideo && badge && (
                       <span className={`absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-bold rounded ${getBadgeColor(file.mime)}`}>
                         {badge}
                       </span>
                     )}
 
                     {/* Ext badge for generic files */}
-                    {!isImage && !badge && extBadge && (
+                    {!isImage && !isVideo && !badge && extBadge && (
                       <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-bold rounded bg-gray-600/80 text-white">
                         {extBadge}
                       </span>

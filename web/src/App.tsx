@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { FileItem, LayoutMode } from './types';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
+import { toast } from './hooks/useToast';
 import { listFiles, telegramLogin, getConfig, mkdir, getFileUrl } from './api';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
@@ -210,14 +211,24 @@ export default function App() {
 
   const handleDelete = async (paths: string[]) => {
     const { deleteItems } = await import('./api');
-    await deleteItems(paths);
-    loadFiles(dir);
+    try {
+      await deleteItems(paths);
+      toast('success', `已删除 ${paths.length} 个项目`);
+      loadFiles(dir);
+    } catch (e) {
+      toast('error', `删除失败: ${(e as Error).message}`);
+    }
   };
 
   const handleRename = async (path: string, name: string) => {
     const { renameItem } = await import('./api');
-    await renameItem(path, name);
-    loadFiles(dir);
+    try {
+      await renameItem(path, name);
+      toast('success', `已重命名为 "${name}"`);
+      loadFiles(dir);
+    } catch (e) {
+      toast('error', `重命名失败: ${(e as Error).message}`);
+    }
   };
 
   // Selection handlers
@@ -248,24 +259,29 @@ export default function App() {
 
   const handleBatchDownload = () => {
     if (selected.size === 0) return;
-    // Download each file individually (browsers don't support multi-file download natively)
     const paths = Array.from(selected);
+    toast('info', `正在下载 ${paths.length} 个文件...`);
     paths.forEach((path, i) => {
       setTimeout(() => {
         const a = document.createElement('a');
         a.href = getFileUrl(path) + '&download=1';
         a.download = path.split('/').pop() || 'file';
         a.click();
-      }, i * 300); // Stagger downloads to avoid browser blocking
+      }, i * 300);
     });
   };
 
   // Create folder
   const handleCreateFolder = async (name: string) => {
     const folderPath = dir ? `${dir}/${name}` : name;
-    await mkdir(folderPath);
-    setShowCreateFolder(false);
-    loadFiles(dir);
+    try {
+      await mkdir(folderPath);
+      toast('success', `已创建文件夹 "${name}"`);
+      setShowCreateFolder(false);
+      loadFiles(dir);
+    } catch (e) {
+      toast('error', `创建文件夹失败: ${(e as Error).message}`);
+    }
   };
 
   return (

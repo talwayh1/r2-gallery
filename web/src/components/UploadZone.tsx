@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { uploadFile } from '../api';
+import { toast } from '../hooks/useToast';
 
 interface Props {
   dir: string;
@@ -17,6 +18,7 @@ export default function UploadZone({ dir, onUpload, children }: Props) {
     setUploading(true);
     setProgress({ done: 0, total: files.length });
     let done = 0;
+    let errors = 0;
     for (const file of Array.from(files)) {
       try {
         await uploadFile(dir, file);
@@ -24,9 +26,15 @@ export default function UploadZone({ dir, onUpload, children }: Props) {
         setProgress({ done, total: files.length });
       } catch (e) {
         console.error(`Failed to upload ${file.name}:`, e);
+        errors++;
       }
     }
     setUploading(false);
+    if (errors > 0) {
+      toast('warning', `上传完成: ${done} 成功, ${errors} 失败`);
+    } else {
+      toast('success', `已上传 ${done} 个文件`);
+    }
     onUpload();
   }, [dir, onUpload]);
 

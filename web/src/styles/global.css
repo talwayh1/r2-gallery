@@ -69,3 +69,37 @@
 .animate-slide-up {
   animation: slideUp 0.2s ease-out;
 }
+
+/* Toast enter/exit animations */
+@keyframes toastEnter {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes toastExit {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(-8px); opacity: 0; }
+}
+
+.animate-toast-enter {
+  animation: toastEnter 0.2s ease-out;
+}
+
+.animate-toast-exit {
+  animation: toastExit 0.2s ease-in forwards;
+}
+
+/* Video preview on hover */
+.video-preview {
+  position: absolute;
+  inset: 0;
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.video-preview-fade {
+  animation: fadeIn 0.3s ease-in;
+}
