@@ -335,6 +335,7 @@ export default function App() {
         sortBy={sortBy}
         sortOrder={sortOrder}
         typeFilter={typeFilter}
+        isMobile={isMobile}
         onNavigate={navigate}
         onLayoutChange={(l) => { setLayout(l); localStorage.setItem('layout', l); }}
         onThemeToggle={toggleTheme}
@@ -372,7 +373,7 @@ export default function App() {
         {/* Main content */}
         <main className="flex-1 overflow-auto p-4">
           {/* Type filter bar */}
-          <div className="mb-3">
+          <div className="mb-3 hidden sm:block">
             <TypeFilter
               files={files}
               active={typeFilter}
