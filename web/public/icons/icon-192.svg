@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="192" y2="192" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="mountain" x1="0" y1="192" x2="192" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1e3a5f"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="40" fill="url(#bg)"/>
+  <!-- Mountain/landscape silhouette -->
+  <path d="M0 140 L50 90 L80 115 L120 70 L160 100 L192 80 L192 192 L0 192 Z" fill="url(#mountain)" opacity="0.3"/>
+  <!-- Sun/circle -->
+  <circle cx="140" cy="55" r="22" fill="white" opacity="0.9"/>
+  <!-- Image frame icon -->
+  <rect x="40" y="50" width="112" height="92" rx="8" fill="white" opacity="0.95"/>
+  <rect x="48" y="58" width="96" height="76" rx="4" fill="#e2e8f0"/>
+  <!-- Mountain inside frame -->
+  <path d="M48 110 L72 82 L88 96 L112 70 L132 88 L144 78 L144 134 L48 134 Z" fill="#3b82f6" opacity="0.6"/>
+  <!-- Sun inside frame -->
+  <circle cx="120" cy="76" r="10" fill="#fbbf24"/>
+  <!-- Small tree -->
+  <path d="M75 134 L80 110 L85 134 Z" fill="#1e3a5f" opacity="0.5"/>
+</svg>

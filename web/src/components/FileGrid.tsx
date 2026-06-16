@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { FileItem } from '../types';
-import { getFileUrl } from '../api';
+import { getFileUrl, getThumbUrl } from '../api';
 import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
 
 interface Props {
@@ -348,7 +348,7 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
                   <div className="w-full aspect-square flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-xl overflow-hidden relative">
                     {isImage ? (
                       <ImageThumbnail
-                        src={getFileUrl(file.path)}
+                        src={getThumbUrl(file.path)}
                         alt={file.name}
                         onClick={() => handleCardClick(new MouseEvent('click') as any, file.path, file.mime)}
                       />

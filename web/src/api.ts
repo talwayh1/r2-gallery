@@ -59,6 +59,12 @@ export function getFileUrl(path: string) {
   return token ? `${base}&token=${encodeURIComponent(token)}` : base;
 }
 
+export function getThumbUrl(path: string) {
+  const token = localStorage.getItem('token');
+  const base = `${API_BASE}/thumb?path=${encodeURIComponent(path)}`;
+  return token ? `${base}&token=${encodeURIComponent(token)}` : base;
+}
+
 export async function uploadFile(dir: string, file: File, relativePath?: string) {
   const form = new FormData();
   form.append('file', file);

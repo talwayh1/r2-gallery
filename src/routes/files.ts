@@ -3,6 +3,7 @@ import type { AppBindings, Variables, FileInfo, FileListResponse } from '../type
 import * as r2 from '../services/r2';
 import * as db from '../services/db';
 import { authMiddleware } from '../auth';
+import { generateThumbnail, getThumbKey, isSupportedImageType } from '../services/thumbnail';
 
 const files = new Hono<{ Bindings: AppBindings; Variables: Variables }>();
 
@@ -126,6 +127,54 @@ files.get('/file', async (c) => {
   }
 
   return new Response((obj as any).body, { headers });
+});
+
+// GET /api/thumb?path=photos/image.jpg
+// Serves a 300x300 WebP thumbnail. Falls back to original if generation fails.
+files.get('/thumb', async (c) => {
+  const path = c.req.query('path');
+  if (!path) return c.json({ error: 'Path required' }, 400);
+
+  const bucket = c.env.R2_BUCKET;
+  const thumbKey = getThumbKey(path);
+
+  // Try cached thumbnail first
+  try {
+    const cachedThumb = await r2.getObject(bucket, thumbKey);
+    if (cachedThumb) {
+      const headers = new Headers();
+      headers.set('Content-Type', 'image/webp');
+      headers.set('Content-Length', String(cachedThumb.size));
+      headers.set('Cache-Control', 'public, max-age=604800');
+      return new Response((cachedThumb as any).body, { headers });
+    }
+  } catch {}
+
+  // Get original and buffer it (body can only be read once)
+  const original = await r2.getObject(bucket, path);
+  if (!original) return c.json({ error: 'File not found' }, 404);
+
+  const mime = original.httpMetadata?.contentType || getMimeType(path);
+  const arrayBuffer = await (original as any).arrayBuffer();
+
+  if (isSupportedImageType(mime)) {
+    try {
+      const thumbBuffer = await generateThumbnail(arrayBuffer, mime);
+      if (thumbBuffer) {
+        await r2.putObject(bucket, thumbKey, thumbBuffer, { contentType: 'image/webp' });
+        return new Response(thumbBuffer, {
+          headers: { 'Content-Type': 'image/webp', 'Content-Length': String(thumbBuffer.byteLength), 'Cache-Control': 'public, max-age=604800' },
+        });
+      }
+    } catch (err) {
+      console.error('Thumbnail generation failed, serving original:', err);
+    }
+  }
+
+  // Fallback: serve original from buffer
+  return new Response(arrayBuffer, {
+    headers: { 'Content-Type': mime, 'Content-Length': String(arrayBuffer.byteLength), 'Cache-Control': 'public, max-age=3600' },
+  });
 });
 
 // POST /api/mkdir (protected)
