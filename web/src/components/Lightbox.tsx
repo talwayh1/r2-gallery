@@ -2,6 +2,7 @@ import { useEffect, useCallback, useState, useRef } from 'react';
 import { getFileUrl, getExif, type ExifData } from '../api';
 import VideoPlayer from './VideoPlayer';
 import MarkdownEditor from './MarkdownEditor';
+import HlsPlayer from './HlsPlayer';
 
 interface MediaItem {
   path: string;
@@ -160,6 +161,10 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   const [textContent, setTextContent] = useState<string | null>(null);
   const [textLoading, setTextLoading] = useState(false);
 
+  // .url file content state
+  const [urlContent, setUrlContent] = useState<string | null>(null);
+  const [urlLoading, setUrlLoading] = useState(false);
+
   const isZoomed = scale > 1.05;
 
   // Compute derived values
@@ -168,6 +173,10 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   const ext = name.split('.').pop()?.toUpperCase() || '';
   const viewUrl = `${window.location.origin}/view/${encodeURIComponent(current?.path || '')}`;
   const directUrl = `${window.location.origin}/api/file?path=${encodeURIComponent(current?.path || '')}`;
+
+  // Detect file types
+  const isUrlFile = name.endsWith('.url');
+  const isHls = name.endsWith('.m3u8') || url.includes('.m3u8');
 
   // Reset zoom
   const resetZoom = useCallback(() => {
@@ -596,6 +605,29 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       });
     return () => { cancelled = true; };
   }, [current]);
+
+  // Fetch .url file content
+  useEffect(() => {
+    if (!current || !isUrlFile) {
+      setUrlContent(null);
+      return;
+    }
+    let cancelled = false;
+    setUrlLoading(true);
+    setUrlContent(null);
+    fetch(`/api/url-content?path=${encodeURIComponent(current.path)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) {
+          setUrlContent(data.url || null);
+          setUrlLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) { setUrlContent(null); setUrlLoading(false); }
+      });
+    return () => { cancelled = true; };
+  }, [current, isUrlFile]);
 
   // Preload ±2 adjacent images for smoother navigation
   useEffect(() => {
@@ -1137,6 +1169,38 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
             draggable={false}
             onLoad={handleImageLoad}
           />
+        ) : isUrlFile ? (
+          <div className="flex flex-col items-center gap-4 w-[85vw] max-w-[900px] h-[85vh]" onClick={(e) => e.stopPropagation()}>
+            {urlLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white/50" />
+              </div>
+            ) : urlContent ? (
+              (() => {
+                const ytMatch = urlContent.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
+                const vimeoMatch = urlContent.match(/vimeo\.com\/(\d+)/);
+                if (ytMatch) {
+                  return <iframe src={`https://www.youtube.com/embed/${ytMatch[1]}`} className="w-full flex-1 rounded-lg border border-white/10" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen title={name} />;
+                }
+                if (vimeoMatch) {
+                  return <iframe src={`https://player.vimeo.com/video/${vimeoMatch[1]}`} className="w-full flex-1 rounded-lg border border-white/10" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen title={name} />;
+                }
+                return (
+                  <div className="flex flex-col items-center gap-4 p-8">
+                    <svg className="w-16 h-16 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                    <p className="text-white/60 text-sm">{urlContent}</p>
+                    <a href={urlContent} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-blue-500/80 hover:bg-blue-500 text-white rounded-lg transition-colors text-sm">打开链接</a>
+                  </div>
+                );
+              })()
+            ) : (
+              <div className="flex items-center justify-center h-full text-white/40">无法加载链接</div>
+            )}
+          </div>
+        ) : isHls ? (
+          <div className="relative" onClick={(e) => e.stopPropagation()}>
+            <HlsPlayer src={url} autoplay onEnded={goNext} />
+          </div>
         ) : isVideo ? (
           <div className="relative" onClick={(e) => e.stopPropagation()}>
             <VideoPlayer

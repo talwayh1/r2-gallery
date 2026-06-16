@@ -175,8 +175,11 @@ files.get('/file', async (c) => {
   const obj = await r2.getObject(bucket, path);
   if (!obj) return c.json({ error: 'File not found' }, 404);
 
+  // Always use our getMimeType for correct type detection
+  const contentType = getMimeType(path);
+
   const headers = new Headers();
-  headers.set('Content-Type', obj.httpMetadata?.contentType || getMimeType(path));
+  headers.set('Content-Type', contentType);
   headers.set('Content-Length', String(obj.size));
   headers.set('Cache-Control', 'public, max-age=3600');
 
@@ -195,8 +198,21 @@ files.get('/thumb', async (c) => {
 
   const bucket = c.env.R2_BUCKET;
   const thumbKey = getThumbKey(path);
+  const customThumbKey = '_thumbs/' + path + '.webp';
 
-  // Try cached thumbnail first
+  // Try custom thumbnail first
+  try {
+    const customThumb = await r2.getObject(bucket, customThumbKey);
+    if (customThumb) {
+      const headers = new Headers();
+      headers.set('Content-Type', 'image/webp');
+      headers.set('Content-Length', String(customThumb.size));
+      headers.set('Cache-Control', 'public, max-age=604800');
+      return new Response((customThumb as any).body, { headers });
+    }
+  } catch {}
+
+  // Try cached thumbnail second
   try {
     const cachedThumb = await r2.getObject(bucket, thumbKey);
     if (cachedThumb) {
@@ -212,7 +228,7 @@ files.get('/thumb', async (c) => {
   const original = await r2.getObject(bucket, path);
   if (!original) return c.json({ error: 'File not found' }, 404);
 
-  const mime = original.httpMetadata?.contentType || getMimeType(path);
+  const mime = getMimeType(path);
   const arrayBuffer = await (original as any).arrayBuffer();
 
   if (isSupportedImageType(mime)) {
@@ -233,6 +249,68 @@ files.get('/thumb', async (c) => {
   return new Response(arrayBuffer, {
     headers: { 'Content-Type': mime, 'Content-Length': String(arrayBuffer.byteLength), 'Cache-Control': 'public, max-age=3600' },
   });
+});
+
+// GET /api/url-content?path=file.url — read URL from .url files
+files.get('/url-content', async (c) => {
+  const path = c.req.query('path');
+  if (!path) return c.json({ error: 'Path required' }, 400);
+  const bucket = c.env.R2_BUCKET;
+  const obj = await r2.getObject(bucket, path);
+  if (!obj) return c.json({ error: 'File not found' }, 404);
+  const text = await (obj as any).text();
+  return c.json({ url: text.trim() });
+});
+
+// POST /api/create-file (protected) — create empty file
+files.post('/create-file', authMiddleware, demoModeCheck, async (c) => {
+  const { path: filePath } = await c.req.json<{ path: string }>();
+  if (!filePath) return c.json({ error: 'Path required' }, 400);
+  const bucket = c.env.R2_BUCKET;
+  const database = c.env.DB;
+  await r2.putObject(bucket, filePath, '', { contentType: 'application/octet-stream' });
+  await db.upsertFileMetadata(database, {
+    path: filePath, size: 0, mime: getMimeType(filePath),
+    mtime: Math.floor(Date.now() / 1000), created_at: new Date().toISOString(),
+  });
+  return c.json({ success: true });
+});
+
+// POST /api/create-url (protected) — create .url shortcut file
+files.post('/create-url', authMiddleware, demoModeCheck, async (c) => {
+  const { path: filePath, url: linkUrl } = await c.req.json<{ path: string; url: string }>();
+  if (!filePath || !linkUrl) return c.json({ error: 'Path and URL required' }, 400);
+  const bucket = c.env.R2_BUCKET;
+  const database = c.env.DB;
+  const urlPath = filePath.endsWith('.url') ? filePath : filePath + '.url';
+  await r2.putObject(bucket, urlPath, linkUrl, { contentType: 'text/plain' });
+  await db.upsertFileMetadata(database, {
+    path: urlPath, size: linkUrl.length, mime: 'text/plain',
+    mtime: Math.floor(Date.now() / 1000), created_at: new Date().toISOString(),
+  });
+  return c.json({ success: true });
+});
+
+// POST /api/custom-thumb (protected) — upload custom thumbnail
+files.post('/custom-thumb', authMiddleware, demoModeCheck, async (c) => {
+  const formData = await c.req.formData();
+  const filePath = formData.get('path') as string;
+  const file = formData.get('file') as File;
+  if (!filePath || !file) return c.json({ error: 'Path and file required' }, 400);
+  const bucket = c.env.R2_BUCKET;
+  const thumbKey = '_thumbs/' + filePath + '.webp';
+  const arrayBuffer = await file.arrayBuffer();
+  // Try to convert to webp thumbnail
+  try {
+    const thumbBuffer = await generateThumbnail(arrayBuffer, file.type || 'image/jpeg');
+    if (thumbBuffer) {
+      await r2.putObject(bucket, thumbKey, thumbBuffer, { contentType: 'image/webp' });
+      return c.json({ success: true });
+    }
+  } catch {}
+  // Fallback: store original
+  await r2.putObject(bucket, thumbKey, arrayBuffer, { contentType: file.type || 'image/jpeg' });
+  return c.json({ success: true });
 });
 
 // POST /api/mkdir (protected)

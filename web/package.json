@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@types/marked": "^5.0.2",
+    "hls.js": "^1.6.16",
     "i18next": "^26.3.1",
+    "jsmediatags": "^3.9.7",
     "jszip": "^3.10.1",
     "marked": "^18.0.5",
     "plyr": "^3.8.4",

@@ -27,13 +27,14 @@ interface Props {
   onStatsClick?: () => void;
   onSortChange?: (sort: 'name' | 'size' | 'mtime', order: 'asc' | 'desc') => void;
   onTypeFilterChange?: (type: string) => void;
+  hideLoginButton?: boolean;
 }
 
 export default function Header({
   dir, layout, theme, search, user, sidebarOpen, sortBy, sortOrder, typeFilter, isMobile,
   onNavigate, onLayoutChange, onThemeToggle, onSearchChange,
   onSidebarToggle, onLogout, onRefresh, onLoginClick, onShortcutsClick,
-  onCreateFolder, onSearchClick, onDiscoverClick, onStatsClick, onSortChange, onTypeFilterChange,
+  onCreateFolder, onSearchClick, onDiscoverClick, onStatsClick, onSortChange, onTypeFilterChange, hideLoginButton,
 }: Props) {
   const breadcrumbs = dir ? dir.split('/') : [];
   const [canInstall, setCanInstall] = useState(false);
@@ -415,14 +416,14 @@ export default function Header({
               )}
             </button>
           </div>
-        ) : (
+        ) : !hideLoginButton ? (
           <button
             onClick={onLoginClick}
             className="px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
           >
             管理登录
           </button>
-        )}
+        ) : null}
       </div>
     </header>
   );

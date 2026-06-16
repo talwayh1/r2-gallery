@@ -86,9 +86,12 @@ app.use('*', async (c, next) => {
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
 
 // Public config (for frontend)
-app.get('/api/config', (c) => {
+app.get('/api/config', async (c) => {
+  const db = c.env.DB;
+  const hideLogin = await db.prepare("SELECT value FROM settings WHERE key = 'hide_login_button'").first<{ value: string }>();
   return c.json({
     telegramBotUsername: c.env.TELEGRAM_BOT_USERNAME || null,
+    hideLoginButton: hideLogin?.value === 'true',
   });
 });
 
@@ -197,16 +200,32 @@ function getOGImageMime(filename: string): string | null {
 
 /** Serve SSR HTML with OG meta tags for bots, SPA for users */
 function serveSPA(c: any): Response | null {
-  // @ts-ignore — Cloudflare Workers static assets binding
-  const ASSETS = (globalThis as any).__STATIC_CONTENT;
-  if (ASSETS) {
+  // @ts-ignore — Cloudflare Workers Assets binding (new API)
+  const ASSETS = c.env.ASSETS || (globalThis as any).ASSETS;
+  if (ASSETS && typeof ASSETS.fetch === 'function') {
+    try {
+      // Use the Assets binding to fetch index.html
+      const assetUrl = new URL(c.req.url);
+      assetUrl.pathname = '/index.html';
+      const assetReq = new Request(assetUrl.toString(), c.req.raw);
+      const assetResponse = ASSETS.fetch(assetReq);
+      if (assetResponse) {
+        return assetResponse as unknown as Response;
+      }
+    } catch {}
+  }
+  
+  // Fallback: try old __STATIC_CONTENT binding
+  // @ts-ignore
+  const OLD_ASSETS = (globalThis as any).__STATIC_CONTENT;
+  if (OLD_ASSETS) {
     // @ts-ignore
     const manifest: string | Record<string, string> | undefined = (globalThis as any).__STATIC_CONTENT_MANIFEST;
     if (manifest) {
       const parsedManifest = typeof manifest === 'string' ? JSON.parse(manifest) : manifest;
       const indexEntry = parsedManifest['/index.html'];
       if (indexEntry) {
-        const asset = ASSETS.get(indexEntry);
+        const asset = OLD_ASSETS.get(indexEntry);
         if (asset) {
           return new Response(asset, {
             headers: { 'Content-Type': 'text/html', 'Cache-Control': 'public, max-age=3600' },

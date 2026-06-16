@@ -312,3 +312,34 @@ export async function getDiagnostics(): Promise<any> {
   const res = await request('/admin/diagnostics');
   return res.json();
 }
+
+// --- URL Content ---
+export async function getUrlContent(path: string): Promise<{ url: string }> {
+  const res = await fetch(`${API_BASE}/url-content?path=${encodeURIComponent(path)}`);
+  return res.json();
+}
+
+// --- Create File ---
+export async function createFile(path: string): Promise<{ success: boolean }> {
+  const res = await request('/create-file', {
+    method: 'POST', body: JSON.stringify({ path }),
+  });
+  return res.json();
+}
+
+// --- Create URL Shortcut ---
+export async function createUrlShortcut(path: string, url: string): Promise<{ success: boolean }> {
+  const res = await request('/create-url', {
+    method: 'POST', body: JSON.stringify({ path, url }),
+  });
+  return res.json();
+}
+
+// --- Custom Thumbnail ---
+export async function uploadCustomThumb(filePath: string, file: File): Promise<{ success: boolean }> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('path', filePath);
+  const res = await request('/custom-thumb', { method: 'POST', body: form });
+  return res.json();
+}

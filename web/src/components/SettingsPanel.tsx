@@ -143,6 +143,15 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                 保存设置
               </button>
               <hr className="dark:border-gray-700" />
+              <div className="flex items-center justify-between">
+                <span className="text-sm">隐藏登录按钮</span>
+                <button onClick={() => setSettings({ ...settings, hide_login_button: settings.hide_login_button === 'true' ? 'false' : 'true' })}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${settings.hide_login_button === 'true' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.hide_login_button === 'true' ? 'left-5' : 'left-0.5'}`} />
+                </button>
+              </div>
+              <p className="text-xs text-gray-500">隐藏后可通过 ?login=1 访问登录页</p>
+              <hr className="dark:border-gray-700" />
               <button onClick={handleCleanCache} disabled={loading} className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50">
                 {loading ? '清理中...' : '清理缓存'}
               </button>

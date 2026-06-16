@@ -125,10 +125,12 @@ export default function App() {
     // Don't reset typeFilter on dir change - keep user preference
   }, [dir]);
 
-  // Fetch public config (Telegram bot username)
+  // Fetch public config (Telegram bot username, hide login button)
+  const [hideLoginButton, setHideLoginButton] = useState(false);
   useEffect(() => {
     getConfig().then((data) => {
       if (data.telegramBotUsername) setTelegramBotUsername(data.telegramBotUsername);
+      if (data.hideLoginButton) setHideLoginButton(true);
     }).catch(console.error);
   }, []);
 
@@ -324,6 +326,32 @@ export default function App() {
     }
   };
 
+  // Create file
+  const handleCreateFile = async (path: string) => {
+    try {
+      const { createFile } = await import('./api');
+      await createFile(path);
+      toast('success', `已创建文件 "${path.split('/').pop()}"`);
+      setShowCreateFolder(false);
+      loadFiles(dir);
+    } catch (e) {
+      toast('error', `创建文件失败: ${(e as Error).message}`);
+    }
+  };
+
+  // Create URL shortcut
+  const handleCreateUrl = async (path: string, url: string) => {
+    try {
+      const { createUrlShortcut } = await import('./api');
+      await createUrlShortcut(path, url);
+      toast('success', `已创建链接 "${path.split('/').pop()}"`);
+      setShowCreateFolder(false);
+      loadFiles(dir);
+    } catch (e) {
+      toast('error', `创建链接失败: ${(e as Error).message}`);
+    }
+  };
+
   // Load more handler for infinite scroll
   const loadMore = useCallback(() => {
     if (loadingMore || loading || !hasMore || !cursor) return;
@@ -364,6 +392,7 @@ export default function App() {
           localStorage.setItem('sortOrder', order);
         }}
         onTypeFilterChange={(t) => setTypeFilter(t as TypeFilterKind)}
+        hideLoginButton={hideLoginButton}
       />
       <InstallPrompt />
       <div className="flex flex-1 overflow-hidden relative">
@@ -509,6 +538,8 @@ export default function App() {
         <CreateFolder
           currentDir={dir}
           onConfirm={handleCreateFolder}
+          onCreateFile={handleCreateFile}
+          onCreateUrl={handleCreateUrl}
           onClose={() => setShowCreateFolder(false)}
         />
       )}

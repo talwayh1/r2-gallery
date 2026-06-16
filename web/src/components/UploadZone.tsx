@@ -8,10 +8,38 @@ interface Props {
   children: React.ReactNode;
 }
 
+async function compressImage(file: File, maxDim = 2000, quality = 0.8): Promise<File> {
+  if (!file.type.startsWith('image/') || file.size < 500000) return file;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > maxDim || h > maxDim) {
+        const ratio = Math.min(maxDim / w, maxDim / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      if (w === img.width && h === img.height) { resolve(file); return; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+      canvas.toBlob((blob) => {
+        if (blob && blob.size < file.size) {
+          resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+        } else { resolve(file); }
+      }, 'image/jpeg', quality);
+    };
+    img.onerror = () => resolve(file);
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 export default function UploadZone({ dir, onUpload, children }: Props) {
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [compress, setCompress] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = useCallback(async (files: FileList) => {
@@ -21,7 +49,8 @@ export default function UploadZone({ dir, onUpload, children }: Props) {
     let errors = 0;
     for (const file of Array.from(files)) {
       try {
-        await uploadFile(dir, file);
+        const finalFile = compress ? await compressImage(file) : file;
+        await uploadFile(dir, finalFile);
         done++;
         setProgress({ done, total: files.length });
       } catch (e) {
@@ -36,7 +65,7 @@ export default function UploadZone({ dir, onUpload, children }: Props) {
       toast('success', `已上传 ${done} 个文件`);
     }
     onUpload();
-  }, [dir, onUpload]);
+  }, [dir, onUpload, compress]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -56,15 +85,21 @@ export default function UploadZone({ dir, onUpload, children }: Props) {
       {children}
 
       {/* Upload button */}
-      <button
-        onClick={() => inputRef.current?.click()}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center z-30 transition-transform hover:scale-110"
-        title="上传文件"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-      </button>
+      <div className="fixed bottom-6 right-6 z-30 flex flex-col items-end gap-2">
+        <label className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-2 py-1 rounded-lg shadow border border-gray-200 dark:border-gray-700 cursor-pointer">
+          <input type="checkbox" checked={compress} onChange={(e) => setCompress(e.target.checked)} className="w-3 h-3 rounded" />
+          压缩图片
+        </label>
+        <button
+          onClick={() => inputRef.current?.click()}
+          className="w-14 h-14 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-110"
+          title="上传文件"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+      </div>
       <input
         ref={inputRef}
         type="file"
