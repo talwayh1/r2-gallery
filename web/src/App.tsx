@@ -388,6 +388,7 @@ export default function App() {
                   onOpen={openLightbox}
                   onDelete={handleDelete}
                   onRename={handleRename}
+                  onMove={() => loadFiles(dir)}
                   selected={selected}
                   onSelect={handleSelect}
                   onLoadMore={loadMore}
@@ -420,6 +421,7 @@ export default function App() {
                 currentDir={dir}
                 onNavigate={navigate}
                 onOpen={openLightbox}
+                onMove={() => loadFiles(dir)}
                 selected={selected}
                 onSelect={handleSelect}
                 onLoadMore={loadMore}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { FileItem } from '../types';
-import { getFileUrl, getThumbUrl } from '../api';
+import { getFileUrl, getThumbUrl, moveItem } from '../api';
 import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
 
 interface Props {
@@ -11,6 +11,7 @@ interface Props {
   onOpen: (path: string, mime: string) => void;
   onDelete?: (paths: string[]) => void;
   onRename?: (path: string, name: string) => void;
+  onMove?: () => void; // callback after successful move
   selected?: Set<string>;
   onSelect?: (path: string) => void;
   onLoadMore?: () => void;
@@ -158,12 +159,14 @@ function VideoThumbnail({ src, onClick }: { src: string; onClick: () => void }) 
   );
 }
 
-export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, onDelete, onRename, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore }: Props) {
+export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
+  const [draggingFile, setDraggingFile] = useState<string | null>(null);
 
   // Folder thumbnail images
   const folderThumbs = useFolderThumbnails(dirs, currentDir);
@@ -225,6 +228,49 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else { setSortKey(key); setSortDir('asc'); }
+  };
+
+  // Drag & Drop handlers
+  const handleDragStart = (e: React.DragEvent, filePath: string) => {
+    e.dataTransfer.setData('text/plain', filePath);
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggingFile(filePath);
+  };
+
+  const handleDragEnd = () => {
+    setDraggingFile(null);
+    setDragOverFolder(null);
+  };
+
+  const handleDragOverFolder = (e: React.DragEvent, folderPath: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverFolder(folderPath);
+  };
+
+  const handleDragLeaveFolder = () => {
+    setDragOverFolder(null);
+  };
+
+  const handleDropOnFolder = async (e: React.DragEvent, folderPath: string) => {
+    e.preventDefault();
+    setDragOverFolder(null);
+    setDraggingFile(null);
+
+    const fromPath = e.dataTransfer.getData('text/plain');
+    if (!fromPath || fromPath === folderPath) return;
+
+    // Don't allow dropping a folder into itself or its children
+    if (folderPath.startsWith(fromPath + '/')) return;
+
+    try {
+      const result = await moveItem(fromPath, folderPath);
+      if (result.success) {
+        onMove?.();
+      }
+    } catch (err) {
+      console.error('Move failed:', err);
+    }
   };
 
   const handleContextMenu = (e: React.MouseEvent, path: string, name: string, isDir: boolean) => {
@@ -314,7 +360,14 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
                 key={item.path}
                 onClick={() => onNavigate(item.path)}
                 onContextMenu={(e) => handleContextMenu(e, item.path, item.name, true)}
-                className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
+                onDragOver={(e) => handleDragOverFolder(e, item.path)}
+                onDragLeave={handleDragLeaveFolder}
+                onDrop={(e) => handleDropOnFolder(e, item.path)}
+                className={`flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group ${
+                  dragOverFolder === item.path
+                    ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/30 scale-[1.02]'
+                    : ''
+                }`}
               >
                 <div className="w-full aspect-square flex items-center justify-center bg-yellow-50 dark:bg-yellow-900/20 rounded-xl overflow-hidden relative">
                   {folderThumbs[item.path] ? (
@@ -358,11 +411,14 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
                   onClick={(e) => handleCardClick(e, file.path, file.mime)}
                   onDoubleClick={() => onOpen(file.path, file.mime)}
                   onContextMenu={(e) => handleContextMenu(e, file.path, file.name, false)}
+                  draggable={true}
+                  onDragStart={(e) => handleDragStart(e, file.path)}
+                  onDragEnd={handleDragEnd}
                   className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-colors group relative ${
                     isSelected
                       ? 'bg-blue-100 dark:bg-blue-900/30 ring-2 ring-blue-500'
                       : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
+                  } ${draggingFile === file.path ? 'opacity-40' : ''}`}
                 >
                   <div className="w-full aspect-square flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-xl overflow-hidden relative">
                     {isImage ? (

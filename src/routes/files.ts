@@ -236,6 +236,115 @@ files.post('/delete', authMiddleware, async (c) => {
   return c.json({ success: true });
 });
 
+// POST /api/move (protected) — move file/folder to a new location
+files.post('/move', authMiddleware, async (c) => {
+  const { from, to } = await c.req.json<{ from: string; to: string }>();
+  if (!from || !to) return c.json({ error: 'from and to paths required' }, 400);
+
+  const bucket = c.env.R2_BUCKET;
+  const database = c.env.DB;
+
+  // Check if source is a file
+  const srcObj = await r2.getObject(bucket, from);
+  if (srcObj) {
+    // Single file move: compute destination path
+    // "to" can be a directory (append filename) or a full path
+    let destPath = to;
+    const toDirCheck = await r2.getObject(bucket, to.endsWith('/') ? to : to + '/');
+    if (toDirCheck) {
+      // Moving into a directory
+      const fileName = from.split('/').pop()!;
+      destPath = to.endsWith('/') ? to + fileName : to + '/' + fileName;
+    }
+
+    // Copy to new location, delete old
+    await r2.copyObject(bucket, from, destPath);
+
+    // Update D1 metadata
+    await db.deleteFileMetadata(database, from);
+    await db.upsertFileMetadata(database, {
+      path: destPath,
+      size: srcObj.size,
+      mime: srcObj.httpMetadata?.contentType || getMimeType(destPath),
+      mtime: Math.floor(Date.now() / 1000),
+      created_at: new Date().toISOString(),
+    });
+
+    // Also move thumbnail if exists
+    const { getThumbKey } = await import('../services/thumbnail');
+    const oldThumbKey = getThumbKey(from);
+    const newThumbKey = getThumbKey(destPath);
+    const thumbObj = await r2.getObject(bucket, oldThumbKey);
+    if (thumbObj) {
+      await r2.copyObject(bucket, oldThumbKey, newThumbKey);
+    }
+
+    return c.json({ success: true, newPath: destPath });
+  }
+
+  // Check if source is a directory
+  const dirCheck = await r2.listObjects(bucket, from.endsWith('/') ? from : from + '/');
+  if (dirCheck.files.length === 0 && dirCheck.directories.length === 0) {
+    // Try as directory marker
+    const dirMarker = await r2.getObject(bucket, from + '/');
+    if (!dirMarker) return c.json({ error: 'Source not found' }, 404);
+  }
+
+  // Directory move: compute destination
+  const dirName = from.split('/').pop()!;
+  const destDir = to.endsWith('/') ? to + dirName : to + '/' + dirName;
+
+  // List all objects in source directory
+  const allObjects: string[] = [];
+  let dirCursor: string | undefined;
+  do {
+    const listing = await r2.listObjects(bucket, from + '/', undefined, { cursor: dirCursor });
+    for (const obj of listing.files) {
+      if (obj.key) allObjects.push(obj.key);
+    }
+    dirCursor = listing.cursor;
+  } while (dirCursor);
+
+  // Copy each object to new location
+  for (const key of allObjects) {
+    const newKey = key.replace(from, destDir);
+    const obj = await r2.getObject(bucket, key);
+    if (obj) {
+      await r2.copyObject(bucket, key, newKey);
+    }
+  }
+
+  // Copy directory marker
+  await r2.copyObject(bucket, from + '/', destDir + '/');
+
+  // Update D1 metadata for all moved files
+  await db.deleteFileMetadata(database, from);
+  await db.deleteFileMetadataByPrefix(database, from + '/');
+  await db.upsertFileMetadata(database, {
+    path: destDir,
+    size: 0,
+    mime: 'directory',
+    mtime: Math.floor(Date.now() / 1000),
+    created_at: new Date().toISOString(),
+  });
+
+  // Re-insert metadata for files under the directory
+  for (const key of allObjects) {
+    const obj = await r2.getObject(bucket, key.replace(from, destDir));
+    if (obj) {
+      await db.upsertFileMetadata(database, {
+        path: key.replace(from, destDir).replace(/\/$/, ''),
+        size: obj.size,
+        mime: (obj as any).httpMetadata?.contentType || getMimeType(key),
+        mtime: Math.floor(Date.now() / 1000),
+        created_at: new Date().toISOString(),
+      });
+    }
+  }
+
+  return c.json({ success: true, newPath: destDir });
+});
+
 // POST /api/rename (protected)
 files.post('/rename', authMiddleware, async (c) => {
   const { path: oldPath, name: newName } = await c.req.json<{ path: string; name: string }>();

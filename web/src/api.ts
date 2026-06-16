@@ -94,6 +94,14 @@ export async function deleteItems(items: string[]) {
   return res.json();
 }
 
+export async function moveItem(from: string, to: string) {
+  const res = await request('/move', {
+    method: 'POST',
+    body: JSON.stringify({ from, to }),
+  });
+  return res.json();
+}
+
 export async function renameItem(path: string, name: string) {
   const res = await request('/rename', {
     method: 'POST',
