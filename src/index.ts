@@ -7,6 +7,7 @@ import filesRouter from './routes/files';
 import uploadRouter from './routes/upload';
 import adminRouter from './routes/admin';
 import metadataRouter from './routes/metadata';
+import sharesRouter from './routes/shares';
 
 const app = new Hono<{ Bindings: AppBindings; Variables: Variables }>();
 
@@ -84,6 +85,54 @@ app.route('/api', metadataRouter);
 // === Protected routes ===
 app.route('/api', filesRouter);
 app.route('/api', uploadRouter);
+
+// === Public share routes (BEFORE admin which has global auth) ===
+app.get('/api/share/:id', async (c) => {
+  const id = c.req.param('id');
+  const share = await c.env.DB.prepare(
+    'SELECT id, path, password_hash, expires_at, created_at FROM shares WHERE id = ?'
+  ).bind(id).first<any>();
+  if (!share) return c.json({ error: 'Share not found' }, 404);
+  if (share.expires_at && share.expires_at < Math.floor(Date.now() / 1000)) {
+    return c.json({ error: 'Share link has expired' }, 410);
+  }
+  return c.json({ id: share.id, path: share.path, needsPassword: !!share.password_hash, expiresAt: share.expires_at });
+});
+
+app.get('/api/share/:id/file', async (c) => {
+  const id = c.req.param('id');
+  const password = c.req.query('password');
+  const share = await c.env.DB.prepare('SELECT * FROM shares WHERE id = ?').bind(id).first<any>();
+  if (!share) return c.json({ error: 'Share not found' }, 404);
+  if (share.expires_at && share.expires_at < Math.floor(Date.now() / 1000)) return c.json({ error: 'Expired' }, 410);
+  if (share.password_hash) {
+    if (!password) return c.json({ error: 'Password required' }, 401);
+    const { verifyPassword } = await import('./auth');
+    if (!(await verifyPassword(password, share.password_hash))) return c.json({ error: 'Invalid password' }, 401);
+  }
+  const bucket = c.env.R2_BUCKET;
+  const obj = await bucket.get(share.path);
+  if (!obj) return c.json({ error: 'File not found' }, 404);
+  const mime = (obj as any).httpMetadata?.contentType || 'application/octet-stream';
+  return new Response((obj as any).body, { headers: { 'Content-Type': mime, 'Content-Length': String(obj.size) } });
+});
+
+app.post('/api/share/:id/verify', async (c) => {
+  const id = c.req.param('id');
+  const { password } = await c.req.json<{ password?: string }>();
+  const share = await c.env.DB.prepare('SELECT * FROM shares WHERE id = ?').bind(id).first<any>();
+  if (!share) return c.json({ error: 'Share not found' }, 404);
+  if (share.expires_at && share.expires_at < Math.floor(Date.now() / 1000)) return c.json({ error: 'Expired' }, 410);
+  if (share.password_hash) {
+    if (!password) return c.json({ error: 'Password required' }, 401);
+    const { verifyPassword } = await import('./auth');
+    if (!(await verifyPassword(password, share.password_hash))) return c.json({ error: 'Invalid password' }, 401);
+  }
+  return c.json({ success: true, path: share.path });
+});
+
+// Protected share management
+app.route('/api', sharesRouter);
 app.route('/api', adminRouter);
 
 // === OG (Open Graph) support for social sharing ===

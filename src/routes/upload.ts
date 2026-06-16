@@ -7,10 +7,8 @@ import { generateThumbnail, getThumbKey, isSupportedImageType } from '../service
 
 const upload = new Hono<{ Bindings: AppBindings; Variables: Variables }>();
 
-upload.use('*', authMiddleware);
-
-// POST /api/upload
-upload.post('/upload', async (c) => {
+// POST /api/upload (protected)
+upload.post('/upload', authMiddleware, async (c) => {
   const bucket = c.env.R2_BUCKET;
   const database = c.env.DB;
 

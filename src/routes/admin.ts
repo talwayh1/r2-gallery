@@ -5,16 +5,14 @@ import { authMiddleware, ensureAdmin, hashPassword } from '../auth';
 
 const admin = new Hono<{ Bindings: AppBindings; Variables: Variables }>();
 
-admin.use('*', authMiddleware);
-
-// GET /admin/settings
-admin.get('/settings', async (c) => {
+// GET /admin/settings (protected)
+admin.get('/settings', authMiddleware, async (c) => {
   const settings = await db.getAllSettings(c.env.DB);
   return c.json(settings);
 });
 
-// POST /admin/settings
-admin.post('/settings', ensureAdmin, async (c) => {
+// POST /admin/settings (admin only)
+admin.post('/settings', authMiddleware, ensureAdmin, async (c) => {
   const body = await c.req.json<Record<string, string>>();
   for (const [key, value] of Object.entries(body)) {
     await db.setSetting(c.env.DB, key, value);
@@ -22,14 +20,14 @@ admin.post('/settings', ensureAdmin, async (c) => {
   return c.json({ success: true });
 });
 
-// GET /admin/users
-admin.get('/users', ensureAdmin, async (c) => {
+// GET /admin/users (admin only)
+admin.get('/users', authMiddleware, ensureAdmin, async (c) => {
   const users = await db.listUsers(c.env.DB);
   return c.json(users);
 });
 
-// POST /admin/users
-admin.post('/users', ensureAdmin, async (c) => {
+// POST /admin/users (admin only)
+admin.post('/users', authMiddleware, ensureAdmin, async (c) => {
   const { username, password, role } = await c.req.json<{ username: string; password: string; role?: string }>();
   if (!username || !password) {
     return c.json({ error: 'Username and password required' }, 400);
@@ -46,8 +44,8 @@ admin.post('/users', ensureAdmin, async (c) => {
   return c.json({ success: true });
 });
 
-// DELETE /admin/users/:id
-admin.delete('/users/:id', ensureAdmin, async (c) => {
+// DELETE /admin/users/:id (admin only)
+admin.delete('/users/:id', authMiddleware, ensureAdmin, async (c) => {
   const id = parseInt(c.req.param('id') || '0');
   if (isNaN(id)) return c.json({ error: 'Invalid user ID' }, 400);
 
@@ -60,8 +58,8 @@ admin.delete('/users/:id', ensureAdmin, async (c) => {
   return c.json({ success: true });
 });
 
-// POST /admin/change-password
-admin.post('/change-password', async (c) => {
+// POST /admin/change-password (protected)
+admin.post('/change-password', authMiddleware, async (c) => {
   const { currentPassword, newPassword } = await c.req.json<{ currentPassword: string; newPassword: string }>();
   if (!currentPassword || !newPassword) {
     return c.json({ error: 'Current and new password required' }, 400);
