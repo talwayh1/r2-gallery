@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { FileItem } from '../types';
 import { getFileUrl, getThumbUrl } from '../api';
 import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
@@ -13,6 +13,9 @@ interface Props {
   onRename?: (path: string, name: string) => void;
   selected?: Set<string>;
   onSelect?: (path: string) => void;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
 }
 
 type SortKey = 'name' | 'size' | 'date';
@@ -155,7 +158,7 @@ function VideoThumbnail({ src, onClick }: { src: string; onClick: () => void }) 
   );
 }
 
-export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, onDelete, onRename, selected: externalSelected, onSelect }: Props) {
+export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, onDelete, onRename, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
@@ -164,6 +167,22 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
 
   // Folder thumbnail images
   const folderThumbs = useFolderThumbnails(dirs, currentDir);
+
+  // Infinite scroll sentinel
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!sentinelRef.current || !onLoadMore || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          onLoadMore();
+        }
+      },
+      { rootMargin: '400px' }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [onLoadMore, hasMore]);
 
   // Use external selection state when provided, otherwise use internal
   const selected = externalSelected ?? internalSelected;
@@ -289,7 +308,7 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
       {sortedDirs.length > 0 && (
         <div className="mb-6">
           <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">文件夹</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
             {sortedDirs.map((item) => (
               <button
                 key={item.path}
@@ -325,7 +344,7 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
       {sortedFiles.length > 0 && (
         <div>
           <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">文件</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
             {sortedFiles.map((file) => {
               const isImage = file.mime.startsWith('image/');
               const isVideo = file.mime.startsWith('video/');
@@ -439,6 +458,17 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Infinite scroll sentinel */}
+      {hasMore && sortedFiles.length > 0 && (
+        <div ref={sentinelRef} className="flex items-center justify-center py-8">
+          {loadingMore ? (
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
+          ) : (
+            <span className="text-sm text-gray-400">滚动加载更多…</span>
+          )}
         </div>
       )}
 

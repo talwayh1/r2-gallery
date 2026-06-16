@@ -10,17 +10,18 @@ const files = new Hono<{ Bindings: AppBindings; Variables: Variables }>();
 // Public: file browsing (GET /files, GET /file, GET /dirs)
 // Protected: file management (POST /mkdir, /delete, /rename)
 
-// GET /api/files?dir=path&sort=name|size|mtime&order=asc|desc&type=image|video|audio|all
+// GET /api/files?dir=path&sort=name|size|mtime&order=asc|desc&type=image|video|audio|all&cursor=xxx&limit=100
 files.get('/files', async (c) => {
   const dir = c.req.query('dir') || '';
   const sort = c.req.query('sort') || 'name';
   const order = c.req.query('order') || 'asc';
   const typeFilter = c.req.query('type') || 'all';
+  const cursor = c.req.query('cursor') || undefined;
+  const limit = c.req.query('limit') ? parseInt(c.req.query('limit')!) : undefined;
   const bucket = c.env.R2_BUCKET;
   const database = c.env.DB;
-
   const prefix = dir ? dir + '/' : '';
-  const result = await r2.listObjects(bucket, prefix, '/');
+  const result = await r2.listObjects(bucket, prefix, '/', { limit, cursor });
 
   const filesMap: Record<string, FileInfo> = {};
 
@@ -98,6 +99,8 @@ files.get('/files', async (c) => {
     path: dir,
     files: sortedFiles,
     dirs,
+    cursor: result.cursor,
+    hasMore: result.truncated,
   } as FileListResponse);
 });
 

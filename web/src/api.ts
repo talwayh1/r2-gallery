@@ -37,6 +37,8 @@ export interface ListFilesParams {
   sort?: 'name' | 'size' | 'mtime';
   order?: 'asc' | 'desc';
   type?: 'image' | 'video' | 'audio' | 'document' | 'all';
+  cursor?: string;
+  limit?: number;
 }
 
 export async function listFiles(dir: string = '', params?: ListFilesParams) {
@@ -44,6 +46,8 @@ export async function listFiles(dir: string = '', params?: ListFilesParams) {
   if (params?.sort) qs.set('sort', params.sort);
   if (params?.order) qs.set('order', params.order);
   if (params?.type && params.type !== 'all') qs.set('type', params.type);
+  if (params?.cursor) qs.set('cursor', params.cursor);
+  if (params?.limit) qs.set('limit', String(params.limit));
   const res = await request(`/files?${qs.toString()}`);
   return res.json();
 }

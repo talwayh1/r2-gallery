@@ -20,6 +20,8 @@ export interface FileListResponse {
   path: string;
   files: Record<string, FileInfo>;
   dirs: string[];
+  cursor?: string;
+  hasMore?: boolean;
 }
 
 export interface DirTreeNode {

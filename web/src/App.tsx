@@ -50,24 +50,38 @@ export default function App() {
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showDiscover, setShowDiscover] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Track pending /view/* deep link
   const pendingViewRef = useRef<string | null>(null);
   const initialDirSetRef = useRef(false);
 
-  const loadFiles = useCallback(async (d: string) => {
+  const loadFiles = useCallback(async (d: string, append = false) => {
     setLoading(true);
     try {
       const params: ListFilesParams = { sort: sortBy, order: sortOrder, type: typeFilter };
+      if (append && cursor) {
+        params.cursor = cursor;
+        params.limit = 100;
+      }
       const data = await listFiles(d, params);
-      setFiles(data.files || {});
+      if (append) {
+        setFiles(prev => ({ ...prev, ...(data.files || {}) }));
+      } else {
+        setFiles(data.files || {});
+      }
       setDirs(data.dirs || []);
+      setHasMore(data.hasMore || false);
+      setCursor(data.cursor);
     } catch (e) {
       console.error('Failed to load files:', e);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  }, [sortBy, sortOrder, typeFilter]);
+  }, [sortBy, sortOrder, typeFilter, cursor]);
 
   // Handle /view/* deep links on mount
   useEffect(() => {
@@ -87,8 +101,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    setCursor(undefined);
+    setHasMore(false);
     loadFiles(dir);
-  }, [dir, loadFiles]);
+  }, [dir, sortBy, sortOrder, typeFilter]);
 
   // Clear selection and type filter when directory changes
   useEffect(() => {
@@ -295,6 +311,13 @@ export default function App() {
     }
   };
 
+  // Load more handler for infinite scroll
+  const loadMore = useCallback(() => {
+    if (loadingMore || loading || !hasMore || !cursor) return;
+    setLoadingMore(true);
+    loadFiles(dir, true);
+  }, [loadingMore, loading, hasMore, cursor, dir, loadFiles]);
+
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <Header
@@ -367,6 +390,9 @@ export default function App() {
                   onRename={handleRename}
                   selected={selected}
                   onSelect={handleSelect}
+                  onLoadMore={loadMore}
+                  hasMore={hasMore}
+                  loadingMore={loadingMore}
                 />
               ) : (
                 <FileList
@@ -396,6 +422,9 @@ export default function App() {
                 onOpen={openLightbox}
                 selected={selected}
                 onSelect={handleSelect}
+                onLoadMore={loadMore}
+                hasMore={hasMore}
+                loadingMore={loadingMore}
               />
             ) : (
               <FileList

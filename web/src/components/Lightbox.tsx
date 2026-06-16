@@ -534,9 +534,9 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     return () => { cancelled = true; };
   }, [showInfo, current]);
 
-  // Preload adjacent images for smoother navigation
+  // Preload ±2 adjacent images for smoother navigation
   useEffect(() => {
-    const preloadIndices = [index - 1, index + 1, index + 2];
+    const preloadIndices = [index - 2, index - 1, index + 1, index + 2];
     const preloaded: HTMLImageElement[] = [];
     for (const i of preloadIndices) {
       if (i >= 0 && i < items.length && items[i]?.mime.startsWith('image/')) {
@@ -546,7 +546,6 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       }
     }
     return () => {
-      // Cleanup: abort any pending loads
       for (const img of preloaded) {
         img.src = '';
       }

@@ -11,6 +11,8 @@ export interface FileListResponse {
   path: string;
   files: Record<string, FileItem>;
   dirs: string[];
+  cursor?: string;
+  hasMore?: boolean;
 }
 
 export type LayoutMode = 'grid' | 'rows';
