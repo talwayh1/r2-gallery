@@ -59,7 +59,7 @@ export default function UploadZone({ dir, onUpload, children }: Props) {
       <button
         onClick={() => inputRef.current?.click()}
         className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center z-30 transition-transform hover:scale-110"
-        title="Upload files"
+        title="上传文件"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -80,7 +80,7 @@ export default function UploadZone({ dir, onUpload, children }: Props) {
             <svg className="w-12 h-12 mx-auto mb-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
-            <p className="text-lg font-medium text-blue-600">Drop files to upload</p>
+            <p className="text-lg font-medium text-blue-600">拖放文件到此处上传</p>
           </div>
         </div>
       )}
@@ -90,7 +90,7 @@ export default function UploadZone({ dir, onUpload, children }: Props) {
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 px-6 py-3 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-30">
           <div className="flex items-center gap-3">
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500" />
-            <span className="text-sm">Uploading {progress.done}/{progress.total}...</span>
+            <span className="text-sm">上传中 {progress.done}/{progress.total}...</span>
           </div>
         </div>
       )}
