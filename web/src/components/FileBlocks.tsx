@@ -1,0 +1,138 @@
+import { useState, useEffect, useRef } from 'react';
+import type { FileItem } from '../types';
+import { getThumbUrl, getFileUrl } from '../api';
+import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
+
+interface Props {
+  files: Record<string, FileItem>;
+  dirs: string[];
+  currentDir: string;
+  onNavigate: (path: string) => void;
+  onOpen: (path: string, mime: string) => void;
+  onDelete?: (paths: string[]) => void;
+  selected?: Set<string>;
+  onSelect?: (path: string) => void;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+}
+
+function formatSize(bytes: number) {
+  if (bytes === 0) return '';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
+}
+
+export default function FileBlocks({ files, dirs, currentDir, onNavigate, onOpen, onDelete, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore }: Props) {
+  const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
+  const folderThumbs = useFolderThumbnails(dirs, currentDir);
+
+  const selected = externalSelected ?? internalSelected;
+  const isSelectionMode = selected.size > 0;
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!sentinelRef.current || !onLoadMore || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) onLoadMore(); },
+      { rootMargin: '400px' }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [onLoadMore, hasMore]);
+
+  const dirItems = dirs.map((name) => ({
+    name, type: 'directory' as const, size: 0, mime: 'directory', mtime: 0,
+    path: currentDir ? `${currentDir}/${name}` : name,
+  }));
+  const fileItems = Object.values(files);
+  const allItems = [...dirItems, ...fileItems];
+
+  const handleToggleSelect = (path: string) => {
+    if (onSelect) { onSelect(path); return; }
+    setInternalSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path); else next.add(path);
+      return next;
+    });
+  };
+
+  return (
+    <>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        {allItems.map((item) => {
+          const isDir = item.type === 'directory';
+          const isImage = item.mime.startsWith('image/');
+          const isVideo = item.mime.startsWith('video/');
+          const isSelected = selected.has(item.path);
+
+          return (
+            <div
+              key={item.path}
+              className={`group relative rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 cursor-pointer transition-all ${
+                isSelected ? 'ring-2 ring-blue-500' : 'hover:shadow-lg'
+              }`}
+              onClick={() => isDir ? onNavigate(item.path) : onOpen(item.path, item.mime)}
+            >
+              <div className="aspect-square">
+                {isDir ? (
+                  <div className="w-full h-full flex items-center justify-center bg-yellow-50 dark:bg-yellow-900/20 relative">
+                    {folderThumbs[item.path] ? (
+                      <>
+                        <img src={folderThumbs[item.path]} alt="" className="w-full h-full object-cover opacity-60" loading="lazy" />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                          <span className="text-3xl drop-shadow-lg">📁</span>
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-4xl">📁</span>
+                    )}
+                  </div>
+                ) : isImage ? (
+                  <img src={getThumbUrl(item.path)} alt="" className="w-full h-full object-cover" loading="lazy" />
+                ) : isVideo ? (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                    <svg className="w-12 h-12 text-white/60" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                  </div>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-4xl">📄</div>
+                )}
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 pt-6">
+                <div className="text-white text-sm font-medium truncate">{item.name}</div>
+                {!isDir && <div className="text-white/70 text-xs">{formatSize(item.size)}</div>}
+              </div>
+              <div
+                className={`absolute top-2 left-2 transition-opacity ${isSelectionMode ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                onClick={(e) => { e.stopPropagation(); handleToggleSelect(item.path); }}
+              >
+                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                  isSelected ? 'bg-blue-500 border-blue-500' : 'bg-white/80 dark:bg-gray-800/80 border-gray-300'
+                }`}>
+                  {isSelected && (
+                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {hasMore && (
+        <div ref={sentinelRef} className="flex items-center justify-center py-8">
+          {loadingMore ? <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" /> : <span className="text-sm text-gray-400">滚动加载更多…</span>}
+        </div>
+      )}
+
+      {allItems.length === 0 && (
+        <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+          <p className="text-lg font-medium">暂无文件</p>
+        </div>
+      )}
+    </>
+  );
+}

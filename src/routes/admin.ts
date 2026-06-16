@@ -148,4 +148,61 @@ admin.get('/stats', authMiddleware, async (c) => {
   });
 });
 
+// POST /admin/clean-cache (admin only) — clean expired cache entries
+admin.post('/clean-cache', authMiddleware, ensureAdmin, async (c) => {
+  const database = c.env.DB;
+  
+  // Clean file_metadata entries older than 90 days with no access
+  const cutoff = Math.floor(Date.now() / 1000) - (90 * 24 * 60 * 60);
+  const result = await database.prepare(
+    'DELETE FROM file_metadata WHERE mtime < ? AND mime LIKE \'image/%\''
+  ).bind(cutoff).run();
+
+  return c.json({ success: true, deleted: result.meta?.changes || 0 });
+});
+
+// GET /admin/diagnostics (admin only) — system diagnostics
+admin.get('/diagnostics', authMiddleware, ensureAdmin, async (c) => {
+  const database = c.env.DB;
+  const bucket = c.env.R2_BUCKET;
+
+  // Get counts
+  const userCount = await database.prepare('SELECT COUNT(*) as count FROM users').first<{ count: number }>();
+  const fileCount = await database.prepare('SELECT COUNT(*) as count FROM file_metadata').first<{ count: number }>();
+  const settingsCount = await database.prepare('SELECT COUNT(*) as count FROM settings').first<{ count: number }>();
+
+  // Get settings
+  const settings = await db.getAllSettings(database);
+
+  // Get R2 bucket info
+  let r2ObjectCount = 0;
+  let r2TotalSize = 0;
+  let cursor: string | undefined;
+  do {
+    const listing = await bucket.list({ limit: 1000, ...(cursor ? { cursor } : {}) });
+    r2ObjectCount += listing.objects.length;
+    for (const obj of listing.objects) {
+      r2TotalSize += obj.size;
+    }
+    cursor = listing.truncated ? listing.cursor : undefined;
+  } while (cursor);
+
+  return c.json({
+    database: {
+      users: userCount?.count || 0,
+      files: fileCount?.count || 0,
+      settings: settingsCount?.count || 0,
+    },
+    r2: {
+      objects: r2ObjectCount,
+      totalSize: r2TotalSize,
+    },
+    settings,
+    environment: {
+      nodeVersion: 'Cloudflare Workers',
+      typescript: true,
+    },
+  });
+});
+
 export default admin;

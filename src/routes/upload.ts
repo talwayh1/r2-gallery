@@ -7,8 +7,16 @@ import { generateThumbnail, getThumbKey, isSupportedImageType } from '../service
 
 const upload = new Hono<{ Bindings: AppBindings; Variables: Variables }>();
 
+// Demo mode check
+const demoModeCheck = async (c: any, next: any) => {
+  if (c.env.DEMO_MODE === 'true') {
+    return c.json({ error: '上传在演示模式下被禁用' }, 403);
+  }
+  await next();
+};
+
 // POST /api/upload (protected)
-upload.post('/upload', authMiddleware, async (c) => {
+upload.post('/upload', authMiddleware, demoModeCheck, async (c) => {
   const bucket = c.env.R2_BUCKET;
   const database = c.env.DB;
 

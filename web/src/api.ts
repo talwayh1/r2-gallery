@@ -34,11 +34,15 @@ export async function login(username: string, password: string) {
 
 export interface ListFilesParams {
   dir?: string;
-  sort?: 'name' | 'size' | 'mtime';
+  sort?: 'name' | 'size' | 'mtime' | 'kind' | 'shuffle';
   order?: 'asc' | 'desc';
   type?: 'image' | 'video' | 'audio' | 'document' | 'all';
   cursor?: string;
   limit?: number;
+  files_include?: string;
+  files_exclude?: string;
+  dirs_include?: string;
+  dirs_exclude?: string;
 }
 
 export async function listFiles(dir: string = '', params?: ListFilesParams) {
@@ -48,6 +52,10 @@ export async function listFiles(dir: string = '', params?: ListFilesParams) {
   if (params?.type && params.type !== 'all') qs.set('type', params.type);
   if (params?.cursor) qs.set('cursor', params.cursor);
   if (params?.limit) qs.set('limit', String(params.limit));
+  if (params?.files_include) qs.set('files_include', params.files_include);
+  if (params?.files_exclude) qs.set('files_exclude', params.files_exclude);
+  if (params?.dirs_include) qs.set('dirs_include', params.dirs_include);
+  if (params?.dirs_exclude) qs.set('dirs_exclude', params.dirs_exclude);
   const res = await request(`/files?${qs.toString()}`);
   return res.json();
 }
@@ -214,5 +222,93 @@ export async function batchRename(items: { oldPath: string; newName: string }[])
     method: 'POST',
     body: JSON.stringify({ items }),
   });
+  return res.json();
+}
+
+// --- File Copy ---
+export async function copyFile(source: string, target: string): Promise<{ success: boolean; newPath: string }> {
+  const res = await request('/copy', {
+    method: 'POST',
+    body: JSON.stringify({ source, target }),
+  });
+  return res.json();
+}
+
+// --- File Duplicate ---
+export async function duplicateFile(path: string): Promise<{ success: boolean; newPath: string }> {
+  const res = await request('/duplicate', {
+    method: 'POST',
+    body: JSON.stringify({ path }),
+  });
+  return res.json();
+}
+
+// --- Share ---
+export interface Share {
+  id: string;
+  path: string;
+  password_hash?: string;
+  expires_at?: number;
+  created_by: number;
+  created_at: string;
+}
+
+export async function createShare(path: string, password?: string, expiresIn?: number): Promise<Share> {
+  const res = await request('/shares', {
+    method: 'POST',
+    body: JSON.stringify({ path, password, expires_in: expiresIn }),
+  });
+  return res.json();
+}
+
+export async function listShares(): Promise<Share[]> {
+  const res = await request('/shares');
+  return res.json();
+}
+
+export async function deleteShare(id: string): Promise<{ success: boolean }> {
+  const res = await request(`/shares/${id}`, { method: 'DELETE' });
+  return res.json();
+}
+
+// --- Admin ---
+export async function getSettings(): Promise<Record<string, string>> {
+  const res = await request('/admin/settings');
+  return res.json();
+}
+
+export async function saveSettings(settings: Record<string, string>): Promise<{ success: boolean }> {
+  const res = await request('/admin/settings', {
+    method: 'POST',
+    body: JSON.stringify(settings),
+  });
+  return res.json();
+}
+
+export async function getUsers(): Promise<{ id: number; username: string; role: string }[]> {
+  const res = await request('/admin/users');
+  return res.json();
+}
+
+export async function createUser(username: string, password: string, role?: string): Promise<{ success: boolean }> {
+  const res = await request('/admin/users', {
+    method: 'POST',
+    body: JSON.stringify({ username, password, role }),
+  });
+  return res.json();
+}
+
+export async function deleteUser(id: number): Promise<{ success: boolean }> {
+  const res = await request(`/admin/users/${id}`, { method: 'DELETE' });
+  return res.json();
+}
+
+export async function cleanCache(): Promise<{ success: boolean; deleted: number }> {
+  const res = await request('/admin/clean-cache', { method: 'POST' });
+  return res.json();
+}
+
+export async function getDiagnostics(): Promise<any> {
+  const res = await request('/admin/diagnostics');
   return res.json();
 }

@@ -15,5 +15,5 @@ export interface FileListResponse {
   hasMore?: boolean;
 }
 
-export type LayoutMode = 'grid' | 'rows';
-export type ThemeMode = 'light' | 'dark' | 'system';
+export type LayoutMode = 'grid' | 'rows' | 'list' | 'imagelist' | 'blocks' | 'columns';
+export type ThemeMode = 'light' | 'dark' | 'system' | 'contrast';

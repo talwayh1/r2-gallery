@@ -23,6 +23,7 @@ ADMIN_PASSWORD = "admin"
 JWT_SECRET = "change-me-to-a-random-32-char-string"
 TELEGRAM_BOT_TOKEN = ""
 TELEGRAM_BOT_USERNAME = ""
+DEMO_MODE = "false"
 
 [[routes]]
 pattern = "tu.zhangyubi.cn/*"

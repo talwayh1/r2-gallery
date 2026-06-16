@@ -103,3 +103,50 @@
 .video-preview-fade {
   animation: fadeIn 0.3s ease-in;
 }
+
+/* Contrast theme - high contrast for accessibility */
+[data-theme="contrast"] {
+  --bg-primary: #000000;
+  --bg-secondary: #1a1a1a;
+  --text-primary: #ffffff;
+  --text-secondary: #cccccc;
+  --border-color: #444444;
+  --accent-color: #4dabf7;
+}
+
+[data-theme="contrast"] body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+[data-theme="contrast"] .bg-white {
+  background-color: var(--bg-secondary) !important;
+}
+
+[data-theme="contrast"] .bg-gray-50,
+[data-theme="contrast"] .bg-gray-100 {
+  background-color: var(--bg-secondary) !important;
+}
+
+[data-theme="contrast"] .text-gray-500,
+[data-theme="contrast"] .text-gray-600,
+[data-theme="contrast"] .text-gray-400 {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="contrast"] .border-gray-200 {
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="contrast"] .dark {
+  --tw-bg-opacity: 1;
+  background-color: rgb(0 0 0 / var(--tw-bg-opacity)) !important;
+}
+
+[data-theme="contrast"] .dark .bg-gray-800 {
+  background-color: #0a0a0a !important;
+}
+
+[data-theme="contrast"] .dark .bg-gray-700 {
+  background-color: #1a1a1a !important;
+}

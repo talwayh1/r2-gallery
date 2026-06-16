@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { listDirs } from '../api';
 
 interface Props {
@@ -12,24 +12,69 @@ interface DirNode {
   children?: DirNode[];
 }
 
+type SortMode = 'name_asc' | 'name_desc' | 'date_asc' | 'date_desc';
+
+const STORAGE_KEY_EXPANDED = 'sidebar_expanded';
+const STORAGE_KEY_SORT = 'sidebar_sort';
+const MAX_DEPTH = 5;
+
+function loadExpanded(): Set<string> {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_EXPANDED);
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveExpanded(expanded: Set<string>) {
+  localStorage.setItem(STORAGE_KEY_EXPANDED, JSON.stringify([...expanded]));
+}
+
+function sortNodes(nodes: DirNode[], sort: SortMode): DirNode[] {
+  return [...nodes].sort((a, b) => {
+    const cmp = a.name.localeCompare(b.name, 'zh-CN');
+    if (sort === 'name_asc') return cmp;
+    if (sort === 'name_desc') return -cmp;
+    return 0;
+  }).map(n => ({
+    ...n,
+    children: n.children ? sortNodes(n.children, sort) : undefined,
+  }));
+}
+
 export default function Sidebar({ currentDir, onNavigate }: Props) {
   const [tree, setTree] = useState<DirNode[]>([]);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(loadExpanded);
+  const [sort, setSort] = useState<SortMode>(
+    () => (localStorage.getItem(STORAGE_KEY_SORT) as SortMode) || 'name_asc'
+  );
+  const [maxDepth] = useState(MAX_DEPTH);
 
   useEffect(() => {
     listDirs().then(setTree).catch(console.error);
   }, []);
 
-  const toggle = (path: string) => {
+  useEffect(() => {
+    saveExpanded(expanded);
+  }, [expanded]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_SORT, sort);
+  }, [sort]);
+
+  const toggle = useCallback((path: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(path)) next.delete(path);
       else next.add(path);
       return next;
     });
-  };
+  }, []);
 
   const renderNode = (node: DirNode, depth: number = 0) => {
+    if (depth >= maxDepth) return null;
+    
     const isOpen = expanded.has(node.path);
     const isActive = currentDir === node.path;
     const hasChildren = node.children && node.children.length > 0;
@@ -62,25 +107,39 @@ export default function Sidebar({ currentDir, onNavigate }: Props) {
     );
   };
 
+  const sortedTree = sortNodes(tree, sort);
+
   return (
     <aside className="w-60 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto shrink-0">
       <div className="p-3">
-        <button
-          onClick={() => onNavigate('')}
-          className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors ${
-            !currentDir
-              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-              : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-          }`}
+        <div className="flex items-center justify-between mb-2">
+          <button
+            onClick={() => onNavigate('')}
+            className={`flex-1 flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors ${
+              !currentDir
+                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            Home
+          </button>
+        </div>
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value as SortMode)}
+          className="w-full text-xs px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 mb-2"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-          </svg>
-          Home
-        </button>
+          <option value="name_asc">名称 A→Z</option>
+          <option value="name_desc">名称 Z→A</option>
+          <option value="date_asc">日期 旧→新</option>
+          <option value="date_desc">日期 新→旧</option>
+        </select>
       </div>
       <div className="px-2 pb-3 space-y-0.5">
-        {tree.map((node) => renderNode(node))}
+        {sortedTree.map((node) => renderNode(node))}
       </div>
     </aside>
   );

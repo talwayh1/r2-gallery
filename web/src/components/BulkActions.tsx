@@ -5,13 +5,16 @@ interface Props {
   totalCount: number;
   onDelete: () => void;
   onDownload: () => void;
+  onDownloadZip?: () => void;
   onBatchRename?: () => void;
+  onCopy?: () => void;
+  onDuplicate?: () => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
 }
 
 export default function BulkActions({
-  selectedCount, totalCount, onDelete, onDownload, onBatchRename, onSelectAll, onDeselectAll,
+  selectedCount, totalCount, onDelete, onDownload, onDownloadZip, onBatchRename, onCopy, onDuplicate, onSelectAll, onDeselectAll,
 }: Props) {
   const [confirming, setConfirming] = useState(false);
 
@@ -69,6 +72,48 @@ export default function BulkActions({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
             重命名
+          </button>
+        )}
+
+        {/* ZIP download */}
+        {onDownloadZip && (
+          <button
+            onClick={onDownloadZip}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
+            title="打包下载为 ZIP"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+            </svg>
+            ZIP
+          </button>
+        )}
+
+        {/* Copy */}
+        {onCopy && (
+          <button
+            onClick={onCopy}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
+            title="复制选中文件"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            复制
+          </button>
+        )}
+
+        {/* Duplicate */}
+        {onDuplicate && (
+          <button
+            onClick={onDuplicate}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
+            title="创建副本"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            重复
           </button>
         )}
 

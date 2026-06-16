@@ -7,6 +7,14 @@ import { generateThumbnail, getThumbKey, isSupportedImageType } from '../service
 
 const files = new Hono<{ Bindings: AppBindings; Variables: Variables }>();
 
+// Demo mode middleware - blocks write operations
+const demoModeCheck = async (c: any, next: any) => {
+  if (c.env.DEMO_MODE === 'true') {
+    return c.json({ error: '操作在演示模式下被禁用' }, 403);
+  }
+  await next();
+};
+
 // Public: file browsing (GET /files, GET /file, GET /dirs)
 // Protected: file management (POST /mkdir, /delete, /rename)
 
@@ -71,10 +79,49 @@ files.get('/files', async (c) => {
     };
   }
 
-  const dirs = result.directories.map(d => d.replace(prefix, '').replace(/\/$/, '')).filter(Boolean);
+  // Apply file/dir filters
+  const filesInclude = c.req.query('files_include');
+  const filesExclude = c.req.query('files_exclude');
+  const dirsInclude = c.req.query('dirs_include');
+  const dirsExclude = c.req.query('dirs_exclude');
+
+  const matchRegex = (name: string, pattern: string): boolean => {
+    try {
+      return new RegExp(pattern, 'i').test(name);
+    } catch {
+      return true;
+    }
+  };
+
+  // Filter files
+  for (const [name, file] of Object.entries(filesMap)) {
+    if (file.type === 'file') {
+      if (filesInclude && !matchRegex(name, filesInclude)) { delete filesMap[name]; continue; }
+      if (filesExclude && matchRegex(name, filesExclude)) { delete filesMap[name]; continue; }
+    }
+  }
+
+  const dirs = result.directories
+    .map(d => d.replace(prefix, '').replace(/\/$/, ''))
+    .filter(Boolean)
+    .filter(d => {
+      if (dirsInclude && !matchRegex(d, dirsInclude)) return false;
+      if (dirsExclude && matchRegex(d, dirsExclude)) return false;
+      return true;
+    });
+
+  // Fisher-Yates shuffle
+  const shuffleArray = <T>(arr: T[]): T[] => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
 
   // Sort files
-  const sortedEntries = Object.entries(filesMap).sort(([, a], [, b]) => {
+  let sortedEntries = Object.entries(filesMap).sort(([, a], [, b]) => {
     // Directories always first
     if (a.type === 'directory' && b.type !== 'directory') return -1;
     if (a.type !== 'directory' && b.type === 'directory') return 1;
@@ -84,11 +131,19 @@ files.get('/files', async (c) => {
       cmp = a.size - b.size;
     } else if (sort === 'mtime') {
       cmp = a.mtime - b.mtime;
+    } else if (sort === 'kind') {
+      const extA = a.name.split('.').pop()?.toLowerCase() || '';
+      const extB = b.name.split('.').pop()?.toLowerCase() || '';
+      cmp = extA.localeCompare(extB) || a.name.localeCompare(b.name, 'zh-CN');
     } else {
       cmp = a.name.localeCompare(b.name, 'zh-CN');
     }
     return order === 'desc' ? -cmp : cmp;
   });
+
+  if (sort === 'shuffle') {
+    sortedEntries = shuffleArray(sortedEntries);
+  }
 
   const sortedFiles: Record<string, FileInfo> = {};
   for (const [key, val] of sortedEntries) {
@@ -181,7 +236,7 @@ files.get('/thumb', async (c) => {
 });
 
 // POST /api/mkdir (protected)
-files.post('/mkdir', authMiddleware, async (c) => {
+files.post('/mkdir', authMiddleware, demoModeCheck, async (c) => {
   const { path } = await c.req.json<{ path: string }>();
   if (!path) return c.json({ error: 'Path required' }, 400);
 
@@ -204,7 +259,7 @@ files.post('/mkdir', authMiddleware, async (c) => {
 });
 
 // POST /api/delete (protected)
-files.post('/delete', authMiddleware, async (c) => {
+files.post('/delete', authMiddleware, demoModeCheck, async (c) => {
   const { items } = await c.req.json<{ items: string[] }>();
   if (!items?.length) return c.json({ error: 'No items specified' }, 400);
 
@@ -237,7 +292,7 @@ files.post('/delete', authMiddleware, async (c) => {
 });
 
 // POST /api/move (protected) — move file/folder to a new location
-files.post('/move', authMiddleware, async (c) => {
+files.post('/move', authMiddleware, demoModeCheck, async (c) => {
   const { from, to } = await c.req.json<{ from: string; to: string }>();
   if (!from || !to) return c.json({ error: 'from and to paths required' }, 400);
 
@@ -346,7 +401,7 @@ files.post('/move', authMiddleware, async (c) => {
 });
 
 // POST /api/rename (protected)
-files.post('/rename', authMiddleware, async (c) => {
+files.post('/rename', authMiddleware, demoModeCheck, async (c) => {
   const { path: oldPath, name: newName } = await c.req.json<{ path: string; name: string }>();
   if (!oldPath || !newName) return c.json({ error: 'Path and name required' }, 400);
 
@@ -418,7 +473,7 @@ files.post('/rename', authMiddleware, async (c) => {
 });
 
 // POST /api/batch-rename (protected) — batch rename multiple files
-files.post('/batch-rename', authMiddleware, async (c) => {
+files.post('/batch-rename', authMiddleware, demoModeCheck, async (c) => {
   const { items } = await c.req.json<{ items: { oldPath: string; newName: string }[] }>();
   if (!items?.length) return c.json({ error: 'No items specified' }, 400);
 
@@ -469,6 +524,79 @@ files.post('/batch-rename', authMiddleware, async (c) => {
   }
 
   return c.json({ success, failed });
+});
+
+// POST /api/copy (protected) — copy file/folder to a new location
+files.post('/copy', authMiddleware, demoModeCheck, async (c) => {
+  const { source, target } = await c.req.json<{ source: string; target: string }>();
+  if (!source || !target) return c.json({ error: 'source and target paths required' }, 400);
+
+  const bucket = c.env.R2_BUCKET;
+  const database = c.env.DB;
+
+  // Check if source is a file
+  const srcObj = await r2.getObject(bucket, source);
+  if (srcObj) {
+    let destPath = target;
+    const toDirCheck = await r2.getObject(bucket, target.endsWith('/') ? target : target + '/');
+    if (toDirCheck) {
+      const fileName = source.split('/').pop()!;
+      destPath = target.endsWith('/') ? target + fileName : target + '/' + fileName;
+    }
+
+    await r2.copyObject(bucket, source, destPath);
+    await db.upsertFileMetadata(database, {
+      path: destPath,
+      size: srcObj.size,
+      mime: srcObj.httpMetadata?.contentType || getMimeType(destPath),
+      mtime: Math.floor(Date.now() / 1000),
+      created_at: new Date().toISOString(),
+    });
+
+    return c.json({ success: true, newPath: destPath });
+  }
+
+  return c.json({ error: 'Source not found' }, 404);
+});
+
+// POST /api/duplicate (protected) — duplicate file with auto-incremented name
+files.post('/duplicate', authMiddleware, demoModeCheck, async (c) => {
+  const { path: filePath } = await c.req.json<{ path: string }>();
+  if (!filePath) return c.json({ error: 'Path required' }, 400);
+
+  const bucket = c.env.R2_BUCKET;
+  const database = c.env.DB;
+
+  const srcObj = await r2.getObject(bucket, filePath);
+  if (!srcObj) return c.json({ error: 'File not found' }, 404);
+
+  // Generate unique name
+  const parts = filePath.split('.');
+  const ext = parts.length > 1 ? '.' + parts.pop() : '';
+  const base = parts.join('.');
+  let newPath = filePath;
+  let counter = 2;
+
+  while (await r2.getObject(bucket, newPath)) {
+    const dashIdx = base.lastIndexOf('-');
+    if (dashIdx > 0 && /^\d+$/.test(base.slice(dashIdx + 1))) {
+      newPath = base.slice(0, dashIdx) + '-' + counter + ext;
+    } else {
+      newPath = base + '-' + counter + ext;
+    }
+    counter++;
+  }
+
+  await r2.copyObject(bucket, filePath, newPath);
+  await db.upsertFileMetadata(database, {
+    path: newPath,
+    size: srcObj.size,
+    mime: srcObj.httpMetadata?.contentType || getMimeType(newPath),
+    mtime: Math.floor(Date.now() / 1000),
+    created_at: new Date().toISOString(),
+  });
+
+  return c.json({ success: true, newPath });
 });
 
 function getMimeType(filename: string): string {

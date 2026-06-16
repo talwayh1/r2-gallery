@@ -1,5 +1,7 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { getFileUrl, getExif, type ExifData } from '../api';
+import VideoPlayer from './VideoPlayer';
+import MarkdownEditor from './MarkdownEditor';
 
 interface MediaItem {
   path: string;
@@ -1137,15 +1139,12 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
           />
         ) : isVideo ? (
           <div className="relative" onClick={(e) => e.stopPropagation()}>
-            <video
+            <VideoPlayer
               key={current.path}
-              src={url}
-              controls
-              autoPlay
-              playsInline
-              preload="metadata"
-              className="max-w-full max-h-[90vh] rounded-lg"
-              style={{ outline: 'none' }}
+              path={current.path}
+              name={name}
+              autoplay={true}
+              onEnded={goNext}
             />
           </div>
         ) : isAudio ? (
@@ -1258,27 +1257,17 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
             className="w-[85vw] max-w-[900px] h-[80vh] flex flex-col bg-gray-900/90 backdrop-blur-xl rounded-xl border border-white/10 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-white/5">
-              <span className="text-white/60 text-xs font-mono">{name}</span>
-              <span className="text-white/30 text-xs">{current.mime}</span>
-            </div>
-            {/* Content */}
-            <div className="flex-1 overflow-auto p-4">
-              {textLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/50" />
-                </div>
-              ) : textContent !== null ? (
-                <pre className="text-white/80 text-sm font-mono whitespace-pre-wrap break-words leading-relaxed">
-                  <code>{textContent}</code>
-                </pre>
-              ) : (
-                <div className="flex items-center justify-center h-full text-white/40">
-                  无法加载文本内容
-                </div>
-              )}
-            </div>
+            {textLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/50" />
+              </div>
+            ) : textContent !== null ? (
+              <MarkdownEditor content={textContent} fileName={name} readOnly />
+            ) : (
+              <div className="flex items-center justify-center h-full text-white/40">
+                无法加载文本内容
+              </div>
+            )}
           </div>
         ) : (
           <div className="bg-gray-900/80 backdrop-blur-xl p-8 rounded-xl text-center border border-white/10">
