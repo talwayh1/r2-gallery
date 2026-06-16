@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import type { FileItem, LayoutMode } from './types';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
@@ -9,19 +9,27 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import FileGrid from './components/FileGrid';
 import FileList from './components/FileList';
-import Lightbox from './components/Lightbox';
 import UploadZone from './components/UploadZone';
 import Login from './components/Login';
-import KeyboardShortcuts from './components/KeyboardShortcuts';
 import BulkActions from './components/BulkActions';
 import TypeFilter, { matchFilter } from './components/TypeFilter';
 import type { TypeFilter as TypeFilterKind } from './components/TypeFilter';
 import CreateFolder from './components/CreateFolder';
-import SearchOverlay from './components/SearchOverlay';
-import DiscoverPage from './components/DiscoverPage';
 import InstallPrompt from './components/InstallPrompt';
-import BatchRename from './components/BatchRename';
-import StatsPanel from './components/StatsPanel';
+
+// Lazy-loaded components (not needed for first paint)
+const Lightbox = lazy(() => import('./components/Lightbox'));
+const KeyboardShortcuts = lazy(() => import('./components/KeyboardShortcuts'));
+const SearchOverlay = lazy(() => import('./components/SearchOverlay'));
+const DiscoverPage = lazy(() => import('./components/DiscoverPage'));
+const BatchRename = lazy(() => import('./components/BatchRename'));
+const StatsPanel = lazy(() => import('./components/StatsPanel'));
+
+const LazyLoading = () => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+  </div>
+);
 
 export default function App() {
   const { user, loading: authLoading, login, logout } = useAuth();
@@ -465,12 +473,14 @@ export default function App() {
       )}
 
       {lightbox && mediaItems.length > 0 && (
-        <Lightbox
-          items={mediaItems}
-          index={lightbox.index}
-          onClose={handleLightboxClose}
-          onNavigate={handleLightboxNavigate}
-        />
+        <Suspense fallback={<LazyLoading />}>
+          <Lightbox
+            items={mediaItems}
+            index={lightbox.index}
+            onClose={handleLightboxClose}
+            onNavigate={handleLightboxNavigate}
+          />
+        </Suspense>
       )}
       {showLogin && !user && (
         <Login
@@ -491,7 +501,9 @@ export default function App() {
         />
       )}
       {showShortcuts && (
-        <KeyboardShortcuts onClose={() => setShowShortcuts(false)} />
+        <Suspense fallback={<LazyLoading />}>
+          <KeyboardShortcuts onClose={() => setShowShortcuts(false)} />
+        </Suspense>
       )}
       {showCreateFolder && (
         <CreateFolder
@@ -501,28 +513,36 @@ export default function App() {
         />
       )}
       {showSearch && (
-        <SearchOverlay
-          onClose={() => setShowSearch(false)}
-          onNavigate={(d) => { navigate(d); setShowSearch(false); }}
-          onOpenFile={(path, mime) => { openLightbox(path, mime); setShowSearch(false); }}
-        />
+        <Suspense fallback={<LazyLoading />}>
+          <SearchOverlay
+            onClose={() => setShowSearch(false)}
+            onNavigate={(d) => { navigate(d); setShowSearch(false); }}
+            onOpenFile={(path, mime) => { openLightbox(path, mime); setShowSearch(false); }}
+          />
+        </Suspense>
       )}
       {showDiscover && (
-        <DiscoverPage
-          onClose={() => setShowDiscover(false)}
-          onNavigate={(d) => { navigate(d); setShowDiscover(false); }}
-          onOpenFile={(path, mime) => { openLightbox(path, mime); setShowDiscover(false); }}
-        />
+        <Suspense fallback={<LazyLoading />}>
+          <DiscoverPage
+            onClose={() => setShowDiscover(false)}
+            onNavigate={(d) => { navigate(d); setShowDiscover(false); }}
+            onOpenFile={(path, mime) => { openLightbox(path, mime); setShowDiscover(false); }}
+          />
+        </Suspense>
       )}
       {showBatchRename && user && (
-        <BatchRename
-          selectedFiles={Array.from(selected)}
-          onDone={() => { setShowBatchRename(false); setSelected(new Set()); loadFiles(dir); }}
-          onClose={() => setShowBatchRename(false)}
-        />
+        <Suspense fallback={<LazyLoading />}>
+          <BatchRename
+            selectedFiles={Array.from(selected)}
+            onDone={() => { setShowBatchRename(false); setSelected(new Set()); loadFiles(dir); }}
+            onClose={() => setShowBatchRename(false)}
+          />
+        </Suspense>
       )}
       {showStats && user && (
-        <StatsPanel onClose={() => setShowStats(false)} />
+        <Suspense fallback={<LazyLoading />}>
+          <StatsPanel onClose={() => setShowStats(false)} />
+        </Suspense>
       )}
     </div>
   );

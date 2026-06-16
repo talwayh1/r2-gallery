@@ -24,9 +24,46 @@ app.use('/api/*', cors({
   allowHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Initialize DB on first request
+// Static asset caching — hashed assets (Vite output) get immutable long-term cache
+app.use('/assets/*', async (c, next) => {
+  await next();
+  // Vite outputs content-hashed filenames, safe to cache aggressively
+  if (c.res.status === 200) {
+    c.res.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+  }
+});
+
+// Icons, manifest, sw — shorter cache
+app.use('/icons/*', async (c, next) => {
+  await next();
+  if (c.res.status === 200) {
+    c.res.headers.set('Cache-Control', 'public, max-age=86400');
+  }
+});
+
+app.use('/manifest.json', async (c, next) => {
+  await next();
+  if (c.res.status === 200) {
+    c.res.headers.set('Cache-Control', 'public, max-age=3600');
+  }
+});
+
+app.use('/sw.js', async (c, next) => {
+  await next();
+  if (c.res.status === 200) {
+    c.res.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+  }
+});
+
+// Initialize DB on first request (skip for static assets)
 let dbInitialized = false;
 app.use('*', async (c, next) => {
+  const path = c.req.path;
+  // Skip DB init for static assets — served by Assets binding
+  if (path.startsWith('/assets/') || path.startsWith('/icons/') || path === '/manifest.json' || path === '/sw.js') {
+    await next();
+    return;
+  }
   if (!dbInitialized) {
     await db.initDatabase(c.env.DB);
 

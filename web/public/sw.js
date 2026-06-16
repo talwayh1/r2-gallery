@@ -13,13 +13,17 @@ const PRECACHE_URLS = [
   '/icons/icon-512.svg',
 ];
 
-// Install: precache shell assets
+// Install: precache shell assets + enable navigation preload
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => {
       return cache.addAll(PRECACHE_URLS);
     })
   );
+  // Enable navigation preload for faster navigations
+  if (self.registration.navigationPreload) {
+    event.waitUntil(self.registration.navigationPreload.enable());
+  }
   self.skipWaiting();
 });
 
@@ -104,18 +108,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation requests (HTML): network-first, fallback to cache
+  // Navigation requests (HTML): network-first with navigation preload
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
+      (async () => {
+        try {
+          // Use navigation preload response if available
+          const preloadResponse = await event.preloadResponse;
+          if (preloadResponse) return preloadResponse;
+
+          const response = await fetch(request);
           if (response.ok) {
             const clone = response.clone();
             caches.open(STATIC_CACHE).then((cache) => cache.put(request, clone));
           }
           return response;
-        })
-        .catch(() => caches.match('/') || caches.match(request))
+        } catch {
+          return caches.match('/') || caches.match(request);
+        }
+      })()
     );
     return;
   }

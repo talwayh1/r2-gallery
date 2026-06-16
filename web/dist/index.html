@@ -4,7 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>R2 Gallery</title>
-  <meta name="description" content="Fast, beautiful image & video gallery powered by Cloudflare R2" />
+  <meta name="description" content="快速、美观的图片视频画廊，基于 Cloudflare R2" />
+
+  <!-- DNS prefetch & preconnect -->
+  <link rel="dns-prefetch" href="//tu.zhangyubi.cn" />
+  <link rel="preconnect" href="https://tu.zhangyubi.cn" crossorigin />
 
   <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json" />
@@ -28,10 +32,77 @@
       } catch(e) {}
     })();
   </script>
-  <script type="module" crossorigin src="/assets/index-CLAMf5tC.js"></script>
+
+  <!-- Inline critical CSS for loading skeleton -->
+  <style>
+    .app-loading {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background: #f9fafb;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .dark .app-loading { background: #111827; }
+    .loading-header {
+      height: 56px;
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+    }
+    .dark .loading-header { background: #1f2937; border-color: #374151; }
+    .loading-skeleton {
+      background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 6px;
+    }
+    .dark .loading-skeleton {
+      background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+      background-size: 200% 100%;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .loading-grid {
+      flex: 1;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      align-content: start;
+    }
+    .loading-card {
+      aspect-ratio: 1;
+      border-radius: 12px;
+    }
+    @media (max-width: 640px) {
+      .loading-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 12px; }
+    }
+  </style>
+  <script type="module" crossorigin src="/assets/index-C5hgXz1X.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/vendor-nf7bT_Uh.js">
   <link rel="stylesheet" crossorigin href="/assets/index-C6b4YT8V.css">
 </head>
 <body class="bg-gray-50 dark:bg-gray-900">
-  <div id="root"></div>
+  <div id="root">
+    <!-- Loading skeleton — visible until React hydrates -->
+    <div class="app-loading">
+      <div class="loading-header">
+        <div class="loading-skeleton" style="width:24px;height:24px"></div>
+        <div class="loading-skeleton" style="width:120px;height:20px"></div>
+        <div style="flex:1"></div>
+        <div class="loading-skeleton" style="width:80px;height:32px;border-radius:8px"></div>
+      </div>
+      <div class="loading-grid">
+        <div class="loading-skeleton loading-card"></div>
+        <div class="loading-skeleton loading-card"></div>
+        <div class="loading-skeleton loading-card"></div>
+        <div class="loading-skeleton loading-card"></div>
+        <div class="loading-skeleton loading-card"></div>
+        <div class="loading-skeleton loading-card"></div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
