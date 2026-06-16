@@ -19,6 +19,9 @@ import type { TypeFilter as TypeFilterKind } from './components/TypeFilter';
 import CreateFolder from './components/CreateFolder';
 import SearchOverlay from './components/SearchOverlay';
 import DiscoverPage from './components/DiscoverPage';
+import InstallPrompt from './components/InstallPrompt';
+import BatchRename from './components/BatchRename';
+import StatsPanel from './components/StatsPanel';
 
 export default function App() {
   const { user, loading: authLoading, login, logout } = useAuth();
@@ -48,6 +51,8 @@ export default function App() {
     return (localStorage.getItem('sortOrder') as 'asc' | 'desc') || 'asc';
   });
   const [showCreateFolder, setShowCreateFolder] = useState(false);
+  const [showBatchRename, setShowBatchRename] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showDiscover, setShowDiscover] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -342,6 +347,7 @@ export default function App() {
         onCreateFolder={user ? () => setShowCreateFolder(true) : undefined}
         onSearchClick={() => setShowSearch(true)}
         onDiscoverClick={() => setShowDiscover(true)}
+        onStatsClick={user ? () => setShowStats(true) : undefined}
         onSortChange={(sort, order) => {
           setSortBy(sort);
           setSortOrder(order);
@@ -350,6 +356,7 @@ export default function App() {
         }}
         onTypeFilterChange={(t) => setTypeFilter(t as TypeFilterKind)}
       />
+      <InstallPrompt />
       <div className="flex flex-1 overflow-hidden relative">
         {/* Mobile sidebar overlay */}
         {isMobile && sidebarOpen && (
@@ -450,6 +457,7 @@ export default function App() {
           totalCount={Object.keys(filteredFiles).length}
           onDelete={handleBatchDelete}
           onDownload={handleBatchDownload}
+          onBatchRename={user ? () => setShowBatchRename(true) : undefined}
           onSelectAll={handleSelectAll}
           onDeselectAll={handleDeselectAll}
         />
@@ -504,6 +512,16 @@ export default function App() {
           onNavigate={(d) => { navigate(d); setShowDiscover(false); }}
           onOpenFile={(path, mime) => { openLightbox(path, mime); setShowDiscover(false); }}
         />
+      )}
+      {showBatchRename && user && (
+        <BatchRename
+          selectedFiles={Array.from(selected)}
+          onDone={() => { setShowBatchRename(false); setSelected(new Set()); loadFiles(dir); }}
+          onClose={() => setShowBatchRename(false)}
+        />
+      )}
+      {showStats && user && (
+        <StatsPanel onClose={() => setShowStats(false)} />
       )}
     </div>
   );

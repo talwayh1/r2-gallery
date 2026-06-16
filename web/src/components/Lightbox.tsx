@@ -99,6 +99,22 @@ function getAspectRatio(w: number, h: number): string {
   return `${rw}:${rh}`;
 }
 
+function formatTime(seconds: number): string {
+  if (!seconds || !isFinite(seconds)) return '0:00';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function isTextMime(mime: string): boolean {
+  return mime.startsWith('text/') ||
+         mime === 'application/json' ||
+         mime === 'application/xml' ||
+         mime === 'application/javascript' ||
+         mime === 'application/x-yaml' ||
+         mime === 'application/yaml';
+}
+
 export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   const current = items[index];
   const hasPrev = index > 0;
@@ -131,6 +147,16 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   const pinchStartDist = useRef(0);
   const pinchStartScale = useRef(1);
   const imgContainerRef = useRef<HTMLDivElement>(null);
+
+  // Audio player state
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+
+  // Text content state
+  const [textContent, setTextContent] = useState<string | null>(null);
+  const [textLoading, setTextLoading] = useState(false);
 
   const isZoomed = scale > 1.05;
 
@@ -511,6 +537,11 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     setImageDimensions(null);
     resetZoom();
     setSlideshowProgress(0);
+    setAudioPlaying(false);
+    setAudioCurrentTime(0);
+    setAudioDuration(0);
+    setTextContent(null);
+    setTextLoading(false);
   }, [index, resetZoom]);
 
   // Fetch EXIF data when info panel is shown for an image
@@ -533,6 +564,36 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       });
     return () => { cancelled = true; };
   }, [showInfo, current]);
+
+  // Fetch text content for text/code files
+  useEffect(() => {
+    if (!current || !isTextMime(current.mime)) {
+      setTextContent(null);
+      return;
+    }
+    let cancelled = false;
+    setTextLoading(true);
+    setTextContent(null);
+    const fileUrl = getFileUrl(current.path);
+    fetch(fileUrl)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load');
+        return res.text();
+      })
+      .then((text) => {
+        if (!cancelled) {
+          setTextContent(text);
+          setTextLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTextContent(null);
+          setTextLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [current]);
 
   // Preload ±2 adjacent images for smoother navigation
   useEffect(() => {
@@ -577,7 +638,27 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     setImageLoaded(true);
   };
 
+  const handleAudioSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const audio = audioRef.current;
+    if (!audio || !audioDuration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const ratio = Math.max(0, Math.min(1, x / rect.width));
+    audio.currentTime = ratio * audioDuration;
+  };
+
+  const toggleAudioPlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) audio.play();
+    else audio.pause();
+  };
+
   const isImage = current.mime.startsWith('image/');
+  const isVideo = current.mime.startsWith('video/');
+  const isAudio = current.mime.startsWith('audio/');
+  const isPdf = current.mime === 'application/pdf';
+  const isText = isTextMime(current.mime);
 
   return (
     <div
@@ -1028,7 +1109,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
         onClick={(e) => {
           e.stopPropagation();
           if (isImage) handleImageClick(e);
-          else if (!isZoomed) onClose();
+          else if (!isVideo && !isAudio && !isPdf && !isText && !isZoomed) onClose();
         }}
         onMouseDown={handleMouseDown}
         style={{ cursor: isZoomed ? 'grab' : 'default' }}
@@ -1054,28 +1135,163 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
             draggable={false}
             onLoad={handleImageLoad}
           />
-        ) : current.mime.startsWith('video/') ? (
-          <video
-            key={current.path}
-            src={url}
-            controls
-            autoPlay
-            className="max-w-full max-h-[90vh] rounded-lg"
-          />
-        ) : current.mime.startsWith('audio/') ? (
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-xl">
-            <p className="text-lg mb-4 text-gray-900 dark:text-white">{name}</p>
-            <audio key={current.path} src={url} controls autoPlay className="w-full" />
+        ) : isVideo ? (
+          <div className="relative" onClick={(e) => e.stopPropagation()}>
+            <video
+              key={current.path}
+              src={url}
+              controls
+              autoPlay
+              playsInline
+              preload="metadata"
+              className="max-w-full max-h-[90vh] rounded-lg"
+              style={{ outline: 'none' }}
+            />
           </div>
-        ) : (
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-xl text-center">
-            <p className="text-lg mb-4 text-gray-900 dark:text-white">{name}</p>
+        ) : isAudio ? (
+          <div
+            className="flex flex-col items-center gap-5 p-8 bg-gray-900/80 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl min-w-[340px] max-w-[460px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Music icon */}
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500/30 to-blue-500/30 flex items-center justify-center border border-white/10">
+              <svg className="w-10 h-10 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+              </svg>
+            </div>
+
+            {/* File name */}
+            <p className="text-white/80 text-sm font-medium text-center truncate max-w-full px-4">{name}</p>
+
+            {/* Progress bar */}
+            <div className="w-full px-2">
+              <div
+                className="w-full h-1.5 bg-white/10 rounded-full cursor-pointer group relative"
+                onClick={handleAudioSeek}
+              >
+                <div
+                  className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full relative group-hover:from-purple-400 group-hover:to-blue-400 transition-colors"
+                  style={{ width: `${audioDuration ? (audioCurrentTime / audioDuration) * 100 : 0}%` }}
+                >
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </div>
+              <div className="flex justify-between mt-2 text-[11px] text-white/40 font-mono">
+                <span>{formatTime(audioCurrentTime)}</span>
+                <span>{formatTime(audioDuration)}</span>
+              </div>
+            </div>
+
+            {/* Playback controls */}
+            <div className="flex items-center gap-6">
+              <button
+                onClick={(e) => { e.stopPropagation(); if (hasPrev) goPrev(); }}
+                className={`p-2 transition-colors ${hasPrev ? 'text-white/40 hover:text-white' : 'text-white/10 cursor-default'}`}
+                title="上一个"
+              >
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+                </svg>
+              </button>
+
+              <button
+                onClick={(e) => { e.stopPropagation(); toggleAudioPlay(); }}
+                className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+              >
+                {audioPlaying ? (
+                  <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                  </svg>
+                ) : (
+                  <svg className="w-7 h-7 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                )}
+              </button>
+
+              <button
+                onClick={(e) => { e.stopPropagation(); if (hasNext) goNext(); }}
+                className={`p-2 transition-colors ${hasNext ? 'text-white/40 hover:text-white' : 'text-white/10 cursor-default'}`}
+                title="下一个"
+              >
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Hidden audio element */}
+            <audio
+              ref={audioRef}
+              src={url}
+              autoPlay
+              onTimeUpdate={(e) => setAudioCurrentTime(e.currentTarget.currentTime)}
+              onLoadedMetadata={(e) => setAudioDuration(e.currentTarget.duration)}
+              onPlay={() => setAudioPlaying(true)}
+              onPause={() => setAudioPlaying(false)}
+              onEnded={() => setAudioPlaying(false)}
+            />
+          </div>
+        ) : isPdf ? (
+          <div
+            className="flex flex-col items-center gap-4 w-[85vw] max-w-[900px] h-[85vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <iframe
+              src={url}
+              className="w-full flex-1 rounded-lg border border-white/10 bg-white"
+              title={name}
+            />
             <a
               href={url}
               download={name}
-              className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white/80 rounded-lg transition-colors text-sm"
             >
-              Download
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              下载 PDF
+            </a>
+          </div>
+        ) : isText ? (
+          <div
+            className="w-[85vw] max-w-[900px] h-[80vh] flex flex-col bg-gray-900/90 backdrop-blur-xl rounded-xl border border-white/10 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-white/5">
+              <span className="text-white/60 text-xs font-mono">{name}</span>
+              <span className="text-white/30 text-xs">{current.mime}</span>
+            </div>
+            {/* Content */}
+            <div className="flex-1 overflow-auto p-4">
+              {textLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/50" />
+                </div>
+              ) : textContent !== null ? (
+                <pre className="text-white/80 text-sm font-mono whitespace-pre-wrap break-words leading-relaxed">
+                  <code>{textContent}</code>
+                </pre>
+              ) : (
+                <div className="flex items-center justify-center h-full text-white/40">
+                  无法加载文本内容
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-gray-900/80 backdrop-blur-xl p-8 rounded-xl text-center border border-white/10">
+            <p className="text-lg mb-4 text-white/80">{name}</p>
+            <a
+              href={url}
+              download={name}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500/80 hover:bg-blue-500 text-white rounded-lg transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              下载文件
             </a>
           </div>
         )}

@@ -417,6 +417,60 @@ files.post('/rename', authMiddleware, async (c) => {
   return c.json({ success: true, newPath });
 });
 
+// POST /api/batch-rename (protected) — batch rename multiple files
+files.post('/batch-rename', authMiddleware, async (c) => {
+  const { items } = await c.req.json<{ items: { oldPath: string; newName: string }[] }>();
+  if (!items?.length) return c.json({ error: 'No items specified' }, 400);
+
+  const bucket = c.env.R2_BUCKET;
+  const database = c.env.DB;
+  let success = 0;
+  let failed = 0;
+
+  for (const { oldPath, newName } of items) {
+    try {
+      const parts = oldPath.split('/');
+      parts[parts.length - 1] = newName;
+      const newPath = parts.join('/');
+
+      const srcObj = await r2.getObject(bucket, oldPath);
+      if (!srcObj) {
+        failed++;
+        continue;
+      }
+
+      // Copy to new key, delete old key
+      await r2.copyObject(bucket, oldPath, newPath);
+
+      // Update D1 metadata
+      await db.deleteFileMetadata(database, oldPath);
+      await db.upsertFileMetadata(database, {
+        path: newPath,
+        size: srcObj.size,
+        mime: srcObj.httpMetadata?.contentType || getMimeType(newName),
+        mtime: Math.floor(Date.now() / 1000),
+        created_at: new Date().toISOString(),
+      });
+
+      // Also move thumbnail if exists
+      const { getThumbKey } = await import('../services/thumbnail');
+      const oldThumbKey = getThumbKey(oldPath);
+      const newThumbKey = getThumbKey(newPath);
+      const thumbObj = await r2.getObject(bucket, oldThumbKey);
+      if (thumbObj) {
+        await r2.copyObject(bucket, oldThumbKey, newThumbKey);
+      }
+
+      success++;
+    } catch (err) {
+      console.error(`Batch rename failed for ${oldPath}:`, err);
+      failed++;
+    }
+  }
+
+  return c.json({ success, failed });
+});
+
 function getMimeType(filename: string): string {
   const ext = filename.split('.').pop()?.toLowerCase() || '';
   const mimeMap: Record<string, string> = {

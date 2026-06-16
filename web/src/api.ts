@@ -193,3 +193,26 @@ export async function discoverMedia(limit?: number, offset?: number): Promise<{ 
   const res = await fetch(`${API_BASE}/discover?${params}`);
   return res.json();
 }
+
+// --- Stats ---
+export interface Stats {
+  totalFiles: number;
+  totalSize: number;
+  fileTypes: Record<string, { count: number; size: number }>;
+  topDirs: { dir: string; count: number; size: number }[];
+  recentUploads: { path: string; size: number; mtime: number }[];
+}
+
+export async function getStats(): Promise<Stats> {
+  const res = await request('/admin/stats');
+  return res.json();
+}
+
+// --- Batch Rename ---
+export async function batchRename(items: { oldPath: string; newName: string }[]): Promise<{ success: number; failed: number }> {
+  const res = await request('/batch-rename', {
+    method: 'POST',
+    body: JSON.stringify({ items }),
+  });
+  return res.json();
+}

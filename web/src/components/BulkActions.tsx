@@ -5,12 +5,13 @@ interface Props {
   totalCount: number;
   onDelete: () => void;
   onDownload: () => void;
+  onBatchRename?: () => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
 }
 
 export default function BulkActions({
-  selectedCount, totalCount, onDelete, onDownload, onSelectAll, onDeselectAll,
+  selectedCount, totalCount, onDelete, onDownload, onBatchRename, onSelectAll, onDeselectAll,
 }: Props) {
   const [confirming, setConfirming] = useState(false);
 
@@ -56,6 +57,20 @@ export default function BulkActions({
           </svg>
           下载
         </button>
+
+        {/* Batch rename */}
+        {onBatchRename && (
+          <button
+            onClick={onBatchRename}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
+            title="批量重命名"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            重命名
+          </button>
+        )}
 
         {/* Delete selected */}
         {confirming ? (
