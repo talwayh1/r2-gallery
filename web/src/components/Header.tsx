@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import type { LayoutMode, ThemeMode } from '../types';
 
 interface Props {
@@ -7,6 +8,9 @@ interface Props {
   search: string;
   user: string | null;
   sidebarOpen: boolean;
+  sortBy: 'name' | 'size' | 'mtime';
+  sortOrder: 'asc' | 'desc';
+  typeFilter: string;
   onNavigate: (path: string) => void;
   onLayoutChange: (l: LayoutMode) => void;
   onThemeToggle: () => void;
@@ -19,15 +23,32 @@ interface Props {
   onCreateFolder?: () => void;
   onSearchClick?: () => void;
   onDiscoverClick?: () => void;
+  onSortChange?: (sort: 'name' | 'size' | 'mtime', order: 'asc' | 'desc') => void;
+  onTypeFilterChange?: (type: string) => void;
 }
 
 export default function Header({
-  dir, layout, theme, search, user, sidebarOpen,
+  dir, layout, theme, search, user, sidebarOpen, sortBy, sortOrder, typeFilter,
   onNavigate, onLayoutChange, onThemeToggle, onSearchChange,
   onSidebarToggle, onLogout, onRefresh, onLoginClick, onShortcutsClick,
-  onCreateFolder, onSearchClick, onDiscoverClick,
+  onCreateFolder, onSearchClick, onDiscoverClick, onSortChange, onTypeFilterChange,
 }: Props) {
   const breadcrumbs = dir ? dir.split('/') : [];
+  const [canInstall, setCanInstall] = useState(false);
+
+  // Listen for PWA install prompt availability
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setCanInstall(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    // Also hide button once app is installed
+    window.addEventListener('appinstalled', () => setCanInstall(false));
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+    };
+  }, []);
 
   return (
     <header className="h-14 flex items-center gap-3 px-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
@@ -55,6 +76,63 @@ export default function Header({
       </nav>
 
       <div className="flex-1" />
+
+      {/* Sort & Type filter controls */}
+      <div className="flex items-center gap-1 border-r border-gray-200 dark:border-gray-700 pr-2 mr-1">
+        {/* Sort buttons */}
+        {onSortChange && (
+          <div className="flex items-center gap-0.5">
+            {([
+              { key: 'name' as const, label: '名称', icon: '🔤' },
+              { key: 'size' as const, label: '大小', icon: '📏' },
+              { key: 'mtime' as const, label: '时间', icon: '🕐' },
+            ]).map((s) => (
+              <button
+                key={s.key}
+                onClick={() => {
+                  if (sortBy === s.key) {
+                    onSortChange(s.key, sortOrder === 'asc' ? 'desc' : 'asc');
+                  } else {
+                    onSortChange(s.key, 'asc');
+                  }
+                }}
+                className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                  sortBy === s.key
+                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+                title={`按${s.label}排序 (当前: ${sortBy === s.key ? (sortOrder === 'asc' ? '升序' : '降序') : '未选'})`}
+              >
+                {s.icon}{sortBy === s.key ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+              </button>
+            ))}
+          </div>
+        )}
+        {/* Type filter */}
+        {onTypeFilterChange && (
+          <div className="flex items-center gap-0.5">
+            {([
+              { key: 'all' as const, label: '全部', icon: '📁' },
+              { key: 'image' as const, label: '图片', icon: '🖼️' },
+              { key: 'video' as const, label: '视频', icon: '🎬' },
+              { key: 'audio' as const, label: '音频', icon: '🎵' },
+            ]).map((t) => (
+              <button
+                key={t.key}
+                onClick={() => onTypeFilterChange(t.key)}
+                className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                  typeFilter === t.key
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 font-medium'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+                title={t.label}
+              >
+                {t.icon}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="flex items-center gap-2">
         <button
@@ -139,6 +217,22 @@ export default function Header({
               d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
         </button>
+
+        {/* Install PWA button */}
+        {canInstall && (
+          <button
+            onClick={async () => {
+              const accepted = await (window as any).installPWA();
+              if (accepted) setCanInstall(false);
+            }}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            title="安装应用"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18v-6m0 0l-3 3m3-3l3 3M3 15V7a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+            </svg>
+          </button>
+        )}
 
         {user ? (
           <div className="flex items-center gap-2 pl-2 border-l border-gray-200 dark:border-gray-700">

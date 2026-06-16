@@ -32,8 +32,19 @@ export async function login(username: string, password: string) {
   return data;
 }
 
-export async function listFiles(dir: string = '') {
-  const res = await request(`/files?dir=${encodeURIComponent(dir)}`);
+export interface ListFilesParams {
+  dir?: string;
+  sort?: 'name' | 'size' | 'mtime';
+  order?: 'asc' | 'desc';
+  type?: 'image' | 'video' | 'audio' | 'document' | 'all';
+}
+
+export async function listFiles(dir: string = '', params?: ListFilesParams) {
+  const qs = new URLSearchParams({ dir });
+  if (params?.sort) qs.set('sort', params.sort);
+  if (params?.order) qs.set('order', params.order);
+  if (params?.type && params.type !== 'all') qs.set('type', params.type);
+  const res = await request(`/files?${qs.toString()}`);
   return res.json();
 }
 

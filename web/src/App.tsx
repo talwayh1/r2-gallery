@@ -4,6 +4,7 @@ import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { toast } from './hooks/useToast';
 import { listFiles, telegramLogin, getConfig, mkdir, getFileUrl } from './api';
+import type { ListFilesParams } from './api';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import FileGrid from './components/FileGrid';
@@ -40,6 +41,12 @@ export default function App() {
   // New features state
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [typeFilter, setTypeFilter] = useState<TypeFilterKind>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'size' | 'mtime'>(() => {
+    return (localStorage.getItem('sortBy') as 'name' | 'size' | 'mtime') || 'name';
+  });
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => {
+    return (localStorage.getItem('sortOrder') as 'asc' | 'desc') || 'asc';
+  });
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showDiscover, setShowDiscover] = useState(false);
@@ -51,7 +58,8 @@ export default function App() {
   const loadFiles = useCallback(async (d: string) => {
     setLoading(true);
     try {
-      const data = await listFiles(d);
+      const params: ListFilesParams = { sort: sortBy, order: sortOrder, type: typeFilter };
+      const data = await listFiles(d, params);
       setFiles(data.files || {});
       setDirs(data.dirs || []);
     } catch (e) {
@@ -59,7 +67,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [sortBy, sortOrder, typeFilter]);
 
   // Handle /view/* deep links on mount
   useEffect(() => {
@@ -85,7 +93,7 @@ export default function App() {
   // Clear selection and type filter when directory changes
   useEffect(() => {
     setSelected(new Set());
-    setTypeFilter('all');
+    // Don't reset typeFilter on dir change - keep user preference
   }, [dir]);
 
   // Fetch public config (Telegram bot username)
@@ -296,6 +304,9 @@ export default function App() {
         search={search}
         user={user}
         sidebarOpen={sidebarOpen}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        typeFilter={typeFilter}
         onNavigate={navigate}
         onLayoutChange={(l) => { setLayout(l); localStorage.setItem('layout', l); }}
         onThemeToggle={toggleTheme}
@@ -308,6 +319,13 @@ export default function App() {
         onCreateFolder={user ? () => setShowCreateFolder(true) : undefined}
         onSearchClick={() => setShowSearch(true)}
         onDiscoverClick={() => setShowDiscover(true)}
+        onSortChange={(sort, order) => {
+          setSortBy(sort);
+          setSortOrder(order);
+          localStorage.setItem('sortBy', sort);
+          localStorage.setItem('sortOrder', order);
+        }}
+        onTypeFilterChange={(t) => setTypeFilter(t as TypeFilterKind)}
       />
       <div className="flex flex-1 overflow-hidden relative">
         {/* Mobile sidebar overlay */}

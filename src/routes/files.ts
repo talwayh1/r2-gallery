@@ -9,9 +9,12 @@ const files = new Hono<{ Bindings: AppBindings; Variables: Variables }>();
 // Public: file browsing (GET /files, GET /file, GET /dirs)
 // Protected: file management (POST /mkdir, /delete, /rename)
 
-// GET /api/files?dir=path
+// GET /api/files?dir=path&sort=name|size|mtime&order=asc|desc&type=image|video|audio|all
 files.get('/files', async (c) => {
   const dir = c.req.query('dir') || '';
+  const sort = c.req.query('sort') || 'name';
+  const order = c.req.query('order') || 'asc';
+  const typeFilter = c.req.query('type') || 'all';
   const bucket = c.env.R2_BUCKET;
   const database = c.env.DB;
 
@@ -42,6 +45,20 @@ files.get('/files', async (c) => {
     if (name.includes('/')) continue; // Skip nested files
 
     const mimeType = getMimeType(name);
+
+    // Apply type filter
+    if (typeFilter !== 'all') {
+      const prefixMap: Record<string, string[]> = {
+        image: ['image/'],
+        video: ['video/'],
+        audio: ['audio/'],
+        document: ['application/pdf', 'text/', 'application/msword',
+          'application/vnd.openxmlformats', 'application/vnd.ms-'],
+      };
+      const prefixes = prefixMap[typeFilter];
+      if (prefixes && !prefixes.some((p) => mimeType.startsWith(p))) continue;
+    }
+
     filesMap[name] = {
       name,
       type: 'file',
@@ -54,9 +71,31 @@ files.get('/files', async (c) => {
 
   const dirs = result.directories.map(d => d.replace(prefix, '').replace(/\/$/, '')).filter(Boolean);
 
+  // Sort files
+  const sortedEntries = Object.entries(filesMap).sort(([, a], [, b]) => {
+    // Directories always first
+    if (a.type === 'directory' && b.type !== 'directory') return -1;
+    if (a.type !== 'directory' && b.type === 'directory') return 1;
+
+    let cmp = 0;
+    if (sort === 'size') {
+      cmp = a.size - b.size;
+    } else if (sort === 'mtime') {
+      cmp = a.mtime - b.mtime;
+    } else {
+      cmp = a.name.localeCompare(b.name, 'zh-CN');
+    }
+    return order === 'desc' ? -cmp : cmp;
+  });
+
+  const sortedFiles: Record<string, FileInfo> = {};
+  for (const [key, val] of sortedEntries) {
+    sortedFiles[key] = val;
+  }
+
   return c.json({
     path: dir,
-    files: filesMap,
+    files: sortedFiles,
     dirs,
   } as FileListResponse);
 });
