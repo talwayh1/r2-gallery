@@ -639,7 +639,16 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
         }
       } else if (e.key === ' ' || e.key === 's' || e.key === 'S') {
         e.preventDefault();
-        toggleSlideshow();
+        if (current?.mime.startsWith('video/')) {
+          // Space toggles play/pause when viewing a video
+          const videoEl = imgContainerRef.current?.querySelector('video');
+          if (videoEl) {
+            if (videoEl.paused) videoEl.play().catch(() => {});
+            else videoEl.pause();
+          }
+        } else {
+          toggleSlideshow();
+        }
       } else if (e.key === 'f' || e.key === 'F') {
         e.preventDefault();
         if (!document.fullscreenElement) {
@@ -655,7 +664,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [onClose, goPrev, goNext, url, name, isZoomed, scale, resetZoom, toggleSlideshow]);
+  }, [onClose, goPrev, goNext, url, name, isZoomed, scale, resetZoom, toggleSlideshow, current]);
 
   // Reset state on navigation
   useEffect(() => {
@@ -1506,19 +1515,36 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
         )}
 
         {isImage ? (
-          <img
-            key={current.path}
-            src={url}
-            alt={name}
-            className={`max-w-full max-h-[90vh] object-contain rounded-lg transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-            style={{
-              transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
-              transition: isDragging.current ? 'none' : 'transform 0.15s ease-out',
-              transformOrigin: 'center center',
-            }}
-            draggable={false}
-            onLoad={handleImageLoad}
-          />
+          <>
+            {/* Blurred thumbnail placeholder — shows while full image loads */}
+            {!imageLoaded && (
+              <img
+                src={getThumbUrl(current.path)}
+                alt=""
+                className="absolute inset-0 w-full h-full object-contain rounded-lg pointer-events-none"
+                style={{
+                  filter: 'blur(25px)',
+                  transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                  transition: isDragging.current ? 'none' : 'transform 0.15s ease-out',
+                  transformOrigin: 'center center',
+                }}
+                draggable={false}
+              />
+            )}
+            <img
+              key={current.path}
+              src={url}
+              alt={name}
+              className={`max-w-full max-h-[90vh] object-contain rounded-lg transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              style={{
+                transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                transition: isDragging.current ? 'none' : 'transform 0.15s ease-out',
+                transformOrigin: 'center center',
+              }}
+              draggable={false}
+              onLoad={handleImageLoad}
+            />
+          </>
         ) : isUrlFile ? (
           <div className="flex flex-col items-center gap-4 w-[85vw] max-w-[900px] h-[85vh]" onClick={(e) => e.stopPropagation()}>
             {urlLoading ? (
