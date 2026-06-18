@@ -26,6 +26,7 @@ const InstallPrompt = lazy(() => import('./components/InstallPrompt'));
 // TypeFilter: static import (matchFilter used in useMemo, component small enough to keep in main chunk)
 import TypeFilter, { matchFilter } from './components/TypeFilter';
 import type { TypeFilter as TypeFilterKind } from './components/TypeFilter';
+import SkeletonGrid from './components/SkeletonGrid';
 
 // Lazy-loaded components (not needed for first paint)
 const Lightbox = lazy(() => import('./components/Lightbox'));
@@ -758,8 +759,8 @@ export default function App() {
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+            <div className="py-4">
+              <SkeletonGrid />
             </div>
           ) : (
             <Suspense fallback={<LazyLoading />}>

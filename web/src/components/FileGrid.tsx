@@ -6,6 +6,65 @@ import { useVirtualGrid } from '../hooks/useVirtualGrid';
 import { toast } from '../hooks/useToast';
 import ShareDialog from './ShareDialog';
 
+/** Long-press threshold (ms) for mobile context menu */
+const LONG_PRESS_MS = 500;
+/** Max finger movement (px) before long-press is cancelled */
+const LONG_PRESS_MOVE_THRESHOLD = 15;
+
+/**
+ * Returns touch event handlers for long-press context menu on mobile.
+ * Pass a callback that receives (clientX, clientY).
+ */
+function useLongPress(
+  onLongPress: (clientX: number, clientY: number) => void,
+  deps: React.DependencyList
+) {
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressPos = useRef<{ x: number; y: number } | null>(null);
+  const longPressCancelled = useRef(false);
+
+  const clear = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    longPressPos.current = null;
+    longPressCancelled.current = false;
+  }, []);
+
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    clear();
+    const touch = e.touches[0];
+    longPressPos.current = { x: touch.clientX, y: touch.clientY };
+    longPressCancelled.current = false;
+    longPressTimer.current = setTimeout(() => {
+      if (!longPressCancelled.current && longPressPos.current) {
+        onLongPress(longPressPos.current.x, longPressPos.current.y);
+      }
+    }, LONG_PRESS_MS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clear, ...deps]);
+
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!longPressPos.current) return;
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - longPressPos.current.x);
+    const dy = Math.abs(touch.clientY - longPressPos.current.y);
+    if (dx > LONG_PRESS_MOVE_THRESHOLD || dy > LONG_PRESS_MOVE_THRESHOLD) {
+      longPressCancelled.current = true;
+      clear();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clear]);
+
+  const onTouchEnd = useCallback((e: React.TouchEvent) => {
+    longPressCancelled.current = true;
+    clear();
+  }, [clear]);
+
+  return { onTouchStart, onTouchMove, onTouchEnd, clear };
+}
+
 const FolderPicker = lazy(() => import('./FolderPicker'));
 
 interface Props {
@@ -236,6 +295,7 @@ function VirtualFileGrid({
   selected, isSelectionMode, renaming, draggingFile, sortKey,
   onOpen, onSelect, onRename, setRenaming, setInternalSelected,
   handleCardClick, handleContextMenu, handleDragStart, handleDragEnd,
+  touchLongPress, touchTargetRef,
 }: {
   files: FileItem[];
   columns: number;
@@ -257,6 +317,8 @@ function VirtualFileGrid({
   handleContextMenu: (e: React.MouseEvent, path: string, name: string, isDir: boolean) => void;
   handleDragStart: (e: React.DragEvent, path: string) => void;
   handleDragEnd: () => void;
+  touchLongPress: { onTouchStart: (e: React.TouchEvent) => void; onTouchMove: (e: React.TouchEvent) => void; onTouchEnd: (e: React.TouchEvent) => void };
+  touchTargetRef: React.MutableRefObject<{ path: string; name: string; isDir: boolean } | null>;
 }) {
   const [preview, setPreview] = useState<{ file: FileItem; rect: DOMRect } | null>(null);
   const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -307,6 +369,12 @@ function VirtualFileGrid({
               onClick={(e) => handleCardClick(e, file.path, file.mime)}
               onDoubleClick={() => onOpen(file.path, file.mime)}
               onContextMenu={(e) => handleContextMenu(e, file.path, file.name, false)}
+              onTouchStart={(e) => {
+                touchTargetRef.current = { path: file.path, name: file.name, isDir: false };
+                touchLongPress.onTouchStart(e);
+              }}
+              onTouchMove={touchLongPress.onTouchMove}
+              onTouchEnd={touchLongPress.onTouchEnd}
               onMouseEnter={(e) => handleMouseEnter(e, file)}
               onMouseLeave={handleMouseLeave}
               draggable={true}
@@ -602,6 +670,15 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
     setContextMenu({ x: e.clientX, y: e.clientY, path, name, isDir });
   };
 
+  // Ref to hold context menu target data for touch long-press
+  const touchTargetRef = useRef<{ path: string; name: string; isDir: boolean } | null>(null);
+  const touchLongPress = useLongPress((clientX, clientY) => {
+    if (touchTargetRef.current) {
+      setContextMenu({ x: clientX, y: clientY, ...touchTargetRef.current });
+      touchTargetRef.current = null;
+    }
+  }, []);
+
   const handleCardClick = (e: React.MouseEvent, path: string, mime: string) => {
     // If selection mode is active or Shift key, toggle selection
     if (isSelectionMode || e.shiftKey) {
@@ -688,6 +765,12 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
                 key={item.path}
                 onClick={() => onNavigate(item.path)}
                 onContextMenu={(e) => handleContextMenu(e, item.path, item.name, true)}
+                onTouchStart={(e) => {
+                  touchTargetRef.current = { path: item.path, name: item.name, isDir: true };
+                  touchLongPress.onTouchStart(e);
+                }}
+                onTouchMove={touchLongPress.onTouchMove}
+                onTouchEnd={touchLongPress.onTouchEnd}
                 onDragOver={(e) => handleDragOverFolder(e, item.path)}
                 onDragLeave={handleDragLeaveFolder}
                 onDrop={(e) => handleDropOnFolder(e, item.path)}
@@ -751,6 +834,8 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
             handleContextMenu={handleContextMenu}
             handleDragStart={handleDragStart}
             handleDragEnd={handleDragEnd}
+            touchLongPress={touchLongPress}
+            touchTargetRef={touchTargetRef}
           />
         </div>
       )}
