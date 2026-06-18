@@ -430,12 +430,14 @@ export default function App() {
   }, []);
 
   // Render layout based on current layout mode
-  const renderLayout = (files: Record<string, FileItem>, dirs: string[], selected: Set<string>, isUploadZone: boolean = false) => {
+  const renderLayout = (files: Record<string, FileItem>, dirs: string[], selected: Set<string>) => {
     const commonProps = {
       files,
       dirs,
       dirCounts,
       currentDir: dir,
+      sortBy,
+      sortOrder,
       onNavigate: navigate,
       onOpen: openLightbox,
       onDelete: handleDelete,
@@ -752,52 +754,20 @@ export default function App() {
             />
           </div>
 
-          {user ? (
-            <UploadDropzone ref={uploadDropzoneRef} dir={dir} onUpload={() => loadFiles(dir)}>
-              {loading ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
-                </div>
-              ) : (
-                <Suspense fallback={<LazyLoading />}>
-                  {layout === 'grid' || layout === 'rows' ? (
-                    <FileGrid key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore, sortBy, sortOrder, onMove: () => loadFiles(dir) }} />
-                  ) : layout === 'list' ? (
-                    <FileList key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
-                  ) : layout === 'blocks' ? (
-                    <FileBlocks key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
-                  ) : layout === 'columns' ? (
-                    <FileColumns key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
-                  ) : layout === 'imagelist' ? (
-                    <FileImageList key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
-                  ) : (
-                    <FileGrid key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore, sortBy, sortOrder, onMove: () => loadFiles(dir) }} />
-                  )}
-                </Suspense>
-              )}
-            </UploadDropzone>
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+            </div>
           ) : (
-            loading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
-              </div>
-            ) : (
-              <Suspense fallback={<LazyLoading />}>
-                {layout === 'grid' || layout === 'rows' ? (
-                  <FileGrid key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore, sortBy, sortOrder, onMove: () => loadFiles(dir) }} />
-                ) : layout === 'list' ? (
-                  <FileList key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
-                ) : layout === 'blocks' ? (
-                  <FileBlocks key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
-                ) : layout === 'columns' ? (
-                  <FileColumns key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
-                ) : layout === 'imagelist' ? (
-                  <FileImageList key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
-                ) : (
-                  <FileGrid key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore, sortBy, sortOrder, onMove: () => loadFiles(dir) }} />
-                )}
-              </Suspense>
-            )
+            <Suspense fallback={<LazyLoading />}>
+              {user ? (
+                <UploadDropzone ref={uploadDropzoneRef} dir={dir} onUpload={() => loadFiles(dir)}>
+                  {renderLayout(filteredFiles, dirs, selected)}
+                </UploadDropzone>
+              ) : (
+                renderLayout(filteredFiles, dirs, selected)
+              )}
+            </Suspense>
           )}
         </main>
       </div>
