@@ -747,7 +747,7 @@ export default function App() {
               ) : (
                 <Suspense fallback={<LazyLoading />}>
                   {layout === 'grid' || layout === 'rows' ? (
-                    <FileGrid key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore, onMove: () => loadFiles(dir) }} />
+                    <FileGrid key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore, sortBy, sortOrder, onMove: () => loadFiles(dir) }} />
                   ) : layout === 'list' ? (
                     <FileList key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
                   ) : layout === 'blocks' ? (
@@ -757,7 +757,7 @@ export default function App() {
                   ) : layout === 'imagelist' ? (
                     <FileImageList key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
                   ) : (
-                    <FileGrid key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore, onMove: () => loadFiles(dir) }} />
+                    <FileGrid key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore, sortBy, sortOrder, onMove: () => loadFiles(dir) }} />
                   )}
                 </Suspense>
               )}
@@ -770,7 +770,7 @@ export default function App() {
             ) : (
               <Suspense fallback={<LazyLoading />}>
                 {layout === 'grid' || layout === 'rows' ? (
-                  <FileGrid key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore, onMove: () => loadFiles(dir) }} />
+                  <FileGrid key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore, sortBy, sortOrder, onMove: () => loadFiles(dir) }} />
                 ) : layout === 'list' ? (
                   <FileList key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
                 ) : layout === 'blocks' ? (
@@ -780,7 +780,7 @@ export default function App() {
                 ) : layout === 'imagelist' ? (
                   <FileImageList key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
                 ) : (
-                  <FileGrid key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore, onMove: () => loadFiles(dir) }} />
+                  <FileGrid key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore, sortBy, sortOrder, onMove: () => loadFiles(dir) }} />
                 )}
               </Suspense>
             )

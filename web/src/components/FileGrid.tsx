@@ -23,10 +23,35 @@ interface Props {
   onLoadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
+  /** Parent sort from Header — keeps FileGrid in sync with API-returned order */
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
-type SortKey = 'name' | 'size' | 'date';
+type SortKey = 'name' | 'size' | 'mtime' | 'kind' | 'shuffle';
 type SortDir = 'asc' | 'desc';
+
+/** Get sort order index for 'kind' sort: image → video → audio → document → other */
+function getKindOrder(mime: string): number {
+  if (mime.startsWith('image/')) return 0;
+  if (mime.startsWith('video/')) return 1;
+  if (mime.startsWith('audio/')) return 2;
+  if (mime === 'application/pdf' || mime.startsWith('text/') ||
+      mime === 'application/json' || mime === 'application/xml' ||
+      mime === 'application/javascript' || mime === 'application/x-yaml') return 3;
+  return 4;
+}
+
+/** Seeded hash for deterministic shuffle order */
+function seededHash(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const chr = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + chr;
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
 
 function getIcon(mime: string) {
   if (mime.startsWith('image/')) return '🖼️';
@@ -381,7 +406,7 @@ function VirtualFileGrid({
               )}
               <span className="text-[10px] text-gray-400">
                 {formatSize(file.size)}
-                {file.mtime > 0 && sortKey === 'date' && (
+                {file.mtime > 0 && sortKey === 'mtime' && (
                   <span className="ml-1">{formatDate(file.mtime)}</span>
                 )}
               </span>
@@ -423,12 +448,13 @@ function VirtualFileGrid({
   );
 }
 
-export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore }: Props) {
+export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, sortBy, sortOrder }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>('name');
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  // Initialize sort from parent when provided, otherwise default to name/asc
+  const [sortKey, setSortKey] = useState<SortKey>((sortBy as SortKey) || 'name');
+  const [sortDir, setSortDir] = useState<SortDir>(sortOrder || 'asc');
   const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
   const [draggingFile, setDraggingFile] = useState<string | null>(null);
   const [shareDialog, setShareDialog] = useState<{ path: string; name: string } | null>(null);
@@ -446,6 +472,16 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
     gap: 12,
     overscan: 2,
   });
+
+  // Sync local sort state when parent sortBy/sortOrder changes (from Header)
+  useEffect(() => {
+    if (sortBy && ['name', 'size', 'mtime', 'kind', 'shuffle'].includes(sortBy)) {
+      setSortKey(sortBy as SortKey);
+    }
+    if (sortOrder === 'asc' || sortOrder === 'desc') {
+      setSortDir(sortOrder);
+    }
+  }, [sortBy, sortOrder]);
 
   // Infinite scroll sentinel
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -498,6 +534,9 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
       let cmp = 0;
       if (sortKey === 'name') cmp = a.name.localeCompare(b.name);
       else if (sortKey === 'size') cmp = a.size - b.size;
+      else if (sortKey === 'mtime') cmp = a.mtime - b.mtime;
+      else if (sortKey === 'kind') cmp = getKindOrder(a.mime) - getKindOrder(b.mime) || a.name.localeCompare(b.name);
+      else if (sortKey === 'shuffle') cmp = seededHash(a.name) - seededHash(b.name);
       else cmp = a.mtime - b.mtime;
       return sortDir === 'asc' ? cmp : -cmp;
     });
@@ -617,7 +656,7 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
       {(dirs.length > 0 || Object.keys(files).length > 0) && (
         <div className="flex items-center gap-1 mb-3 text-xs">
           <span className="text-gray-400 dark:text-gray-500 mr-1">排序:</span>
-          {(['name', 'size', 'date'] as SortKey[]).map((key) => (
+          {(['name', 'size', 'mtime', 'kind', 'shuffle'] as SortKey[]).map((key) => (
             <button
               key={key}
               onClick={() => toggleSort(key)}
@@ -627,7 +666,7 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
                   : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
-              {key === 'name' ? '名称' : key === 'size' ? '大小' : '日期'}
+              {key === 'name' ? '名称' : key === 'size' ? '大小' : key === 'mtime' ? '时间' : key === 'kind' ? '类型' : '随机'}
               {sortKey === key && <SortIndicator active dir={sortDir} />}
             </button>
           ))}
