@@ -94,6 +94,8 @@ export default function App() {
   const pendingViewRef = useRef<string | null>(null);
   const initialDirSetRef = useRef(false);
   const uploadDropzoneRef = useRef<UploadDropzoneHandle>(null);
+  const sidebarTouchXRef = useRef<number>(0);
+  const sidebarTouchActiveRef = useRef<boolean>(false);
 
   const loadFiles = useCallback(async (d: string, append = false) => {
     setLoading(true);
@@ -738,13 +740,34 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden relative">
         {/* Mobile sidebar overlay */}
         {isMobile && sidebarOpen && (
-          <div className="fixed inset-0 z-30 bg-black/40 top-14" onClick={() => setSidebarOpen(false)} />
+          <div
+            className="fixed inset-0 z-30 bg-black/40 top-14 transition-opacity duration-300"
+            onClick={() => setSidebarOpen(false)}
+            onTouchStart={() => {}}
+          />
         )}
         {/* Sidebar */}
-        <div className={`
-          ${sidebarOpen ? 'block' : 'hidden'}
-          ${isMobile ? 'fixed left-0 top-14 bottom-0 z-40 shadow-xl' : ''}
-        `}>
+        <div
+          onTouchStart={(e) => {
+            sidebarTouchXRef.current = e.touches[0].clientX;
+            sidebarTouchActiveRef.current = true;
+          }}
+          onTouchMove={(e) => {
+            if (!sidebarTouchActiveRef.current) return;
+            const dx = sidebarTouchXRef.current - e.touches[0].clientX;
+            // Swipe left 80px+ to close sidebar
+            if (dx > 80) {
+              sidebarTouchActiveRef.current = false;
+              setSidebarOpen(false);
+            }
+          }}
+          onTouchEnd={() => {
+            sidebarTouchActiveRef.current = false;
+          }}
+          className={`transition-transform duration-300 ${
+            sidebarOpen ? 'block' : 'hidden'
+          } ${isMobile ? 'fixed left-0 top-14 bottom-0 z-40 shadow-xl' : ''}`}
+        >
           <Sidebar currentDir={dir} onNavigate={navigate} onClose={isMobile ? () => setSidebarOpen(false) : undefined} />
         </div>
         {/* Main content */}
