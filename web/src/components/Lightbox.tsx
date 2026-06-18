@@ -6,6 +6,7 @@ import MarkdownEditor from './MarkdownEditor';
 // Lazy-load heavy components (hls.js is ~400KB)
 const HlsPlayer = lazy(() => import('./HlsPlayer'));
 const PanoramaViewer = lazy(() => import('./PanoramaViewer'));
+const KeyboardShortcutsLightbox = lazy(() => import('./KeyboardShortcuts'));
 
 interface MediaItem {
   path: string;
@@ -201,6 +202,9 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
 
   // Panorama state
   const [showPanorama, setShowPanorama] = useState(false);
+
+  // Keyboard shortcuts help state
+  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
 
   // Mobile detection
   const [isMobile, setIsMobile] = useState(false);
@@ -610,6 +614,10 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore when typing in inputs inside the lightbox (e.g. MarkdownEditor)
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
       if (e.key === 'Escape') {
         if (isZoomed) {
           resetZoom();
@@ -619,6 +627,10 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goPrev(); }
       else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); goNext(); }
       else if (e.key === 'i') setShowInfo((s) => !s);
+      else if (e.key === 'h' || e.key === 'H') {
+        e.preventDefault();
+        setShowKeyboardHelp((s) => !s);
+      }
       else if (e.key === '+' || e.key === '=') {
         e.preventDefault();
         setScale((s) => Math.min(s * 1.3, 8));
@@ -1783,6 +1795,11 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       {showPanorama && current?.mime.startsWith('image/') && (
         <Suspense fallback={<div className="fixed inset-0 bg-black z-50 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/50" /></div>}>
           <PanoramaViewer src={url} onClose={() => setShowPanorama(false)} />
+        </Suspense>
+      )}
+      {showKeyboardHelp && (
+        <Suspense fallback={null}>
+          <KeyboardShortcutsLightbox onClose={() => setShowKeyboardHelp(false)} />
         </Suspense>
       )}
     </div>

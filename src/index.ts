@@ -15,10 +15,10 @@ import webdavRouter from './routes/webdav';
 
 const app = new Hono<{ Bindings: AppBindings; Variables: Variables }>();
 
-// Global error handler
+// Global error handler (no stack trace leak to clients)
 app.onError((err, c) => {
   console.error('Worker error:', err);
-  return c.json({ error: err.message, stack: err.stack }, 500);
+  return c.json({ error: err.message }, 500);
 });
 
 // CORS
