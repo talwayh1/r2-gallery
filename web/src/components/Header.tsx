@@ -299,7 +299,7 @@ export default function Header({
           className={`flex items-center gap-2 px-2 py-1.5 sm:px-3 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:border-blue-400 dark:hover:border-blue-500 transition-colors cursor-text ${
             isMobile ? 'w-auto' : 'w-40'
           }`}
-          title="搜索所有文件 (/)"
+          title="搜索所有文件 (Ctrl+K / )"
         >
           <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />

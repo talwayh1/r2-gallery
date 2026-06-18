@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { searchFiles, getFileUrl, type SearchResult } from '../api';
+import { searchFiles, getFileUrl, getThumbUrl, type SearchResult } from '../api';
 
 interface Props {
   onClose: () => void;
@@ -246,7 +246,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
                   {/* Thumbnail or icon */}
                   {r.mime.startsWith('image/') ? (
                     <img
-                      src={getFileUrl(r.path)}
+                      src={getThumbUrl(r.path)}
                       alt=""
                       className="w-10 h-10 rounded-lg object-cover shrink-0 bg-gray-100 dark:bg-gray-700"
                       loading="lazy"

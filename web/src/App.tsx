@@ -271,6 +271,9 @@ export default function App() {
       } else if (e.key === '/' && !e.shiftKey) {
         e.preventDefault();
         setShowSearch(true);
+      } else if ((e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        setShowSearch(true);
       } else if (e.key === 'r' || e.key === 'R') {
         if (!e.ctrlKey && !e.metaKey) {
           e.preventDefault();
