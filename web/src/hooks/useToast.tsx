@@ -8,30 +8,31 @@ interface Toast {
   type: ToastType;
   message: string;
   duration: number;
+  action?: { label: string; onClick: () => void };
 }
 
 interface ToastContextValue {
   toasts: Toast[];
-  addToast: (type: ToastType, message: string, duration?: number) => void;
+  addToast: (type: ToastType, message: string, duration?: number, action?: { label: string; onClick: () => void }) => void;
   removeToast: (id: string) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-let globalAddToast: ((type: ToastType, message: string, duration?: number) => void) | null = null;
+let globalAddToast: ((type: ToastType, message: string, duration?: number, action?: { label: string; onClick: () => void }) => void) | null = null;
 
 /** Call this from anywhere to show a toast without hooks */
-export function toast(type: ToastType, message: string, duration?: number) {
-  globalAddToast?.(type, message, duration);
+export function toast(type: ToastType, message: string, duration?: number, action?: { label: string; onClick: () => void }) {
+  globalAddToast?.(type, message, duration, action);
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const counterRef = useRef(0);
 
-  const addToast = useCallback((type: ToastType, message: string, duration = 3000) => {
+  const addToast = useCallback((type: ToastType, message: string, duration = 3000, action?: { label: string; onClick: () => void }) => {
     const id = `toast-${++counterRef.current}`;
-    setToasts((prev) => [...prev, { id, type, message, duration }]);
+    setToasts((prev) => [...prev, { id, type, message, duration, action }]);
   }, []);
 
   const removeToast = useCallback((id: string) => {
@@ -105,13 +106,26 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
         ${colors[toast.type]}
         ${exiting ? 'animate-toast-exit' : 'animate-toast-enter'}
       `}
-      onClick={() => { setExiting(true); setTimeout(() => onRemove(toast.id), 200); }}
+      onClick={() => { if (!toast.action) { setExiting(true); setTimeout(() => onRemove(toast.id), 200); } }}
       role="alert"
     >
       <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icons[toast.type]} />
       </svg>
       <span className="flex-1">{toast.message}</span>
+      {toast.action && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toast.action!.onClick();
+            setExiting(true);
+            setTimeout(() => onRemove(toast.id), 200);
+          }}
+          className="shrink-0 px-3 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-semibold transition-colors"
+        >
+          {toast.action.label}
+        </button>
+      )}
     </div>
   );
 }

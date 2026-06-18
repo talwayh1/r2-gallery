@@ -172,6 +172,16 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   // Panorama state
   const [showPanorama, setShowPanorama] = useState(false);
 
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
   // Cursor auto-hide for video (3s idle)
   const [cursorVisible, setCursorVisible] = useState(true);
   const cursorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -772,18 +782,139 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       </button>
 
       {/* File info bar */}
-      <div className="absolute top-4 left-4 text-white/70 text-sm z-10 flex items-center gap-3">
-        <span className="font-medium text-white/90">{name}</span>
-        {ext && <span className="px-1.5 py-0.5 text-[10px] bg-white/10 rounded">{ext}</span>}
-        {current.size ? <span className="text-xs text-white/50">{formatSize(current.size)}</span> : null}
+      <div className={`absolute top-4 left-4 text-white/70 text-sm z-10 flex items-center gap-3 ${isMobile ? 'max-w-[45%]' : ''}`}>
+        <span className={`font-medium text-white/90 ${isMobile ? 'truncate max-w-[120px]' : ''}`}>{name}</span>
+        {ext && <span className={`px-1.5 py-0.5 text-[10px] bg-white/10 rounded ${isMobile ? 'hidden' : ''}`}>{ext}</span>}
+        {current.size ? <span className={`text-xs text-white/50 ${isMobile ? 'hidden' : ''}`}>{formatSize(current.size)}</span> : null}
         {imageDimensions && (
-          <span className="text-xs text-white/40">{imageDimensions.w} × {imageDimensions.h}</span>
+          <span className={`text-xs text-white/40 ${isMobile ? 'hidden' : ''}`}>{imageDimensions.w} × {imageDimensions.h}</span>
         )}
-        <span className="text-white/40">({index + 1} / {items.length})</span>
+        <span className="text-white/40 whitespace-nowrap">({index + 1} / {items.length})</span>
       </div>
 
-      {/* Action buttons */}
-      <div className="absolute top-4 right-16 flex items-center gap-1 z-10">
+      {/* Action buttons - top bar on desktop, bottom bar on mobile */}
+      {isMobile ? (
+        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent pt-8 pb-2 px-2 z-10 flex items-center justify-center gap-1 overflow-x-auto scrollbar-hide"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Zoom controls (images only) */}
+          {isImage && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); setScale((s) => Math.min(s * 1.3, 8)); }}
+                className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
+                title="放大 (+)"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                </svg>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); const ns = scale / 1.3; if (ns <= 1.05) resetZoom(); else setScale(ns); }}
+                className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
+                title="缩小 (-)"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                </svg>
+              </button>
+              {isZoomed && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); resetZoom(); }}
+                  className="p-2 text-blue-400 hover:text-blue-300 hover:bg-white/10 rounded-lg transition-colors shrink-0"
+                  title="重置缩放 (0)"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                </button>
+              )}
+              <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
+            </>
+          )}
+          {/* Slideshow play/pause */}
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleSlideshow(); }}
+            className={`p-2 rounded-lg transition-colors shrink-0 ${slideshowPlaying ? 'text-blue-400 bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+            title={slideshowPlaying ? '暂停幻灯片 (Space)' : '播放幻灯片 (Space)'}
+          >
+            {slideshowPlaying ? (
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg>
+            ) : (
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+            )}
+          </button>
+          {/* Slideshow settings */}
+          <div className="relative shrink-0">
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowSlideshowMenu(!showSlideshowMenu); }}
+              className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              title="幻灯片设置"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+              </svg>
+            </button>
+          </div>
+          <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
+          {/* Info toggle */}
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowInfo(!showInfo); }}
+            className={`p-2 rounded-lg transition-colors shrink-0 ${showInfo ? 'text-blue-400 bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+            title="文件信息 (I)"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+          {/* Panorama button (for wide images) */}
+          {isImage && imageDimensions && imageDimensions.w / imageDimensions.h > 2 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowPanorama(true); }}
+              className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
+              title="全景查看"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
+            </button>
+          )}
+          {/* Poster upload (for videos) */}
+          {isVideo && (
+            <button
+              onClick={(e) => { e.stopPropagation(); posterInputRef.current?.click(); }}
+              className={`p-2 rounded-lg transition-colors shrink-0 ${posterUploading ? 'text-blue-400 animate-pulse' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+              title="设置视频封面"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+            </button>
+          )}
+          <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
+          {/* Copy link */}
+          <button
+            onClick={(e) => { e.stopPropagation(); handleCopyLink(); }}
+            className={`p-2 rounded-lg transition-colors shrink-0 ${copied ? 'text-green-400' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+            title={copied ? '已复制!' : '复制分享链接'}
+          >
+            {copied ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+            )}
+          </button>
+          {/* Download */}
+          <a
+            href={url}
+            download={name}
+            onClick={(e) => e.stopPropagation()}
+            className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
+            title="下载 (D)"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+          </a>
+        </div>
+      ) : (
+        <div className="absolute top-4 right-16 flex items-center gap-1 z-10">
         {/* Zoom controls (images only) */}
         {isImage && (
           <>
@@ -854,10 +985,27 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
           </button>
           {showSlideshowMenu && (
             <div
-              className="absolute right-0 top-full mt-1 bg-gray-900/95 backdrop-blur-md border border-white/10 rounded-xl p-3 z-20 min-w-[200px] text-sm"
+              className={`${
+                isMobile
+                  ? 'fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-md border-t border-white/10 rounded-t-xl p-4 z-20 text-sm max-h-[50vh] overflow-y-auto'
+                  : 'absolute right-0 top-full mt-1 bg-gray-900/95 backdrop-blur-md border border-white/10 rounded-xl p-3 z-20 min-w-[200px] text-sm'
+              }`}
               onClick={(e) => e.stopPropagation()}
             >
-              <h5 className="text-white/50 text-xs font-medium uppercase tracking-wider mb-2">幻灯片设置</h5>
+              {isMobile && (
+                <div className="flex items-center justify-between mb-3">
+                  <h5 className="text-white/70 text-xs font-medium uppercase tracking-wider">幻灯片设置</h5>
+                  <button
+                    onClick={() => setShowSlideshowMenu(false)}
+                    className="p-1 text-white/50 hover:text-white"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+              {!isMobile && <h5 className="text-white/50 text-xs font-medium uppercase tracking-wider mb-2">幻灯片设置</h5>}
 
               {/* Speed */}
               <div className="mb-3">
@@ -966,6 +1114,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
           </svg>
         </a>
       </div>
+      )}
 
       {/* Zoom level indicator */}
       {isImage && isZoomed && (
@@ -977,10 +1126,28 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       {/* Info panel */}
       {showInfo && (
         <div
-          className="absolute top-16 right-4 bg-gray-900/95 backdrop-blur-md border border-white/10 rounded-xl p-4 z-10 min-w-[260px] text-sm"
+          className={`${
+            isMobile
+              ? 'fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-md border-t border-white/10 rounded-t-xl p-4 z-20 max-h-[60vh] overflow-y-auto text-sm'
+              : 'absolute top-16 right-4 bg-gray-900/95 backdrop-blur-md border border-white/10 rounded-xl p-4 z-10 min-w-[260px] text-sm'
+          }`}
           onClick={(e) => e.stopPropagation()}
         >
-          <h4 className="text-white font-medium mb-3">文件信息</h4>
+          {/* Close button on mobile */}
+          {isMobile && (
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-white font-medium">文件信息</h4>
+              <button
+                onClick={() => setShowInfo(false)}
+                className="p-1 text-white/50 hover:text-white"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+          {!isMobile && <h4 className="text-white font-medium mb-3">文件信息</h4>}
           <div className="space-y-2 text-white/70">
             <div className="flex justify-between gap-4">
               <span className="text-white/40">名称</span>

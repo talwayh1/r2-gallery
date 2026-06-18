@@ -3,7 +3,7 @@ import type { FileItem, LayoutMode } from './types';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { toast } from './hooks/useToast';
-import { listFiles, telegramLogin, getConfig, setCdnDomain, mkdir, getFileUrl, deleteItems, renameItem, downloadZip, createFile, createUrlShortcut, moveItem, copyFile, duplicateFile } from './api';
+import { listFiles, telegramLogin, getConfig, setCdnDomain, mkdir, getFileUrl, deleteItems, restoreTrash, renameItem, downloadZip, createFile, createUrlShortcut, moveItem, copyFile, duplicateFile } from './api';
 import type { ListFilesParams } from './api';
 import { UploadQueueProvider } from './hooks/useUploadQueue';
 
@@ -532,7 +532,19 @@ export default function App() {
 
     try {
       await deleteItems(paths);
-      toast('success', `已删除 ${paths.length} 个项目`);
+      // Show toast with undo button (longer duration)
+      toast('success', `已删除 ${paths.length} 个项目`, 6000, {
+        label: '撤销',
+        onClick: async () => {
+          try {
+            await restoreTrash(paths);
+            toast('success', '已恢复删除的项目');
+            loadFiles(dir);
+          } catch (e) {
+            toast('error', `恢复失败: ${(e as Error).message}`);
+          }
+        },
+      });
       loadFiles(dir);
     } catch (e) {
       toast('error', `删除失败: ${(e as Error).message}`);
