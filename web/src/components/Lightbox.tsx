@@ -810,6 +810,13 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
         </svg>
       </button>
 
+      {/* Swipe-down drag handle (mobile only) — visual hint that you can swipe down to close */}
+      {isMobile && (
+        <div className={`absolute top-2 left-1/2 -translate-x-1/2 z-10 transition-opacity duration-200 ${!uiVisible ? 'opacity-0' : ''}`}>
+          <div className="w-10 h-1 rounded-full bg-white/30" />
+        </div>
+      )}
+
       {/* File info bar */}
       <div className={`absolute top-4 left-4 text-white/70 text-sm z-10 flex items-center gap-3 transition-opacity duration-200 ${isMobile && !uiVisible ? 'opacity-0 pointer-events-none' : ''} ${isMobile ? 'max-w-[45%]' : ''}`}>
         <span className={`font-medium text-white/90 ${isMobile ? 'truncate max-w-[120px]' : ''}`}>{name}</span>

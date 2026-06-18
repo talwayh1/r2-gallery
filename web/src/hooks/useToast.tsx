@@ -32,7 +32,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const addToast = useCallback((type: ToastType, message: string, duration = 3000, action?: { label: string; onClick: () => void }) => {
     const id = `toast-${++counterRef.current}`;
-    setToasts((prev) => [...prev, { id, type, message, duration, action }]);
+    setToasts((prev) => {
+      const next = [...prev, { id, type, message, duration, action }];
+      // Keep max 3 visible toasts to avoid screen overflow
+      return next.length > 3 ? next.slice(next.length - 3) : next;
+    });
   }, []);
 
   const removeToast = useCallback((id: string) => {
