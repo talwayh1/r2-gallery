@@ -25,15 +25,18 @@ function useSwipeGesture({
   onSwipeLeft,
   onSwipeRight,
   onSwipeDown,
+  onSwipeProgress,
   enabled,
 }: {
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
   onSwipeDown: () => void;
+  onSwipeProgress?: (dy: number) => void;
   enabled: boolean;
 }) {
   const touchStart = useRef<{ x: number; y: number; time: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const swipeDownConfirmed = useRef(false);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -43,6 +46,20 @@ function useSwipeGesture({
       if (!enabled) return;
       const touch = e.touches[0];
       touchStart.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+      swipeDownConfirmed.current = false;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!enabled || !touchStart.current) return;
+      const touch = e.touches[0];
+      const dy = touch.clientY - touchStart.current.y;
+      const dt = Date.now() - touchStart.current.time;
+
+      // Only show progress for downward swipes (not left/right navigations)
+      if (dy > 0 && dt < 500 && onSwipeProgress) {
+        if (dy > 30) swipeDownConfirmed.current = true;
+        onSwipeProgress(dy);
+      }
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
@@ -63,18 +80,31 @@ function useSwipeGesture({
       if (absDx > absDy && absDx > minDist) {
         if (dx < 0) onSwipeLeft();
         else onSwipeRight();
-      } else if (absDy > absDx && absDy > minDist && dy > 0) {
-        onSwipeDown();
+      } else if (dy > 0 && (swipeDownConfirmed.current || (absDy > minDist))) {
+        // Close if dragged past threshold (30% of viewport height)
+        const closeThreshold = Math.min(window.innerHeight * 0.3, 200);
+        if (dy >= closeThreshold) {
+          onSwipeDown();
+        } else {
+          // Snap back with animation
+          onSwipeProgress?.(0);
+          swipeDownConfirmed.current = false;
+        }
+      } else {
+        // Snap back if not a downward swipe or too short
+        if (dy > 0) onSwipeProgress?.(0);
       }
     };
 
     el.addEventListener('touchstart', handleTouchStart, { passive: true });
+    el.addEventListener('touchmove', handleTouchMove, { passive: true });
     el.addEventListener('touchend', handleTouchEnd, { passive: true });
     return () => {
       el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
       el.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [onSwipeLeft, onSwipeRight, onSwipeDown, enabled]);
+  }, [onSwipeLeft, onSwipeRight, onSwipeDown, onSwipeProgress, enabled]);
 
   return containerRef;
 }
@@ -192,6 +222,9 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   // Video poster upload state
   const [posterUploading, setPosterUploading] = useState(false);
   const posterInputRef = useRef<HTMLInputElement>(null);
+
+  // Swipe-to-close drag feedback
+  const [swipeDragY, setSwipeDragY] = useState(0);
 
   const handlePosterUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -391,10 +424,17 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   }, [showSlideshowMenu]);
 
   // Disable swipe gestures when zoomed
+  const handleClose = useCallback(() => {
+    setSwipeDragY(0);
+    stopSlideshow();
+    onClose();
+  }, [stopSlideshow, onClose]);
+
   const swipeRef = useSwipeGesture({
     onSwipeLeft: goNext,
     onSwipeRight: goPrev,
-    onSwipeDown: () => { stopSlideshow(); onClose(); },
+    onSwipeDown: handleClose,
+    onSwipeProgress: setSwipeDragY,
     enabled: !isZoomed,
   });
 
@@ -574,8 +614,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
         if (isZoomed) {
           resetZoom();
         } else {
-          stopSlideshow();
-          onClose();
+          handleClose();
         }
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goPrev(); }
       else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); goNext(); }
@@ -794,9 +833,18 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   return (
     <div
       ref={swipeRef}
+      style={swipeDragY > 0 ? {
+        transform: `translateY(${swipeDragY}px) scale(${Math.max(0.92, 1 - swipeDragY / (window.innerHeight * 0.6))})`,
+        opacity: Math.max(0.5, 1 - swipeDragY / (window.innerHeight * 0.5)),
+        transition: 'none',
+      } : swipeDragY === 0 ? {
+        transform: 'translateY(0px) scale(1)',
+        opacity: 1,
+        transition: 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.35s ease',
+      } : {}}
       className={`fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm touch-pan-y ${!cursorVisible && isVideo ? 'cursor-none' : ''}`}
       onClick={(e) => {
-        if (!isZoomed) { stopSlideshow(); onClose(); }
+        if (!isZoomed) handleClose();
       }}
       onMouseMove={() => {
         setCursorVisible(true);
@@ -808,7 +856,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     >
       {/* Close button */}
       <button
-        onClick={() => { stopSlideshow(); onClose(); }}
+        onClick={() => { handleClose(); }}
         className={`absolute top-4 right-4 p-2 text-white/70 hover:text-white z-10 transition-opacity duration-200 ${isMobile && !uiVisible ? 'opacity-0 pointer-events-none' : ''}`}
         title="关闭 (Esc)"
       >
@@ -842,7 +890,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
         >
           {/* Close button - thumb accessible on mobile */}
           <button
-            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            onClick={(e) => { e.stopPropagation(); handleClose(); }}
             className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
             title="关闭 (Esc)"
           >
@@ -1445,7 +1493,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
         onClick={(e) => {
           e.stopPropagation();
           if (isImage) handleImageClick(e);
-          else if (!isVideo && !isAudio && !isPdf && !isText && !isZoomed) onClose();
+          else if (!isVideo && !isAudio && !isPdf && !isText && !isZoomed) handleClose();
         }}
         onMouseDown={handleMouseDown}
         style={{ cursor: isZoomed ? 'grab' : 'default' }}

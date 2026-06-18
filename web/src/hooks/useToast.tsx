@@ -76,9 +76,13 @@ function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: 
   );
 }
 
-/** Individual toast with auto-dismiss and slide animation */
+/** Individual toast with auto-dismiss, slide animation, and swipe-to-dismiss */
 function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) => void }) {
   const [exiting, setExiting] = useState(false);
+  const [swipeX, setSwipeX] = useState(0);
+  const [swipeAnimating, setSwipeAnimating] = useState(false);
+  const toastRef = useRef<HTMLDivElement>(null);
+  const touchStartRef = useRef<number | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -87,6 +91,35 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
     }, toast.duration);
     return () => clearTimeout(timer);
   }, [toast.id, toast.duration, onRemove]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartRef.current = e.touches[0].clientX;
+    setSwipeAnimating(false);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartRef.current === null) return;
+    const dx = e.touches[0].clientX - touchStartRef.current;
+    // Clamp to natural movement, apply rubber-band resistance beyond 150px
+    const clamped = dx > 0 ? Math.min(dx, 150 + (dx - 150) * 0.3) : Math.max(dx, -(150 + Math.abs(dx + 150) * 0.3));
+    setSwipeX(clamped);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartRef.current === null) return;
+    touchStartRef.current = null;
+    if (Math.abs(swipeX) > 80) {
+      // Swipe far enough — dismiss
+      setSwipeAnimating(true);
+      setSwipeX(swipeX > 0 ? window.innerWidth : -window.innerWidth);
+      setTimeout(() => onRemove(toast.id), 250);
+    } else {
+      // Snap back
+      setSwipeAnimating(true);
+      setSwipeX(0);
+      setTimeout(() => setSwipeAnimating(false), 250);
+    }
+  };
 
   const icons: Record<ToastType, string> = {
     success: 'M5 13l4 4L19 7',
@@ -104,13 +137,22 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
 
   return (
     <div
+      ref={toastRef}
       className={`
         pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg
         text-white text-sm font-medium backdrop-blur-sm
         ${colors[toast.type]}
         ${exiting ? 'animate-toast-exit' : 'animate-toast-enter'}
       `}
+      style={{
+        transform: swipeX !== 0 ? `translateX(${swipeX}px)` : undefined,
+        transition: swipeAnimating ? 'transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)' : undefined,
+        touchAction: 'pan-y',
+      }}
       onClick={() => { if (!toast.action) { setExiting(true); setTimeout(() => onRemove(toast.id), 200); } }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       role="alert"
     >
       <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
