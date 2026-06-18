@@ -186,6 +186,9 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   const [cursorVisible, setCursorVisible] = useState(true);
   const cursorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Mobile UI visibility — tap image to toggle controls
+  const [uiVisible, setUiVisible] = useState(true);
+
   // Video poster upload state
   const [posterUploading, setPosterUploading] = useState(false);
   const posterInputRef = useRef<HTMLInputElement>(null);
@@ -487,6 +490,28 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     };
   }, [scale, offset, isZoomed, current, zoomAtPoint, resetZoom]);
 
+  // === Preload adjacent images for instant navigation ===
+  useEffect(() => {
+    if (!current) return;
+    const adjacentIndices = [index - 1, index + 1].filter(
+      (i) => i >= 0 && i < items.length
+    );
+    const pendingImgs: HTMLImageElement[] = [];
+    for (const i of adjacentIndices) {
+      const item = items[i];
+      if (item.mime.startsWith('image/')) {
+        const img = new Image();
+        img.src = getFileUrl(item.path);
+        pendingImgs.push(img);
+      }
+    }
+    return () => {
+      for (const img of pendingImgs) {
+        img.src = '';
+      }
+    };
+  }, [index, items, current]);
+
   // === Mouse drag when zoomed ===
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!isZoomed) return;
@@ -521,12 +546,12 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     };
   }, [isZoomed]);
 
-  // === Double click/tap to toggle zoom ===
+  // === Double click/tap to toggle zoom, single tap to toggle UI ===
   const lastClickTime = useRef(0);
   const handleImageClick = useCallback((e: React.MouseEvent) => {
     const now = Date.now();
     if (now - lastClickTime.current < 300) {
-      // Double click
+      // Double click — toggle zoom
       if (isZoomed) {
         resetZoom();
       } else {
@@ -534,9 +559,13 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       }
       lastClickTime.current = 0;
     } else {
+      // Single click — toggle UI visibility on mobile
+      if (isMobile) {
+        setUiVisible((v) => !v);
+      }
       lastClickTime.current = now;
     }
-  }, [isZoomed, zoomAtPoint, resetZoom]);
+  }, [isZoomed, isMobile, zoomAtPoint, resetZoom]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -773,7 +802,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       {/* Close button */}
       <button
         onClick={() => { stopSlideshow(); onClose(); }}
-        className="absolute top-4 right-4 p-2 text-white/70 hover:text-white z-10"
+        className={`absolute top-4 right-4 p-2 text-white/70 hover:text-white z-10 transition-opacity duration-200 ${isMobile && !uiVisible ? 'opacity-0 pointer-events-none' : ''}`}
         title="关闭 (Esc)"
       >
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -782,7 +811,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       </button>
 
       {/* File info bar */}
-      <div className={`absolute top-4 left-4 text-white/70 text-sm z-10 flex items-center gap-3 ${isMobile ? 'max-w-[45%]' : ''}`}>
+      <div className={`absolute top-4 left-4 text-white/70 text-sm z-10 flex items-center gap-3 transition-opacity duration-200 ${isMobile && !uiVisible ? 'opacity-0 pointer-events-none' : ''} ${isMobile ? 'max-w-[45%]' : ''}`}>
         <span className={`font-medium text-white/90 ${isMobile ? 'truncate max-w-[120px]' : ''}`}>{name}</span>
         {ext && <span className={`px-1.5 py-0.5 text-[10px] bg-white/10 rounded ${isMobile ? 'hidden' : ''}`}>{ext}</span>}
         {current.size ? <span className={`text-xs text-white/50 ${isMobile ? 'hidden' : ''}`}>{formatSize(current.size)}</span> : null}
@@ -794,7 +823,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
 
       {/* Action buttons - top bar on desktop, bottom bar on mobile */}
       {isMobile ? (
-        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent pt-8 pb-2 px-2 z-10 flex items-center justify-center gap-1 overflow-x-auto scrollbar-hide"
+        <div className={`fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent pt-8 pb-2 px-2 z-10 flex items-center justify-center gap-1 overflow-x-auto scrollbar-hide transition-opacity duration-200 ${!uiVisible ? 'opacity-0 pointer-events-none' : ''}`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Zoom controls (images only) */}
@@ -1118,7 +1147,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
 
       {/* Zoom level indicator */}
       {isImage && isZoomed && (
-        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 bg-black/70 text-white/80 text-xs px-3 py-1.5 rounded-full z-10 pointer-events-none select-none">
+        <div className={`absolute bottom-16 left-1/2 -translate-x-1/2 bg-black/70 text-white/80 text-xs px-3 py-1.5 rounded-full z-10 pointer-events-none select-none transition-opacity duration-200 ${isMobile && !uiVisible ? 'opacity-0' : ''}`}>
           {Math.round(scale * 100)}% · 拖动平移 · 双击重置
         </div>
       )}
@@ -1309,7 +1338,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       {hasPrev && (
         <button
           onClick={(e) => { e.stopPropagation(); goPrev(); }}
-          className="absolute left-4 top-1/2 -translate-y-1/2 p-3 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-colors z-10"
+          className={`absolute left-4 top-1/2 -translate-y-1/2 p-3 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all z-10 ${isMobile && !uiVisible ? 'opacity-0 pointer-events-none' : ''}`}
           title="上一张 (←)"
         >
           <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1322,7 +1351,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       {hasNext && (
         <button
           onClick={(e) => { e.stopPropagation(); goNext(); }}
-          className="absolute right-4 top-1/2 -translate-y-1/2 p-3 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-colors z-10"
+          className={`absolute right-4 top-1/2 -translate-y-1/2 p-3 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all z-10 ${isMobile && !uiVisible ? 'opacity-0 pointer-events-none' : ''}`}
           title="下一张 (→)"
         >
           <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1343,7 +1372,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       )}
 
       {/* Mobile hints */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 text-white/30 text-xs md:hidden pointer-events-none select-none">
+      <div className={`absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 text-white/30 text-xs md:hidden pointer-events-none select-none transition-opacity duration-200 ${!uiVisible ? 'opacity-0' : ''}`}>
         {isZoomed ? (
           <span>双指缩放 · 拖动平移 · 双击重置</span>
         ) : (
