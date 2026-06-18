@@ -182,10 +182,14 @@ metadata.get('/search', async (c) => {
 
   const database = c.env.DB;
   const limit = parseInt(c.req.query('limit') || '50');
+  const offset = Math.max(parseInt(c.req.query('offset') || '0'), 0);
 
   try {
-    const { searchFiles } = await import('../services/db');
-    const results = await searchFiles(database, query, Math.min(limit, 100));
+    const { searchFiles, searchFilesCount } = await import('../services/db');
+    const [results, total] = await Promise.all([
+      searchFiles(database, query, Math.min(limit, 100), offset),
+      searchFilesCount(database, query),
+    ]);
 
     // Map to client-friendly format
     const files = results.map((r) => ({
@@ -198,7 +202,7 @@ metadata.get('/search', async (c) => {
       dir: r.path.includes('/') ? r.path.substring(0, r.path.lastIndexOf('/')) : '',
     }));
 
-    return c.json({ results: files, query, total: files.length });
+    return c.json({ results: files, query, total });
   } catch (err: any) {
     console.error('Search error:', err);
     return c.json({ error: 'Search failed', results: [] }, 500);

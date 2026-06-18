@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from 'react';
 import type { FileItem, LayoutMode } from './types';
+import type { UploadDropzoneHandle } from './components/UploadDropzone';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { toast } from './hooks/useToast';
@@ -91,6 +92,7 @@ export default function App() {
   // Track pending /view/* deep link
   const pendingViewRef = useRef<string | null>(null);
   const initialDirSetRef = useRef(false);
+  const uploadDropzoneRef = useRef<UploadDropzoneHandle>(null);
 
   const loadFiles = useCallback(async (d: string, append = false) => {
     setLoading(true);
@@ -751,7 +753,7 @@ export default function App() {
           </div>
 
           {user ? (
-            <UploadDropzone dir={dir} onUpload={() => loadFiles(dir)}>
+            <UploadDropzone ref={uploadDropzoneRef} dir={dir} onUpload={() => loadFiles(dir)}>
               {loading ? (
                 <div className="flex items-center justify-center h-64">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
@@ -915,11 +917,7 @@ export default function App() {
         <>
           <div className="fixed bottom-6 right-6 z-30">
             <button
-              onClick={() => {
-                // Trigger the hidden file input in UploadDropzone
-                const input = document.querySelector<HTMLInputElement>('input[type="file"][multiple]:not([webkitdirectory])');
-                input?.click();
-              }}
+              onClick={() => uploadDropzoneRef.current?.openFileDialog()}
               className="w-14 h-14 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-110"
               title="上传文件"
             >
