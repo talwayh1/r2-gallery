@@ -14,13 +14,38 @@ initMobileCompat();
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then((reg) => {
-      // Check for updates periodically
-      reg.update().catch(() => {});
+      // Periodic update check every 10 minutes
+      setInterval(() => { reg.update().catch(() => {}); }, 10 * 60 * 1000);
+
+      // Detect new service worker waiting to activate
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (!newWorker) return;
+
+        newWorker.addEventListener('statechange', () => {
+          // 'installed' + existing controller = new version deployed
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            window.dispatchEvent(new CustomEvent('sw-update'));
+          }
+        });
+      });
     }).catch((err) => {
       console.warn('SW registration failed:', err);
     });
   });
 }
+
+// Global handler to apply SW update when user confirms
+(window as any).applySWUpdate = async () => {
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!reg?.waiting) return false;
+  reg.waiting.postMessage('skipWaiting');
+  // Reload when the new SW takes over
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload();
+  });
+  return true;
+};
 
 // Capture PWA install prompt for custom install UI
 let deferredPrompt: any = null;

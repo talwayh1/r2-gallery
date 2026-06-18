@@ -4,9 +4,10 @@ export default function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
 
+  // Listen for PWA install prompt
   useEffect(() => {
-    // Check if user previously dismissed
     const wasDismissed = localStorage.getItem('pwa-install-dismissed');
     if (wasDismissed) {
       setDismissed(true);
@@ -16,19 +17,32 @@ export default function InstallPrompt() {
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      // Show banner after a short delay for better UX
       setTimeout(() => setVisible(true), 2000);
     };
 
-    window.addEventListener('beforeinstallprompt', handler);
-    window.addEventListener('appinstalled', () => {
+    const installedHandler = () => {
       setVisible(false);
       setDeferredPrompt(null);
-    });
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', installedHandler);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', installedHandler);
     };
+  }, []);
+
+  // Listen for SW update notification (from main.tsx sw-update event)
+  useEffect(() => {
+    const handler = () => {
+      setUpdateAvailable(true);
+      // Hide install prompt if showing — update takes priority
+      setVisible(false);
+    };
+    window.addEventListener('sw-update', handler);
+    return () => window.removeEventListener('sw-update', handler);
   }, []);
 
   const handleInstall = async () => {
@@ -47,6 +61,37 @@ export default function InstallPrompt() {
     localStorage.setItem('pwa-install-dismissed', '1');
   };
 
+  const handleUpdate = async () => {
+    setUpdateAvailable(false);
+    await (window as any).applySWUpdate?.();
+  };
+
+  // === Update Available Banner ===
+  if (updateAvailable) {
+    return (
+      <div className="bg-gradient-to-r from-amber-500 to-orange-600 text-white px-4 py-2.5 flex items-center justify-between gap-4 shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span className="text-sm font-medium truncate">
+            新版本可用 — 点击刷新以获取最新功能
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={handleUpdate}
+            className="px-3 py-1 text-sm font-medium bg-white/20 hover:bg-white/30 rounded-md transition-colors whitespace-nowrap"
+          >
+            立即刷新
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // === PWA Install Banner ===
   if (!visible || dismissed || !deferredPrompt) return null;
 
   return (

@@ -16,6 +16,8 @@ const PRECACHE_URLS = [
 ];
 
 // Install: precache shell assets + enable navigation preload
+// NOTE: skipWaiting is NOT called here — it's deferred until the user
+// chooses to update via the PWA update notification banner.
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => {
@@ -26,7 +28,6 @@ self.addEventListener('install', (event) => {
   if (self.registration.navigationPreload) {
     event.waitUntil(self.registration.navigationPreload.enable());
   }
-  self.skipWaiting();
 });
 
 // Activate: clean old caches

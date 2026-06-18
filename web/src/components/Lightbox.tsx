@@ -601,6 +601,13 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       } else if (e.key === ' ' || e.key === 's' || e.key === 'S') {
         e.preventDefault();
         toggleSlideshow();
+      } else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
       }
     };
     document.addEventListener('keydown', handleKeyDown);
