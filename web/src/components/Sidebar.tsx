@@ -4,6 +4,7 @@ import { listDirs } from '../api';
 interface Props {
   currentDir: string;
   onNavigate: (path: string) => void;
+  onClose?: () => void;
 }
 
 interface DirNode {
@@ -48,7 +49,7 @@ let dirTreeCache: DirNode[] | null = null;
 let dirTreeCacheTime = 0;
 const DIR_TREE_CACHE_TTL = 30_000; // 30 seconds
 
-export default function Sidebar({ currentDir, onNavigate }: Props) {
+export default function Sidebar({ currentDir, onNavigate, onClose }: Props) {
   const [tree, setTree] = useState<DirNode[]>(dirTreeCache || []);
   const [expanded, setExpanded] = useState<Set<string>>(loadExpanded);
   const [sort, setSort] = useState<SortMode>(
@@ -129,7 +130,7 @@ export default function Sidebar({ currentDir, onNavigate }: Props) {
         <div className="flex items-center justify-between mb-2">
           <button
             onClick={() => onNavigate('')}
-            className={`flex-1 flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors ${
+            className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors ${
               !currentDir
                 ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                 : 'hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -140,6 +141,17 @@ export default function Sidebar({ currentDir, onNavigate }: Props) {
             </svg>
             Home
           </button>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg shrink-0"
+              title="关闭侧边栏"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
         <select
           value={sort}

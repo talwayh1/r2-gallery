@@ -725,7 +725,7 @@ export default function App() {
           ${sidebarOpen ? 'block' : 'hidden'}
           ${isMobile ? 'fixed left-0 top-14 bottom-0 z-40 shadow-xl' : ''}
         `}>
-          <Sidebar currentDir={dir} onNavigate={navigate} />
+          <Sidebar currentDir={dir} onNavigate={navigate} onClose={isMobile ? () => setSidebarOpen(false) : undefined} />
         </div>
         {/* Main content */}
         <main className={`flex-1 overflow-auto transition-opacity duration-200 ${isMobile ? 'p-2' : 'p-4'}`} style={{ opacity: loading ? 0.6 : 1 }}>
