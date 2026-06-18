@@ -837,9 +837,20 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
 
       {/* Action buttons - top bar on desktop, bottom bar on mobile */}
       {isMobile ? (
-        <div className={`fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent pt-8 pb-2 px-2 z-10 flex items-center justify-center gap-1 overflow-x-auto scrollbar-hide transition-opacity duration-200 ${!uiVisible ? 'opacity-0 pointer-events-none' : ''}`}
+        <div className={`fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent pt-8 pb-2 px-2 z-10 flex items-center justify-center gap-0.5 overflow-x-auto scrollbar-hide transition-opacity duration-200 ${!uiVisible ? 'opacity-0 pointer-events-none' : ''}`}
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Close button - thumb accessible on mobile */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
+            title="关闭 (Esc)"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
           {/* Zoom controls (images only) */}
           {isImage && (
             <>
@@ -872,7 +883,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
                   </svg>
                 </button>
               )}
-              <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
+              <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             </>
           )}
           {/* Slideshow play/pause */}

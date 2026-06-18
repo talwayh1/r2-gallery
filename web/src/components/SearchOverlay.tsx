@@ -185,9 +185,9 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
   const hasMore = total > results.length;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-start justify-center pt-[15vh]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-start justify-center sm:pt-[15vh] pt-[5vh] overscroll-contain" onClick={onClose} style={{ height: '100dvh' }}>
       <div
-        className="w-full max-w-2xl mx-4 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+        className="w-full max-w-2xl mx-4 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden self-start mt-[5vh] sm:mt-0"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search input */}
@@ -215,7 +215,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
         </div>
 
         {/* Results / Recent searches */}
-        <div className="max-h-[60vh] overflow-y-auto">
+        <div className="max-h-[50dvh] sm:max-h-[60vh] overflow-y-auto overscroll-contain">
           {/* Loading indicator */}
           {loading && (
             <div className="flex items-center justify-center py-8">
