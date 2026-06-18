@@ -123,7 +123,7 @@ export default function FileImageList({ files, dirs, currentDir, onNavigate, onO
                     onClick={(e) => e.stopPropagation()}
                   />
                 ) : (
-                  <div className="font-medium text-sm truncate">{item.name}</div>
+                  <div className="font-medium text-sm truncate">{item.name.endsWith('.url') ? item.name.slice(0, -4) : item.name}</div>
                 )}
                 <div className="text-xs text-gray-500">
                   {isDir ? '文件夹' : formatSize(item.size)}

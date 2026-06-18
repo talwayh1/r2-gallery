@@ -152,9 +152,237 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
               </div>
               <p className="text-xs text-gray-500">隐藏后可通过 ?login=1 访问登录页</p>
               <hr className="dark:border-gray-700" />
+
+              {/* Upload restrictions */}
+              <h4 className="text-sm font-medium mt-4">上传限制</h4>
+              <div>
+                <label className="block text-sm mb-1">允许的文件类型</label>
+                <input
+                  type="text"
+                  value={settings.upload_allowed_file_types || ''}
+                  onChange={(e) => setSettings({ ...settings, upload_allowed_file_types: e.target.value })}
+                  placeholder="留空允许所有类型，如: jpg,png,pdf,image/*"
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
+                />
+                <p className="text-xs text-gray-500 mt-1">逗号分隔的扩展名或 MIME 类型，如: jpg,png,pdf,image/*</p>
+              </div>
+              <div>
+                <label className="block text-sm mb-1">最大文件大小 (MB)</label>
+                <input
+                  type="number"
+                  value={settings.upload_max_filesize ? Math.round(parseInt(settings.upload_max_filesize) / 1024 / 1024) : ''}
+                  onChange={(e) => setSettings({ ...settings, upload_max_filesize: e.target.value ? String(parseInt(e.target.value) * 1024 * 1024) : '0' })}
+                  placeholder="0 = 无限制"
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">文件存在时处理</label>
+                <select
+                  value={settings.upload_exists || 'increment'}
+                  onChange={(e) => setSettings({ ...settings, upload_exists: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
+                >
+                  <option value="increment">自动重命名 (文件-2.jpg)</option>
+                  <option value="overwrite">覆盖</option>
+                  <option value="fail">拒绝上传</option>
+                </select>
+              </div>
+              <hr className="dark:border-gray-700" />
+
+              {/* Cache settings */}
+              <h4 className="text-sm font-medium mt-4">缓存设置</h4>
+              <div>
+                <label className="block text-sm mb-1">缓存清理间隔 (天)</label>
+                <input
+                  type="number"
+                  value={settings.clean_cache_interval || '7'}
+                  onChange={(e) => setSettings({ ...settings, clean_cache_interval: e.target.value })}
+                  placeholder="0 = 禁用自动清理"
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
+                />
+                <p className="text-xs text-gray-500 mt-1">0 = 禁用自动清理</p>
+              </div>
+              <hr className="dark:border-gray-700" />
+
               <button onClick={handleCleanCache} disabled={loading} className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50">
-                {loading ? '清理中...' : '清理缓存'}
+                {loading ? '清理中...' : '手动清理缓存'}
               </button>
+
+              <hr className="dark:border-gray-700" />
+
+              {/* File/Folder Filters */}
+              <h4 className="text-sm font-medium mt-4">文件过滤</h4>
+              <div>
+                <label className="block text-sm mb-1">包含文件 (正则)</label>
+                <input
+                  type="text"
+                  value={settings.files_include || ''}
+                  onChange={(e) => setSettings({ ...settings, files_include: e.target.value })}
+                  placeholder="如: \\.jpe?g$"
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">排除文件 (正则)</label>
+                <input
+                  type="text"
+                  value={settings.files_exclude || ''}
+                  onChange={(e) => setSettings({ ...settings, files_exclude: e.target.value })}
+                  placeholder="如: ^_hidden"
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">包含目录 (正则)</label>
+                <input
+                  type="text"
+                  value={settings.dirs_include || ''}
+                  onChange={(e) => setSettings({ ...settings, dirs_include: e.target.value })}
+                  placeholder="如: ^public"
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">排除目录 (正则)</label>
+                <input
+                  type="text"
+                  value={settings.dirs_exclude || ''}
+                  onChange={(e) => setSettings({ ...settings, dirs_exclude: e.target.value })}
+                  placeholder="如: (\\/|^)[@.]"
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
+                />
+              </div>
+
+              <hr className="dark:border-gray-700" />
+
+              {/* Start Path */}
+              <h4 className="text-sm font-medium mt-4">启动路径</h4>
+              <div>
+                <label className="block text-sm mb-1">初始目录</label>
+                <input
+                  type="text"
+                  value={settings.start_path || ''}
+                  onChange={(e) => setSettings({ ...settings, start_path: e.target.value })}
+                  placeholder="留空显示根目录"
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
+                />
+              </div>
+
+              <hr className="dark:border-gray-700" />
+
+              {/* Video Autoplay */}
+              <h4 className="text-sm font-medium mt-4">视频设置</h4>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">视频自动播放</span>
+                <button onClick={() => setSettings({ ...settings, video_autoplay: settings.video_autoplay === 'true' ? 'false' : 'true' })}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${settings.video_autoplay === 'true' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.video_autoplay === 'true' ? 'left-5' : 'left-0.5'}`} />
+                </button>
+              </div>
+
+              <hr className="dark:border-gray-700" />
+
+              {/* Download Mode */}
+              <h4 className="text-sm font-medium mt-4">下载设置</h4>
+              <div>
+                <label className="block text-sm mb-1">下载模式</label>
+                <select
+                  value={settings.download_mode || 'browser'}
+                  onChange={(e) => setSettings({ ...settings, download_mode: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
+                >
+                  <option value="browser">浏览器下载</option>
+                  <option value="zip">ZIP 压缩下载</option>
+                </select>
+              </div>
+
+              <hr className="dark:border-gray-700" />
+
+              {/* Drag Behavior */}
+              <h4 className="text-sm font-medium mt-4">拖拽行为</h4>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">拖拽时复制 (而非移动)</span>
+                <button onClick={() => setSettings({ ...settings, drag_copy: settings.drag_copy === 'true' ? 'false' : 'true' })}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${settings.drag_copy === 'true' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.drag_copy === 'true' ? 'left-5' : 'left-0.5'}`} />
+                </button>
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-sm">拖拽时提示确认</span>
+                <button onClick={() => setSettings({ ...settings, drag_prompt: settings.drag_prompt === 'true' ? 'false' : 'true' })}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${settings.drag_prompt === 'true' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.drag_prompt === 'true' ? 'left-5' : 'left-0.5'}`} />
+                </button>
+              </div>
+
+              <hr className="dark:border-gray-700" />
+
+              {/* Menu Settings */}
+              <h4 className="text-sm font-medium mt-4">侧边栏菜单</h4>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">启用侧边栏菜单</span>
+                <button onClick={() => setSettings({ ...settings, menu_enabled: settings.menu_enabled === 'false' ? 'true' : 'false' })}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${settings.menu_enabled !== 'false' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.menu_enabled !== 'false' ? 'left-5' : 'left-0.5'}`} />
+                </button>
+              </div>
+              <div>
+                <label className="block text-sm mb-1">菜单最大深度</label>
+                <input
+                  type="number"
+                  value={settings.menu_max_depth || '5'}
+                  onChange={(e) => setSettings({ ...settings, menu_max_depth: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">菜单排序</label>
+                <select
+                  value={settings.menu_sort || 'name_asc'}
+                  onChange={(e) => setSettings({ ...settings, menu_sort: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
+                >
+                  <option value="name_asc">名称升序</option>
+                  <option value="name_desc">名称降序</option>
+                  <option value="date_asc">日期升序</option>
+                  <option value="date_desc">日期降序</option>
+                </select>
+              </div>
+
+              <hr className="dark:border-gray-700" />
+
+              {/* Image Cache Controls */}
+              <h4 className="text-sm font-medium mt-4">图片缓存</h4>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">启用 localStorage 缓存</span>
+                <button onClick={() => setSettings({ ...settings, localStorage_cache: settings.localStorage_cache === 'false' ? 'true' : 'false' })}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${settings.localStorage_cache !== 'false' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.localStorage_cache !== 'false' ? 'left-5' : 'left-0.5'}`} />
+                </button>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">启用 JavaScript 缓存</span>
+                <button onClick={() => setSettings({ ...settings, javascript_cache: settings.javascript_cache === 'false' ? 'true' : 'false' })}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${settings.javascript_cache !== 'false' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.javascript_cache !== 'false' ? 'left-5' : 'left-0.5'}`} />
+                </button>
+              </div>
+
+              <hr className="dark:border-gray-700" />
+
+              {/* Custom CSS */}
+              <h4 className="text-sm font-medium mt-4">自定义样式</h4>
+              <div>
+                <label className="block text-sm mb-1">自定义 CSS</label>
+                <textarea
+                  value={settings.custom_css || ''}
+                  onChange={(e) => setSettings({ ...settings, custom_css: e.target.value })}
+                  placeholder="输入自定义 CSS..."
+                  rows={4}
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm font-mono"
+                />
+              </div>
             </div>
           )}
 
@@ -181,12 +409,41 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
               </div>
               <div className="space-y-2">
                 {users.map((user) => (
-                  <div key={user.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div>
-                      <span className="font-medium">{user.username}</span>
-                      <span className="ml-2 text-xs text-gray-500">({user.role})</span>
+                  <div key={user.id} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-medium">{user.username}</span>
+                        <span className="ml-2 text-xs text-gray-500">({user.role})</span>
+                      </div>
+                      <button onClick={() => handleDeleteUser(user.id)} className="text-red-500 hover:text-red-700 text-sm">删除</button>
                     </div>
-                    <button onClick={() => handleDeleteUser(user.id)} className="text-red-500 hover:text-red-700 text-sm">删除</button>
+                    {/* Per-user settings */}
+                    <div className="mt-2 space-y-1">
+                      <input
+                        type="text"
+                        placeholder="根目录 (留空=默认)"
+                        className="w-full px-2 py-1 text-xs border rounded dark:bg-gray-700 dark:border-gray-600"
+                        onBlur={async (e) => {
+                          if (e.target.value) {
+                            try {
+                              await saveSettings({ [`user_${user.username}_root`]: e.target.value });
+                            } catch {}
+                          }
+                        }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="包含文件 (正则，如: \\.jpg$)"
+                        className="w-full px-2 py-1 text-xs border rounded dark:bg-gray-700 dark:border-gray-600"
+                        onBlur={async (e) => {
+                          if (e.target.value) {
+                            try {
+                              await saveSettings({ [`user_${user.username}_files_include`]: e.target.value });
+                            } catch {}
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>

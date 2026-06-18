@@ -20,6 +20,7 @@ export interface FileListResponse {
   path: string;
   files: Record<string, FileInfo>;
   dirs: string[];
+  dirCounts?: Record<string, number>;
   cursor?: string;
   hasMore?: boolean;
 }

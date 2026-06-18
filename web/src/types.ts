@@ -11,6 +11,7 @@ export interface FileListResponse {
   path: string;
   files: Record<string, FileItem>;
   dirs: string[];
+  dirCounts?: Record<string, number>;
   cursor?: string;
   hasMore?: boolean;
 }

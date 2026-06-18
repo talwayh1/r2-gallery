@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { discoverMedia, getFileUrl, type DiscoverFile } from '../api';
+import { discoverMedia, getThumbUrl, type DiscoverFile } from '../api';
 
 interface Props {
   onClose: () => void;
@@ -111,7 +111,7 @@ export default function DiscoverPage({ onClose, onNavigate, onOpenFile }: Props)
                       <div className="shimmer w-full aspect-square" />
                     )}
                     <img
-                      src={getFileUrl(file.path)}
+                      src={getThumbUrl(file.path)}
                       alt={file.name}
                       loading="lazy"
                       className={`w-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0 absolute'}`}

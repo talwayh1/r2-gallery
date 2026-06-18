@@ -5,10 +5,11 @@ interface Props {
   path: string;
   name: string;
   autoplay?: boolean;
+  loop?: boolean;
   onEnded?: () => void;
 }
 
-export default function VideoPlayer({ path, name, autoplay = true, onEnded }: Props) {
+export default function VideoPlayer({ path, name, autoplay = true, loop = false, onEnded }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -114,6 +115,7 @@ export default function VideoPlayer({ path, name, autoplay = true, onEnded }: Pr
         src={url}
         className="w-full max-h-[85vh] cursor-pointer"
         autoPlay={autoplay}
+        loop={loop}
         playsInline
         preload="metadata"
         onClick={togglePlay}

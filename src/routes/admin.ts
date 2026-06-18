@@ -151,14 +151,43 @@ admin.get('/stats', authMiddleware, async (c) => {
 // POST /admin/clean-cache (admin only) — clean expired cache entries
 admin.post('/clean-cache', authMiddleware, ensureAdmin, async (c) => {
   const database = c.env.DB;
-  
-  // Clean file_metadata entries older than 90 days with no access
-  const cutoff = Math.floor(Date.now() / 1000) - (90 * 24 * 60 * 60);
-  const result = await database.prepare(
-    'DELETE FROM file_metadata WHERE mtime < ? AND mime LIKE \'image/%\''
+  const bucket = c.env.R2_BUCKET;
+
+  // Get clean_cache_interval setting (default 7 days)
+  const intervalSetting = await db.getSetting(database, 'clean_cache_interval');
+  const intervalDays = parseInt(intervalSetting || '7', 10) || 7;
+
+  if (intervalDays <= 0) {
+    return c.json({ success: true, deleted: 0, message: '缓存清理已禁用' });
+  }
+
+  const cutoff = Math.floor(Date.now() / 1000) - (intervalDays * 24 * 60 * 60);
+
+  // Clean old thumbnail cache files in R2 (_thumbs/ prefix)
+  let thumbDeleted = 0;
+  let cursor: string | undefined;
+  do {
+    const listing = await bucket.list({ prefix: '_thumbs/', limit: 1000, ...(cursor ? { cursor } : {}) });
+    for (const obj of listing.objects) {
+      if (obj.uploaded && Math.floor(obj.uploaded.getTime() / 1000) < cutoff) {
+        await bucket.delete(obj.key);
+        thumbDeleted++;
+      }
+    }
+    cursor = listing.truncated ? listing.cursor : undefined;
+  } while (cursor);
+
+  // Clean old file_metadata entries
+  const metaResult = await database.prepare(
+    "DELETE FROM file_metadata WHERE mtime < ? AND mime != 'directory'"
   ).bind(cutoff).run();
 
-  return c.json({ success: true, deleted: result.meta?.changes || 0 });
+  return c.json({
+    success: true,
+    thumbsDeleted: thumbDeleted,
+    metadataDeleted: metaResult.meta?.changes || 0,
+    intervalDays,
+  });
 });
 
 // GET /admin/diagnostics (admin only) — system diagnostics

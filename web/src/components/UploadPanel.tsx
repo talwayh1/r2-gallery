@@ -1,0 +1,126 @@
+/**
+ * UploadPanel — shows upload progress for all active/completed uploads.
+ * Floating panel triggered by the upload button badge.
+ * Inspired by ZPan's upload-queue UI.
+ */
+
+import { useUploadQueue, formatEta, formatSpeed, type UploadTask, type UploadTaskStatus } from '../hooks/useUploadQueue';
+
+function formatSize(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
+}
+
+function StatusIcon({ status }: { status: UploadTaskStatus }) {
+  if (status === 'completed') {
+    return <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>;
+  }
+  if (status === 'failed' || status === 'cancelled') {
+    return <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>;
+  }
+  return <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />;
+}
+
+function StatusPill({ status }: { status: UploadTaskStatus }) {
+  const cls = status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+    : status === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+    : status === 'cancelled' ? 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+  const label = status === 'completed' ? '完成' : status === 'failed' ? '失败' : status === 'cancelled' ? '取消' : '上传中';
+  return <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${cls}`}>{label}</span>;
+}
+
+function TaskRow({ task, onCancel }: { task: UploadTask; onCancel: () => void }) {
+  const pct = task.total > 0 ? Math.round((Math.min(task.loaded, task.total) / task.total) * 100) : 0;
+  const canCancel = task.status === 'queued' || task.status === 'uploading';
+
+  return (
+    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 shrink-0"><StatusIcon status={task.status} /></div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="truncate text-sm font-medium flex-1">{task.fileName}</p>
+            <StatusPill status={task.status} />
+            {canCancel && (
+              <button onClick={onCancel} className="shrink-0 p-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            )}
+          </div>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            {formatSize(Math.min(task.loaded, task.total))} / {formatSize(task.total)}
+            {task.speed > 0 && ` · ${formatSpeed(task.speed)}`}
+            {task.status === 'uploading' && task.etaSeconds != null && ` · ${formatEta(task.etaSeconds)}`}
+          </p>
+          {/* Progress bar */}
+          <div className="mt-1.5 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-200 ${
+                task.status === 'completed' ? 'bg-emerald-500' : task.status === 'failed' ? 'bg-red-500' : 'bg-blue-500'
+              }`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          {task.status === 'failed' && task.error && (
+            <p className="text-[11px] text-red-500 mt-1 line-clamp-2">{task.error}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function UploadPanel() {
+  const { tasks, isOpen, setOpen, cancel, cancelAll, hasActiveUploads, activeCount, completedCount, failedCount } = useUploadQueue();
+
+  if (!isOpen && tasks.length === 0) return null;
+
+  return (
+    <>
+      {/* Backdrop */}
+      {isOpen && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />}
+
+      {/* Panel */}
+      {isOpen && (
+        <div className="fixed bottom-20 right-6 z-50 w-80 max-h-[min(28rem,calc(100vh-6rem))] bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
+          {/* Header */}
+          <div className="px-4 py-3 flex items-center justify-between shrink-0">
+            <div>
+              <h3 className="text-sm font-semibold">上传队列</h3>
+              <p className="text-[11px] text-gray-400">
+                {activeCount > 0 ? `${activeCount} 个上传中` : ''}
+                {completedCount > 0 ? ` · ${completedCount} 个完成` : ''}
+                {failedCount > 0 ? ` · ${failedCount} 个失败` : ''}
+                {tasks.length > 0 && ` · 共 ${tasks.length} 个`}
+              </p>
+            </div>
+            <div className="flex items-center gap-1">
+              {hasActiveUploads && (
+                <button onClick={cancelAll} className="text-[11px] text-red-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20">
+                  全部取消
+                </button>
+              )}
+              <button onClick={() => setOpen(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Task list */}
+          <div className="flex-1 overflow-y-auto min-h-0">
+            {tasks.length === 0 ? (
+              <div className="p-6 text-center text-gray-400 text-sm">暂无上传任务</div>
+            ) : (
+              tasks.map(task => (
+                <TaskRow key={task.id} task={task} onCancel={() => cancel(task.id)} />
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

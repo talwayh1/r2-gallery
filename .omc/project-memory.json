@@ -1,0 +1,464 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1781586176681,
+  "projectRoot": "/home/ubuntu/r2-gallery",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "tsconfig.json"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "npm run build:web 2>&1 | tail -5",
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": "npm run dev",
+    "scripts": {
+      "dev": "wrangler dev",
+      "deploy": "cd web && npm run build && cd .. && wrangler deploy",
+      "build:web": "cd web && npm run build",
+      "db:init": "wrangler d1 execute r2-gallery-db --file=./migrations/0001_init.sql",
+      "db:init:local": "wrangler d1 execute r2-gallery-db --local --file=./migrations/0001_init.sql"
+    }
+  },
+  "conventions": {
+    "namingStyle": "camelCase",
+    "importStyle": "ES modules",
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs",
+      "src"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 0,
+      "lastAccessed": 1781586176638,
+      "keyFiles": []
+    },
+    "migrations": {
+      "path": "migrations",
+      "purpose": "Database migrations",
+      "fileCount": 2,
+      "lastAccessed": 1781586176639,
+      "keyFiles": [
+        "0001_init.sql",
+        "0002_telegram_auth.sql"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 3,
+      "lastAccessed": 1781586176659,
+      "keyFiles": [
+        "auth.ts",
+        "index.ts",
+        "types.ts"
+      ]
+    },
+    "web": {
+      "path": "web",
+      "purpose": null,
+      "fileCount": 7,
+      "lastAccessed": 1781586176665,
+      "keyFiles": [
+        "index.html",
+        "package-lock.json",
+        "package.json",
+        "postcss.config.js",
+        "tailwind.config.js"
+      ]
+    },
+    "src/routes": {
+      "path": "src/routes",
+      "purpose": "Route handlers",
+      "fileCount": 5,
+      "lastAccessed": 1781586176666,
+      "keyFiles": [
+        "admin.ts",
+        "files.ts",
+        "metadata.ts"
+      ]
+    },
+    "src/services": {
+      "path": "src/services",
+      "purpose": "Business logic services",
+      "fileCount": 3,
+      "lastAccessed": 1781586176666,
+      "keyFiles": [
+        "db.ts",
+        "r2.ts",
+        "thumbnail.ts"
+      ]
+    },
+    "web/dist": {
+      "path": "web/dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 3,
+      "lastAccessed": 1781586176667,
+      "keyFiles": [
+        "index.html",
+        "manifest.json",
+        "sw.js"
+      ]
+    },
+    "web/node_modules": {
+      "path": "web/node_modules",
+      "purpose": "Dependencies",
+      "fileCount": 1,
+      "lastAccessed": 1781586176669,
+      "keyFiles": []
+    },
+    "web/public": {
+      "path": "web/public",
+      "purpose": "Public files",
+      "fileCount": 2,
+      "lastAccessed": 1781586176669,
+      "keyFiles": [
+        "manifest.json",
+        "sw.js"
+      ]
+    },
+    "web/src": {
+      "path": "web/src",
+      "purpose": "Source code",
+      "fileCount": 5,
+      "lastAccessed": 1781586176669,
+      "keyFiles": [
+        "App.tsx",
+        "api.ts",
+        "i18n.ts"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "web/src/App.tsx",
+      "accessCount": 61,
+      "lastAccessed": 1781628734116,
+      "type": "file"
+    },
+    {
+      "path": "src/routes/files.ts",
+      "accessCount": 44,
+      "lastAccessed": 1781624723964,
+      "type": "file"
+    },
+    {
+      "path": "src/index.ts",
+      "accessCount": 40,
+      "lastAccessed": 1781627556904,
+      "type": "file"
+    },
+    {
+      "path": "web/src/components/FileGrid.tsx",
+      "accessCount": 29,
+      "lastAccessed": 1781625007999,
+      "type": "file"
+    },
+    {
+      "path": "web/src/components/Lightbox.tsx",
+      "accessCount": 21,
+      "lastAccessed": 1781607746059,
+      "type": "file"
+    },
+    {
+      "path": "web/src/components/Header.tsx",
+      "accessCount": 18,
+      "lastAccessed": 1781628676415,
+      "type": "file"
+    },
+    {
+      "path": "web/src/components/BulkActions.tsx",
+      "accessCount": 9,
+      "lastAccessed": 1781624842456,
+      "type": "file"
+    },
+    {
+      "path": "web/src/components/SettingsPanel.tsx",
+      "accessCount": 9,
+      "lastAccessed": 1781625215588,
+      "type": "file"
+    },
+    {
+      "path": "src/routes/upload.ts",
+      "accessCount": 8,
+      "lastAccessed": 1781597933046,
+      "type": "file"
+    },
+    {
+      "path": "web/src/api.ts",
+      "accessCount": 8,
+      "lastAccessed": 1781624745729,
+      "type": "file"
+    },
+    {
+      "path": "web/src/components/FileList.tsx",
+      "accessCount": 7,
+      "lastAccessed": 1781624320940,
+      "type": "file"
+    },
+    {
+      "path": "wrangler.toml",
+      "accessCount": 7,
+      "lastAccessed": 1781628142835,
+      "type": "file"
+    },
+    {
+      "path": "web/public/sw.js",
+      "accessCount": 6,
+      "lastAccessed": 1781606633064,
+      "type": "file"
+    },
+    {
+      "path": "web/index.html",
+      "accessCount": 6,
+      "lastAccessed": 1781628579771,
+      "type": "file"
+    },
+    {
+      "path": "web/src/components/UploadZone.tsx",
+      "accessCount": 5,
+      "lastAccessed": 1781596122992,
+      "type": "file"
+    },
+    {
+      "path": "src/routes/metadata.ts",
+      "accessCount": 4,
+      "lastAccessed": 1781587010943,
+      "type": "file"
+    },
+    {
+      "path": "package.json",
+      "accessCount": 4,
+      "lastAccessed": 1781592332103,
+      "type": "file"
+    },
+    {
+      "path": "src/services/db.ts",
+      "accessCount": 4,
+      "lastAccessed": 1781597706277,
+      "type": "file"
+    },
+    {
+      "path": "src/services/thumbnail.ts",
+      "accessCount": 3,
+      "lastAccessed": 1781592320649,
+      "type": "file"
+    },
+    {
+      "path": "src/routes/admin.ts",
+      "accessCount": 3,
+      "lastAccessed": 1781592943556,
+      "type": "file"
+    },
+    {
+      "path": "web/src/components/DiscoverPage.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1781592955288,
+      "type": "file"
+    },
+    {
+      "path": "web/src/components/MemoriesPage.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1781592961192,
+      "type": "file"
+    },
+    {
+      "path": "web/src/components/Sidebar.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1781593038977,
+      "type": "file"
+    },
+    {
+      "path": "web/src/main.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1781628601358,
+      "type": "file"
+    },
+    {
+      "path": "web/src/components/AudioPlayer.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1781586872654,
+      "type": "file"
+    },
+    {
+      "path": "src/utils/mime.ts",
+      "accessCount": 2,
+      "lastAccessed": 1781588264465,
+      "type": "file"
+    },
+    {
+      "path": "web/vite.config.ts",
+      "accessCount": 2,
+      "lastAccessed": 1781592308421,
+      "type": "file"
+    },
+    {
+      "path": "web/package.json",
+      "accessCount": 2,
+      "lastAccessed": 1781592331503,
+      "type": "file"
+    },
+    {
+      "path": "web/src/hooks/useVirtualGrid.ts",
+      "accessCount": 2,
+      "lastAccessed": 1781592334769,
+      "type": "file"
+    },
+    {
+      "path": "web/src/hooks/useAuth.ts",
+      "accessCount": 2,
+      "lastAccessed": 1781593024872,
+      "type": "file"
+    },
+    {
+      "path": "migrations/0001_init.sql",
+      "accessCount": 2,
+      "lastAccessed": 1781597577349,
+      "type": "file"
+    },
+    {
+      "path": "web/src/components/TypeFilter.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1781628741300,
+      "type": "file"
+    },
+    {
+      "path": "AGENTS.md",
+      "accessCount": 1,
+      "lastAccessed": 1781586203723,
+      "type": "file"
+    },
+    {
+      "path": "deploy.sh",
+      "accessCount": 1,
+      "lastAccessed": 1781586213778,
+      "type": "file"
+    },
+    {
+      "path": "src/types.ts",
+      "accessCount": 1,
+      "lastAccessed": 1781586219059,
+      "type": "file"
+    },
+    {
+      "path": "src/auth.ts",
+      "accessCount": 1,
+      "lastAccessed": 1781586220411,
+      "type": "file"
+    },
+    {
+      "path": "CLAUDE.md",
+      "accessCount": 1,
+      "lastAccessed": 1781586260957,
+      "type": "file"
+    },
+    {
+      "path": "docs/files-gallery-gap-analysis.md",
+      "accessCount": 1,
+      "lastAccessed": 1781586687849,
+      "type": "file"
+    },
+    {
+      "path": "docs/implementation-plan.md",
+      "accessCount": 1,
+      "lastAccessed": 1781586704179,
+      "type": "file"
+    },
+    {
+      "path": "web/src/components/CodeEditor.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1781586773454,
+      "type": "file"
+    },
+    {
+      "path": "web/src/components/MarkdownEditor.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1781586773898,
+      "type": "file"
+    },
+    {
+      "path": "docs/implementation-summary.md",
+      "accessCount": 1,
+      "lastAccessed": 1781587072942,
+      "type": "file"
+    },
+    {
+      "path": "web/src/types.ts",
+      "accessCount": 1,
+      "lastAccessed": 1781590565632,
+      "type": "file"
+    },
+    {
+      "path": "web/src/hooks/useFolderThumbnails.ts",
+      "accessCount": 1,
+      "lastAccessed": 1781592332887,
+      "type": "file"
+    },
+    {
+      "path": "web/src/css-imports.d.ts",
+      "accessCount": 1,
+      "lastAccessed": 1781593344256,
+      "type": "file"
+    },
+    {
+      "path": "src/services/r2.ts",
+      "accessCount": 1,
+      "lastAccessed": 1781596122236,
+      "type": "file"
+    },
+    {
+      "path": ".claude/plans/upload-optimization.md",
+      "accessCount": 1,
+      "lastAccessed": 1781596182149,
+      "type": "file"
+    },
+    {
+      "path": "web/src/hooks/useUploadQueue.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1781596271584,
+      "type": "file"
+    },
+    {
+      "path": "web/src/components/UploadDropzone.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1781596352369,
+      "type": "file"
+    },
+    {
+      "path": "web/src/components/UploadPanel.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1781596429760,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

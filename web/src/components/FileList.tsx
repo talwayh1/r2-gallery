@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import type { FileItem } from '../types';
 import { getFileUrl, duplicateFile } from '../api';
 import { toast } from '../hooks/useToast';
+import ShareDialog from './ShareDialog';
 
 interface Props {
   files: Record<string, FileItem>;
@@ -42,6 +43,9 @@ function getIcon(mime: string) {
   if (mime === 'application/pdf') return '📄';
   if (mime.startsWith('text/')) return '📝';
   if (mime.includes('zip') || mime.includes('rar') || mime.includes('7z')) return '📦';
+  if (mime.includes('word') || mime.includes('document')) return '📄';
+  if (mime.includes('sheet') || mime.includes('excel')) return '📊';
+  if (mime.includes('presentation') || mime.includes('powerpoint')) return '📽️';
   return '📎';
 }
 
@@ -49,6 +53,9 @@ function getBadgeColor(mime: string): string {
   if (mime.startsWith('video/')) return 'bg-purple-500/90 text-white';
   if (mime.startsWith('audio/')) return 'bg-green-500/90 text-white';
   if (mime === 'application/pdf') return 'bg-red-500/90 text-white';
+  if (mime.includes('word') || mime.includes('document')) return 'bg-blue-600/90 text-white';
+  if (mime.includes('sheet') || mime.includes('excel')) return 'bg-green-600/90 text-white';
+  if (mime.includes('presentation') || mime.includes('powerpoint')) return 'bg-orange-500/90 text-white';
   return 'bg-gray-500/90 text-white';
 }
 
@@ -57,6 +64,9 @@ function getTypeBadge(mime: string): string | null {
   if (mime.startsWith('audio/')) return 'AUDIO';
   if (mime === 'application/pdf') return 'PDF';
   if (mime.includes('zip') || mime.includes('rar') || mime.includes('7z')) return 'ZIP';
+  if (mime.includes('word') || mime.includes('document')) return 'DOC';
+  if (mime.includes('sheet') || mime.includes('excel')) return 'XLS';
+  if (mime.includes('presentation') || mime.includes('powerpoint')) return 'PPT';
   return null;
 }
 
@@ -66,6 +76,7 @@ export default function FileList({ files, dirs, currentDir, onNavigate, onOpen, 
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
+  const [shareDialog, setShareDialog] = useState<{ path: string; name: string } | null>(null);
 
   // Use external selection state when provided
   const selected = externalSelected ?? internalSelected;
@@ -132,7 +143,13 @@ export default function FileList({ files, dirs, currentDir, onNavigate, onOpen, 
     }
     // Normal click
     if (item.type === 'directory') onNavigate(item.path);
-    else if (item.mime.startsWith('image/') || item.mime.startsWith('video/')) onOpen(item.path, item.mime);
+    else {
+      const m = item.mime;
+      const canOpen = m.startsWith('image/') || m.startsWith('video/') || m.startsWith('audio/') ||
+        m === 'application/pdf' || m.startsWith('text/') || m === 'application/json' || m === 'application/xml' || m === 'application/javascript' ||
+        m.includes('word') || m.includes('document') || m.includes('sheet') || m.includes('excel') || m.includes('presentation') || m.includes('powerpoint');
+      if (canOpen) onOpen(item.path, item.mime);
+    }
   };
 
   const SortIcon = ({ active, dir }: { active: boolean; dir: string }) => (
@@ -234,7 +251,7 @@ export default function FileList({ files, dirs, currentDir, onNavigate, onOpen, 
                           onClick={(e) => e.stopPropagation()}
                         />
                       ) : (
-                        <span className="truncate group-hover:text-blue-500">{item.name}</span>
+                        <span className="truncate group-hover:text-blue-500">{item.name.endsWith('.url') ? item.name.slice(0, -4) : item.name}</span>
                       )}
                       {badge && (
                         <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded shrink-0 ${getBadgeColor(item.mime)}`}>
@@ -358,6 +375,15 @@ export default function FileList({ files, dirs, currentDir, onNavigate, onOpen, 
                 复制文件
               </button>
             )}
+            {!contextMenu.isDir && (
+              <button
+                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                onClick={() => { setShareDialog({ path: contextMenu.path, name: contextMenu.name }); setContextMenu(null); }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                分享
+              </button>
+            )}
             <hr className="border-gray-200 dark:border-gray-700 my-1" />
             <button
               className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-500 flex items-center gap-2"
@@ -370,6 +396,9 @@ export default function FileList({ files, dirs, currentDir, onNavigate, onOpen, 
             </button>
           </div>
         </>
+      )}
+      {shareDialog && (
+        <ShareDialog filePath={shareDialog.path} fileName={shareDialog.name} onClose={() => setShareDialog(null)} />
       )}
     </>
   );

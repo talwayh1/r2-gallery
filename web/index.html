@@ -2,13 +2,21 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>R2 Gallery</title>
   <meta name="description" content="快速、美观的图片视频画廊，基于 Cloudflare R2" />
 
-  <!-- DNS prefetch & preconnect -->
-  <link rel="dns-prefetch" href="//tu.zhangyubi.cn" />
+  <!-- WeChat optimization -->
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="x5-orientation" content="portrait" />
+  <meta name="x5-fullscreen" content="true" />
+  <meta name="x5-page-mode" content="app" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-touch-fullscreen" content="yes" />
+
+  <!-- Preconnect to origin for faster asset loading -->
   <link rel="preconnect" href="https://tu.zhangyubi.cn" crossorigin />
+  <link rel="dns-prefetch" href="https://tu.zhangyubi.cn" />
 
   <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json" />
@@ -32,6 +40,9 @@
       } catch(e) {}
     })();
   </script>
+
+  <!-- Critical resource hints — browser starts fetching immediately -->
+  <link rel="modulepreload" crossorigin href="/src/main.tsx">
 
   <!-- Inline critical CSS for loading skeleton -->
   <style>

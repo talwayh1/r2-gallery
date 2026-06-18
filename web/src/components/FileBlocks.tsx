@@ -100,7 +100,7 @@ export default function FileBlocks({ files, dirs, currentDir, onNavigate, onOpen
                 )}
               </div>
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 pt-6">
-                <div className="text-white text-sm font-medium truncate">{item.name}</div>
+                <div className="text-white text-sm font-medium truncate">{item.name.endsWith('.url') ? item.name.slice(0, -4) : item.name}</div>
                 {!isDir && <div className="text-white/70 text-xs">{formatSize(item.size)}</div>}
               </div>
               <div

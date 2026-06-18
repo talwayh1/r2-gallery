@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"ZONE_ID=\\\"c6ba286f4d6156615663b9f0bc52f466\\\"\\n\\necho \\\"=== 启用 CSS Minify ===\\\" && curl -s -X PATCH \\\"https://api.cloudflare.com/client/v4/zones/$ZONE_ID/settings/minify/css\\\" \\\\\\n  -H \\\"Au...",
+  "error": "Exit code 1\n=== 启用 CSS Minify ===\n\n=== 启用 JS Minify ===\n\n=== 启用 HTML Minify ===",
+  "timestamp": "2026-06-16T10:56:39.154Z",
+  "retry_count": 1
+}

@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cd /home/ubuntu/r2-gallery && npm run deploy 2>&1\",\"timeout\":180000,\"description\":\"Deploy to Cloudflare Workers\"}",
+  "error": "Exit code 2\n\n> r2-gallery@1.0.0 deploy\n> cd web && npm run build && cd .. && wrangler deploy\n\n\n> r2-gallery-web@1.0.0 build\n> tsc && vite build\n\nsrc/components/Header.tsx(236,10): error TS2304: Cannot find name 'onSelectModeToggle'.\nsrc/components/Header.tsx(238,22): error TS2304: Cannot find name 'onSelectModeToggle'.\nsrc/components/Header.tsx(239,60): error TS2304: Cannot find name 'selectMode'.\nsrc/components/Header.tsx(240,20): error TS2304: Cannot find name 'selectMode'.",
+  "timestamp": "2026-06-16T07:11:07.113Z",
+  "retry_count": 1
+}

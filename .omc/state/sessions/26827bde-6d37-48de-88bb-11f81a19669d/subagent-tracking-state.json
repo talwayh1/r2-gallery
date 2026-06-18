@@ -1,0 +1,22 @@
+{
+  "agents": [
+    {
+      "agent_id": "afb2126bcc6c88e06",
+      "agent_type": "Explore",
+      "started_at": "2026-06-16T05:31:37.048Z",
+      "parent_mode": "none",
+      "status": "running"
+    },
+    {
+      "agent_id": "a2fd72e6dd798f0e3",
+      "agent_type": "Explore",
+      "started_at": "2026-06-16T05:34:43.768Z",
+      "parent_mode": "none",
+      "status": "running"
+    }
+  ],
+  "total_spawned": 2,
+  "total_completed": 0,
+  "total_failed": 0,
+  "last_updated": "2026-06-16T05:34:43.870Z"
+}

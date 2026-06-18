@@ -1,0 +1,58 @@
+{
+  "agents": [
+    {
+      "agent_id": "a2d6bb65b88a721bc",
+      "agent_type": "Explore",
+      "started_at": "2026-06-16T05:09:58.841Z",
+      "parent_mode": "none",
+      "status": "failed",
+      "completed_at": "2026-06-16T10:01:33.610Z",
+      "duration_ms": 17494769,
+      "output_summary": "Marked as stale during unmatched stop reconciliation - exceeded timeout"
+    },
+    {
+      "agent_id": "ae2c320e530206b58",
+      "agent_type": "Explore",
+      "started_at": "2026-06-16T05:10:01.036Z",
+      "parent_mode": "none",
+      "status": "failed",
+      "completed_at": "2026-06-16T10:01:33.610Z",
+      "duration_ms": 17492574,
+      "output_summary": "Marked as stale during unmatched stop reconciliation - exceeded timeout"
+    },
+    {
+      "agent_id": "a82aa25d2f9bad11f",
+      "agent_type": "unknown",
+      "started_at": "2026-06-16T10:01:33.610Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-06-16T10:01:33.610Z",
+      "duration_ms": 0
+    },
+    {
+      "agent_id": "a9444ad6d2a0894bc",
+      "agent_type": "Explore",
+      "started_at": "2026-06-16T10:59:20.229Z",
+      "parent_mode": "none",
+      "status": "running"
+    },
+    {
+      "agent_id": "af43a44e0eb6cf00a",
+      "agent_type": "Explore",
+      "started_at": "2026-06-16T10:59:37.649Z",
+      "parent_mode": "none",
+      "status": "running"
+    },
+    {
+      "agent_id": "a688e101735f26e18",
+      "agent_type": "general-purpose",
+      "started_at": "2026-06-16T10:59:50.092Z",
+      "parent_mode": "none",
+      "status": "running"
+    }
+  ],
+  "total_spawned": 5,
+  "total_completed": 1,
+  "total_failed": 2,
+  "last_updated": "2026-06-16T10:59:50.194Z"
+}

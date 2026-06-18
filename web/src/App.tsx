@@ -1,29 +1,41 @@
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from 'react';
 import type { FileItem, LayoutMode } from './types';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { toast } from './hooks/useToast';
-import { listFiles, telegramLogin, getConfig, mkdir, getFileUrl } from './api';
+import { listFiles, telegramLogin, getConfig, setCdnDomain, mkdir, getFileUrl, deleteItems, renameItem, downloadZip, createFile, createUrlShortcut, moveItem, copyFile, duplicateFile } from './api';
 import type { ListFilesParams } from './api';
-import Header from './components/Header';
-import Sidebar from './components/Sidebar';
-import FileGrid from './components/FileGrid';
-import FileList from './components/FileList';
-import UploadZone from './components/UploadZone';
-import Login from './components/Login';
-import BulkActions from './components/BulkActions';
+import { UploadQueueProvider } from './hooks/useUploadQueue';
+
+// Lazy-load heavy components — reduces first-paint JS from ~580KB to ~300KB
+const Header = lazy(() => import('./components/Header'));
+const Sidebar = lazy(() => import('./components/Sidebar'));
+const FileGrid = lazy(() => import('./components/FileGrid'));
+const FileList = lazy(() => import('./components/FileList'));
+const FileBlocks = lazy(() => import('./components/FileBlocks'));
+const FileColumns = lazy(() => import('./components/FileColumns'));
+const FileImageList = lazy(() => import('./components/FileImageList'));
+const UploadDropzone = lazy(() => import('./components/UploadDropzone'));
+const UploadPanel = lazy(() => import('./components/UploadPanel'));
+const Login = lazy(() => import('./components/Login'));
+const BulkActions = lazy(() => import('./components/BulkActions'));
+const CreateFolder = lazy(() => import('./components/CreateFolder'));
+const InstallPrompt = lazy(() => import('./components/InstallPrompt'));
+
+// TypeFilter: static import (matchFilter used in useMemo, component small enough to keep in main chunk)
 import TypeFilter, { matchFilter } from './components/TypeFilter';
 import type { TypeFilter as TypeFilterKind } from './components/TypeFilter';
-import CreateFolder from './components/CreateFolder';
-import InstallPrompt from './components/InstallPrompt';
 
 // Lazy-loaded components (not needed for first paint)
 const Lightbox = lazy(() => import('./components/Lightbox'));
 const KeyboardShortcuts = lazy(() => import('./components/KeyboardShortcuts'));
 const SearchOverlay = lazy(() => import('./components/SearchOverlay'));
 const DiscoverPage = lazy(() => import('./components/DiscoverPage'));
+const MemoriesPage = lazy(() => import('./components/MemoriesPage'));
 const BatchRename = lazy(() => import('./components/BatchRename'));
 const StatsPanel = lazy(() => import('./components/StatsPanel'));
+const TrashPage = lazy(() => import('./components/TrashPage'));
+const ActivityPage = lazy(() => import('./components/ActivityPage'));
 
 const LazyLoading = () => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
@@ -37,12 +49,17 @@ export default function App() {
   const [dir, setDir] = useState('');
   const [files, setFiles] = useState<Record<string, FileItem>>({});
   const [dirs, setDirs] = useState<string[]>([]);
+  const [dirCounts, setDirCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [layout, setLayout] = useState<LayoutMode>(() => {
-    return (localStorage.getItem('layout') as LayoutMode) || 'grid';
+    return (localStorage.getItem('layout') as LayoutMode) || 'blocks';
   });
   const [lightbox, setLightbox] = useState<{ index: number } | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('sidebarOpen');
+    if (saved !== null) return saved === 'true';
+    return window.innerWidth >= 768;
+  });
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   const [search, setSearch] = useState('');
   const [showLogin, setShowLogin] = useState(false);
@@ -52,17 +69,21 @@ export default function App() {
   // New features state
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [typeFilter, setTypeFilter] = useState<TypeFilterKind>('all');
-  const [sortBy, setSortBy] = useState<'name' | 'size' | 'mtime'>(() => {
-    return (localStorage.getItem('sortBy') as 'name' | 'size' | 'mtime') || 'name';
+  const [sortBy, setSortBy] = useState<string>(() => {
+    return localStorage.getItem('sortBy') || 'name';
   });
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => {
     return (localStorage.getItem('sortOrder') as 'asc' | 'desc') || 'asc';
   });
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [showBatchRename, setShowBatchRename] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showDiscover, setShowDiscover] = useState(false);
+  const [showMemories, setShowMemories] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -74,7 +95,7 @@ export default function App() {
   const loadFiles = useCallback(async (d: string, append = false) => {
     setLoading(true);
     try {
-      const params: ListFilesParams = { sort: sortBy, order: sortOrder, type: typeFilter };
+      const params: ListFilesParams = { sort: sortBy as any, order: sortOrder, type: typeFilter };
       if (append && cursor) {
         params.cursor = cursor;
         params.limit = 100;
@@ -86,6 +107,7 @@ export default function App() {
         setFiles(data.files || {});
       }
       setDirs(data.dirs || []);
+      setDirCounts(data.dirCounts || {});
       setHasMore(data.hasMore || false);
       setCursor(data.cursor);
     } catch (e) {
@@ -96,14 +118,41 @@ export default function App() {
     }
   }, [sortBy, sortOrder, typeFilter, cursor]);
 
-  // Handle /view/* deep links on mount
+  // Handle /view/* deep links and ?view= query param on mount
   useEffect(() => {
     const path = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
+    const viewParam = params.get('view');
+
+    // CDN domain: redirect SPA routes to main domain
+    if (window.location.hostname === 'lz.zhangyubi.cn') {
+      if (path.startsWith('/dir/') || path.startsWith('/view/')) {
+        window.location.href = `https://tu.zhangyubi.cn${path}`;
+        return;
+      }
+    }
+
+    // Support ?view=filePath query param (from /view/* redirect)
+    if (viewParam) {
+      const filePath = decodeURIComponent(viewParam);
+      if (filePath) {
+        pendingViewRef.current = filePath;
+        const parts = filePath.split('/');
+        parts.pop();
+        const parentDir = parts.join('/');
+        setDir(parentDir);
+        initialDirSetRef.current = true;
+        // Clean up URL
+        window.history.replaceState(null, '', parentDir ? `/dir/${encodeURIComponent(parentDir)}` : '/');
+      }
+      return;
+    }
+
+    // Support /view/* path (direct access)
     if (path.startsWith('/view/')) {
       const filePath = decodeURIComponent(path.slice(6));
       if (filePath) {
         pendingViewRef.current = filePath;
-        // Navigate to the parent directory
         const parts = filePath.split('/');
         parts.pop();
         const parentDir = parts.join('/');
@@ -125,12 +174,13 @@ export default function App() {
     // Don't reset typeFilter on dir change - keep user preference
   }, [dir]);
 
-  // Fetch public config (Telegram bot username, hide login button)
+  // Fetch public config (Telegram bot username, hide login button, CDN domain)
   const [hideLoginButton, setHideLoginButton] = useState(false);
   useEffect(() => {
     getConfig().then((data) => {
       if (data.telegramBotUsername) setTelegramBotUsername(data.telegramBotUsername);
       if (data.hideLoginButton) setHideLoginButton(true);
+      if (data.cdnDomain) setCdnDomain(data.cdnDomain);
     }).catch(console.error);
   }, []);
 
@@ -144,6 +194,65 @@ export default function App() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Persist sidebar state
+  useEffect(() => {
+    localStorage.setItem('sidebarOpen', String(sidebarOpen));
+  }, [sidebarOpen]);
+
+  // Update page title based on current directory
+  useEffect(() => {
+    const dirName = dir ? dir.split('/').pop() || dir : '';
+    const fileCount = Object.keys(files).length;
+    const title = dir
+      ? `${dirName} - R2 Gallery`
+      : 'R2 Gallery';
+    document.title = title;
+  }, [dir, files]);
+
+  // Auto-refresh (configurable interval, 0 = disabled)
+  useEffect(() => {
+    const intervalStr = localStorage.getItem('refreshInterval');
+    const interval = intervalStr ? parseInt(intervalStr, 10) : 0;
+    if (interval <= 0) return;
+
+    const timer = setInterval(() => {
+      loadFiles(dir);
+    }, interval * 1000);
+
+    return () => clearInterval(timer);
+  }, [dir, loadFiles]);
+
+  // Load custom CSS from settings
+  useEffect(() => {
+    const customCss = localStorage.getItem('customCss');
+    if (!customCss) return;
+
+    const styleEl = document.createElement('style');
+    styleEl.id = 'custom-css';
+    styleEl.textContent = customCss;
+    document.head.appendChild(styleEl);
+
+    return () => {
+      const existing = document.getElementById('custom-css');
+      if (existing) existing.remove();
+    };
+  }, []);
+
+  // Clipboard state for copy/cut/paste
+  const clipboardRef = useRef<{ paths: string[]; mode: 'copy' | 'cut' } | null>(null);
+
+  // Apply type filter + search filter (defined early for keyboard shortcuts)
+  const filteredFiles = useMemo(() =>
+    Object.fromEntries(
+      Object.entries(files).filter(([name, f]) => {
+        if (search && !name.toLowerCase().includes(search.toLowerCase())) return false;
+        if (typeFilter !== 'all' && !matchFilter(f.mime, typeFilter)) return false;
+        return true;
+      })
+    ),
+    [files, search, typeFilter]
+  );
 
   // Global keyboard shortcuts (non-lightbox)
   useEffect(() => {
@@ -183,34 +292,199 @@ export default function App() {
       } else if (e.key === 'Escape' && selected.size > 0) {
         e.preventDefault();
         setSelected(new Set());
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        // Delete — delete selected files
+        if (selected.size > 0 && user) {
+          e.preventDefault();
+          handleBatchDelete();
+        }
+      } else if (e.key === 'F2') {
+        // F2 — rename first selected file
+        if (selected.size === 1 && user) {
+          e.preventDefault();
+          const path = Array.from(selected)[0];
+          const name = path.split('/').pop() || path;
+          const newName = prompt('重命名:', name);
+          if (newName && newName !== name) {
+            handleRename(path, newName);
+          }
+        }
+      } else if (e.key === 'c' && (e.ctrlKey || e.metaKey)) {
+        // Ctrl+C — copy selected files
+        if (selected.size > 0) {
+          e.preventDefault();
+          clipboardRef.current = { paths: Array.from(selected), mode: 'copy' };
+          toast('info', `已复制 ${selected.size} 个项目`);
+        }
+      } else if (e.key === 'x' && (e.ctrlKey || e.metaKey)) {
+        // Ctrl+X — cut selected files
+        if (selected.size > 0 && user) {
+          e.preventDefault();
+          clipboardRef.current = { paths: Array.from(selected), mode: 'cut' };
+          toast('info', `已剪切 ${selected.size} 个项目`);
+        }
+      } else if (e.key === 'v' && (e.ctrlKey || e.metaKey)) {
+        // Ctrl+V — paste from clipboard
+        if (clipboardRef.current && user) {
+          e.preventDefault();
+          const { paths, mode } = clipboardRef.current;
+          (async () => {
+            for (const path of paths) {
+              try {
+                if (mode === 'cut') {
+                  await moveItem(path, dir || '');
+                } else {
+                  await copyFile(path, dir || '');
+                }
+              } catch (err) {
+                console.error('Paste failed:', err);
+              }
+            }
+            toast('success', `已粘贴 ${paths.length} 个项目`);
+            if (mode === 'cut') clipboardRef.current = null;
+            loadFiles(dir);
+          })();
+        }
+      } else if (e.key === 'd' && (e.ctrlKey || e.metaKey)) {
+        // Ctrl+D — duplicate first selected file
+        if (selected.size === 1 && user) {
+          e.preventDefault();
+          const path = Array.from(selected)[0];
+          (async () => {
+            try {
+              const result = await duplicateFile(path);
+              if (result.success) {
+                toast('success', `已复制到 ${result.newPath}`);
+                loadFiles(dir);
+              }
+            } catch (err) {
+              toast('error', `复制失败: ${(err as Error).message}`);
+            }
+          })();
+        }
       }
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [lightbox, dir, layout, loadFiles, toggleTheme, selected.size, files]);
+  }, [lightbox, dir, layout, loadFiles, toggleTheme, selected.size, files, user, filteredFiles]);
 
-  const navigate = useCallback((path: string) => {
+  // Scroll position restoration
+  const scrollPositions = useRef<Map<string, number>>(new Map());
+
+  const navigate = useCallback((path: string, replace = false) => {
+    // Save current scroll position
+    const mainEl = document.querySelector('main');
+    if (mainEl && dir) {
+      scrollPositions.current.set(dir, mainEl.scrollTop);
+    }
+
     setDir(path);
     setSearch('');
     if (isMobile) setSidebarOpen(false);
-    // Clear /view/* URL when navigating normally
-    if (window.location.pathname.startsWith('/view/')) {
-      window.history.replaceState(null, '', '/');
-    }
-  }, [isMobile]);
 
-  // Apply type filter + search filter
-  const filteredFiles = Object.fromEntries(
-    Object.entries(files).filter(([name, f]) => {
-      if (search && !name.toLowerCase().includes(search.toLowerCase())) return false;
-      if (typeFilter !== 'all' && !matchFilter(f.mime, typeFilter)) return false;
-      return true;
-    })
-  );
+    // Update URL for deep linking
+    const url = path ? `/dir/${encodeURIComponent(path)}` : '/';
+    if (window.location.pathname.startsWith('/view/')) {
+      window.history.replaceState(null, '', url);
+    } else if (replace) {
+      window.history.replaceState(null, '', url);
+    } else {
+      window.history.pushState(null, '', url);
+    }
+
+    // Restore scroll position after DOM update
+    requestAnimationFrame(() => {
+      const saved = scrollPositions.current.get(path);
+      if (saved !== undefined && mainEl) {
+        mainEl.scrollTop = saved;
+      } else if (mainEl) {
+        mainEl.scrollTop = 0;
+      }
+    });
+  }, [isMobile, dir]);
+
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      if (path.startsWith('/dir/')) {
+        const dirPath = decodeURIComponent(path.slice(5));
+        setDir(dirPath);
+      } else if (path === '/') {
+        setDir('');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Restore directory from URL on mount
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path.startsWith('/dir/')) {
+      const dirPath = decodeURIComponent(path.slice(5));
+      setDir(dirPath);
+    }
+  }, []);
+
+  // Render layout based on current layout mode
+  const renderLayout = (files: Record<string, FileItem>, dirs: string[], selected: Set<string>, isUploadZone: boolean = false) => {
+    const commonProps = {
+      files,
+      dirs,
+      dirCounts,
+      currentDir: dir,
+      onNavigate: navigate,
+      onOpen: openLightbox,
+      onDelete: handleDelete,
+      onRename: handleRename,
+      selected,
+      onSelect: handleSelect,
+      onLoadMore: loadMore,
+      hasMore,
+      loadingMore,
+    };
+
+    switch (layout) {
+      case 'grid':
+      case 'rows':
+        return (
+          <FileGrid
+            key={layout}
+            {...commonProps}
+            onMove={() => loadFiles(dir)}
+          />
+        );
+      case 'list':
+        return <FileList key={layout} {...commonProps} />;
+      case 'blocks':
+        return <FileBlocks key={layout} {...commonProps} />;
+      case 'columns':
+        return <FileColumns key={layout} {...commonProps} />;
+      case 'imagelist':
+        return <FileImageList key={layout} {...commonProps} />;
+      default:
+        return (
+          <FileGrid
+            key={layout}
+            {...commonProps}
+            onMove={() => loadFiles(dir)}
+          />
+        );
+    }
+  };
 
   // Build media items list for lightbox navigation
+  const isLightboxMime = (mime: string, name: string): boolean => {
+    if (mime.startsWith('image/') || mime.startsWith('video/') || mime.startsWith('audio/')) return true;
+    if (mime === 'application/pdf') return true;
+    if (mime.startsWith('text/') || mime === 'application/json' || mime === 'application/xml' || mime === 'application/javascript') return true;
+    if (mime.includes('word') || mime.includes('document') || mime.includes('sheet') || mime.includes('excel') || mime.includes('presentation') || mime.includes('powerpoint')) return true;
+    if (name?.endsWith('.url')) return true;
+    return false;
+  };
   const mediaItems = Object.entries(filteredFiles)
-    .filter(([, f]) => f.mime.startsWith('image/') || f.mime.startsWith('video/') || f.mime.startsWith('audio/'))
+    .filter(([, f]) => isLightboxMime(f.mime, f.name))
     .map(([, f]) => ({ path: f.path, mime: f.mime, size: f.size }));
 
   // Auto-open lightbox for /view/* deep links
@@ -252,7 +526,10 @@ export default function App() {
   }, []);
 
   const handleDelete = async (paths: string[]) => {
-    const { deleteItems } = await import('./api');
+    const names = paths.map(p => p.split('/').pop() || p).join(', ');
+    const confirmed = confirm(`确认删除 ${paths.length} 个项目？\n${names}`);
+    if (!confirmed) return;
+
     try {
       await deleteItems(paths);
       toast('success', `已删除 ${paths.length} 个项目`);
@@ -263,7 +540,6 @@ export default function App() {
   };
 
   const handleRename = async (path: string, name: string) => {
-    const { renameItem } = await import('./api');
     try {
       await renameItem(path, name);
       toast('success', `已重命名为 "${name}"`);
@@ -313,6 +589,46 @@ export default function App() {
     });
   };
 
+  const handleBatchDownloadZip = async () => {
+    if (selected.size === 0) return;
+    const paths = Array.from(selected);
+    toast('info', `正在打包 ${paths.length} 个文件...`);
+    try {
+      await downloadZip(paths);
+      toast('success', 'ZIP 下载已开始');
+    } catch (e) {
+      toast('error', `ZIP 打包失败: ${(e as Error).message}`);
+    }
+  };
+
+  const handleBatchCreateZip = async () => {
+    if (selected.size === 0) return;
+    const paths = Array.from(selected);
+    toast('info', `正在压缩 ${paths.length} 个文件...`);
+    try {
+      const { createZip } = await import('./api');
+      const result = await createZip(paths, dir);
+      toast('success', `已创建 ZIP: ${result.path}`);
+      setSelected(new Set());
+      loadFiles(dir);
+    } catch (e) {
+      toast('error', `压缩失败: ${(e as Error).message}`);
+    }
+  };
+
+  const handleBatchCopyLinks = async (separator?: string) => {
+    if (selected.size === 0) return;
+    const paths = Array.from(selected);
+    const sep = separator || localStorage.getItem('copyLinksSeparator') || '\n';
+    const links = paths.map(p => `${window.location.origin}/view/${encodeURIComponent(p)}`).join(sep);
+    try {
+      await navigator.clipboard.writeText(links);
+      toast('success', `已复制 ${paths.length} 个链接`);
+    } catch {
+      toast('error', '复制失败');
+    }
+  };
+
   // Create folder
   const handleCreateFolder = async (name: string) => {
     const folderPath = dir ? `${dir}/${name}` : name;
@@ -329,7 +645,6 @@ export default function App() {
   // Create file
   const handleCreateFile = async (path: string) => {
     try {
-      const { createFile } = await import('./api');
       await createFile(path);
       toast('success', `已创建文件 "${path.split('/').pop()}"`);
       setShowCreateFolder(false);
@@ -342,7 +657,6 @@ export default function App() {
   // Create URL shortcut
   const handleCreateUrl = async (path: string, url: string) => {
     try {
-      const { createUrlShortcut } = await import('./api');
       await createUrlShortcut(path, url);
       toast('success', `已创建链接 "${path.split('/').pop()}"`);
       setShowCreateFolder(false);
@@ -360,6 +674,7 @@ export default function App() {
   }, [loadingMore, loading, hasMore, cursor, dir, loadFiles]);
 
   return (
+    <UploadQueueProvider>
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <Header
         dir={dir}
@@ -384,8 +699,11 @@ export default function App() {
         onCreateFolder={user ? () => setShowCreateFolder(true) : undefined}
         onSearchClick={() => setShowSearch(true)}
         onDiscoverClick={() => setShowDiscover(true)}
+        onMemoriesClick={() => setShowMemories(true)}
         onStatsClick={user ? () => setShowStats(true) : undefined}
-        onSortChange={(sort, order) => {
+        onTrashClick={user ? () => setShowTrash(true) : undefined}
+        onActivityClick={user ? () => setShowActivity(true) : undefined}
+        onSortChange={(sort: string, order: 'asc' | 'desc') => {
           setSortBy(sort);
           setSortOrder(order);
           localStorage.setItem('sortBy', sort);
@@ -393,6 +711,8 @@ export default function App() {
         }}
         onTypeFilterChange={(t) => setTypeFilter(t as TypeFilterKind)}
         hideLoginButton={hideLoginButton}
+        selectMode={selectMode}
+        onSelectModeToggle={() => setSelectMode(!selectMode)}
       />
       <InstallPrompt />
       <div className="flex flex-1 overflow-hidden relative">
@@ -408,9 +728,9 @@ export default function App() {
           <Sidebar currentDir={dir} onNavigate={navigate} />
         </div>
         {/* Main content */}
-        <main className="flex-1 overflow-auto p-4">
-          {/* Type filter bar */}
-          <div className="mb-3 hidden sm:block">
+        <main className={`flex-1 overflow-auto transition-opacity duration-200 ${isMobile ? 'p-2' : 'p-4'}`} style={{ opacity: loading ? 0.6 : 1 }}>
+          {/* Type filter bar - mobile: horizontal scroll, desktop: normal */}
+          <div className={`mb-3 ${isMobile ? 'overflow-x-auto scrollbar-none -mx-2 px-2' : 'hidden sm:block'}`}>
             <TypeFilter
               files={files}
               active={typeFilter}
@@ -419,70 +739,50 @@ export default function App() {
           </div>
 
           {user ? (
-            <UploadZone dir={dir} onUpload={() => loadFiles(dir)}>
+            <UploadDropzone dir={dir} onUpload={() => loadFiles(dir)}>
               {loading ? (
                 <div className="flex items-center justify-center h-64">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
                 </div>
-              ) : layout === 'grid' ? (
-                <FileGrid
-                  files={filteredFiles}
-                  dirs={dirs}
-                  currentDir={dir}
-                  onNavigate={navigate}
-                  onOpen={openLightbox}
-                  onDelete={handleDelete}
-                  onRename={handleRename}
-                  onMove={() => loadFiles(dir)}
-                  selected={selected}
-                  onSelect={handleSelect}
-                  onLoadMore={loadMore}
-                  hasMore={hasMore}
-                  loadingMore={loadingMore}
-                />
               ) : (
-                <FileList
-                  files={filteredFiles}
-                  dirs={dirs}
-                  currentDir={dir}
-                  onNavigate={navigate}
-                  onOpen={openLightbox}
-                  onDelete={handleDelete}
-                  onRename={handleRename}
-                  selected={selected}
-                  onSelect={handleSelect}
-                />
+                <Suspense fallback={<LazyLoading />}>
+                  {layout === 'grid' || layout === 'rows' ? (
+                    <FileGrid key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore, onMove: () => loadFiles(dir) }} />
+                  ) : layout === 'list' ? (
+                    <FileList key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
+                  ) : layout === 'blocks' ? (
+                    <FileBlocks key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
+                  ) : layout === 'columns' ? (
+                    <FileColumns key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
+                  ) : layout === 'imagelist' ? (
+                    <FileImageList key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
+                  ) : (
+                    <FileGrid key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore, onMove: () => loadFiles(dir) }} />
+                  )}
+                </Suspense>
               )}
-            </UploadZone>
+            </UploadDropzone>
           ) : (
             loading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
               </div>
-            ) : layout === 'grid' ? (
-              <FileGrid
-                files={filteredFiles}
-                dirs={dirs}
-                currentDir={dir}
-                onNavigate={navigate}
-                onOpen={openLightbox}
-                onMove={() => loadFiles(dir)}
-                selected={selected}
-                onSelect={handleSelect}
-                onLoadMore={loadMore}
-                hasMore={hasMore}
-                loadingMore={loadingMore}
-              />
             ) : (
-              <FileList
-                files={filteredFiles}
-                dirs={dirs}
-                currentDir={dir}
-                onNavigate={navigate}
-                onOpen={openLightbox}
-                selected={selected}
-                onSelect={handleSelect}
-              />
+              <Suspense fallback={<LazyLoading />}>
+                {layout === 'grid' || layout === 'rows' ? (
+                  <FileGrid key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore, onMove: () => loadFiles(dir) }} />
+                ) : layout === 'list' ? (
+                  <FileList key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
+                ) : layout === 'blocks' ? (
+                  <FileBlocks key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
+                ) : layout === 'columns' ? (
+                  <FileColumns key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
+                ) : layout === 'imagelist' ? (
+                  <FileImageList key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore }} />
+                ) : (
+                  <FileGrid key={layout} {...{ files: filteredFiles, dirs, currentDir: dir, onNavigate: navigate, onOpen: openLightbox, onDelete: handleDelete, onRename: handleRename, selected, onSelect: handleSelect, onLoadMore: loadMore, hasMore, loadingMore, onMove: () => loadFiles(dir) }} />
+                )}
+              </Suspense>
             )
           )}
         </main>
@@ -495,7 +795,10 @@ export default function App() {
           totalCount={Object.keys(filteredFiles).length}
           onDelete={handleBatchDelete}
           onDownload={handleBatchDownload}
+          onDownloadZip={handleBatchDownloadZip}
+          onCopyLinks={handleBatchCopyLinks}
           onBatchRename={user ? () => setShowBatchRename(true) : undefined}
+          onCreateZip={user ? handleBatchCreateZip : undefined}
           onSelectAll={handleSelectAll}
           onDeselectAll={handleDeselectAll}
         />
@@ -561,6 +864,15 @@ export default function App() {
           />
         </Suspense>
       )}
+      {showMemories && (
+        <Suspense fallback={<LazyLoading />}>
+          <MemoriesPage
+            onClose={() => setShowMemories(false)}
+            onNavigate={(d) => { navigate(d); setShowMemories(false); }}
+            onOpenFile={(path, mime) => { openLightbox(path, mime); setShowMemories(false); }}
+          />
+        </Suspense>
+      )}
       {showBatchRename && user && (
         <Suspense fallback={<LazyLoading />}>
           <BatchRename
@@ -575,6 +887,41 @@ export default function App() {
           <StatsPanel onClose={() => setShowStats(false)} />
         </Suspense>
       )}
+      {showTrash && user && (
+        <Suspense fallback={<LazyLoading />}>
+          <TrashPage onClose={() => setShowTrash(false)} onRestore={() => loadFiles(dir)} />
+        </Suspense>
+      )}
+      {showActivity && user && (
+        <Suspense fallback={<LazyLoading />}>
+          <ActivityPage onClose={() => setShowActivity(false)} />
+        </Suspense>
+      )}
+
+      {/* Upload floating button + progress panel */}
+      {user && (
+        <>
+          <div className="fixed bottom-6 right-6 z-30">
+            <button
+              onClick={() => {
+                // Trigger the hidden file input in UploadDropzone
+                const input = document.querySelector<HTMLInputElement>('input[type="file"][multiple]:not([webkitdirectory])');
+                input?.click();
+              }}
+              className="w-14 h-14 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-110"
+              title="上传文件"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </div>
+          <Suspense fallback={null}>
+            <UploadPanel />
+          </Suspense>
+        </>
+      )}
     </div>
+    </UploadQueueProvider>
   );
 }

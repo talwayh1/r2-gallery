@@ -100,7 +100,7 @@ export default function FileColumns({ files, dirs, currentDir, onNavigate, onOpe
                 <div className="aspect-square flex items-center justify-center text-4xl">📄</div>
               )}
               <div className="p-2">
-                <div className="text-sm font-medium truncate">{item.name}</div>
+                <div className="text-sm font-medium truncate">{item.name.endsWith('.url') ? item.name.slice(0, -4) : item.name}</div>
                 {!isDir && <div className="text-xs text-gray-400">{formatSize(item.size)}</div>}
               </div>
               <div

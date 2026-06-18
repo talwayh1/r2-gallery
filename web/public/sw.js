@@ -1,9 +1,11 @@
 // R2 Gallery Service Worker
 // Cache strategies: static assets (cache-first), API (network-first), images (stale-while-revalidate)
 
-const CACHE_NAME = 'r2-gallery-v1';
-const STATIC_CACHE = 'r2-gallery-static-v1';
-const IMAGE_CACHE = '2-gallery-images-v1';
+// Bump this version string on deploy to force cache refresh
+const CACHE_VERSION = 'v3';
+const CACHE_NAME = `r2-gallery-api-${CACHE_VERSION}`;
+const STATIC_CACHE = `r2-gallery-static-${CACHE_VERSION}`;
+const IMAGE_CACHE = `r2-gallery-images-${CACHE_VERSION}`;
 
 // Static assets to precache on install
 const PRECACHE_URLS = [
@@ -53,8 +55,8 @@ self.addEventListener('fetch', (event) => {
 
   // API calls: network-first (always try fresh data)
   if (url.pathname.startsWith('/api/')) {
-    // Don't cache file content (large media) or auth endpoints
-    if (url.pathname === '/api/file' || url.pathname.startsWith('/api/auth') || url.pathname === '/api/login') {
+    // Don't cache file content (large media), thumbnails (browser HTTP cache + ETag handles), or auth endpoints
+    if (url.pathname === '/api/file' || url.pathname === '/api/thumb' || url.pathname === '/api/files' || url.pathname.startsWith('/api/auth') || url.pathname === '/api/login') {
       return;
     }
     // Cache metadata API responses (search, discover, dirs, exif, etc.)

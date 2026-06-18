@@ -8,6 +8,10 @@ import uploadRouter from './routes/upload';
 import adminRouter from './routes/admin';
 import metadataRouter from './routes/metadata';
 import sharesRouter from './routes/shares';
+import trashRouter from './routes/trash';
+import activityRouter from './routes/activity';
+import presignRouter from './routes/presign';
+import webdavRouter from './routes/webdav';
 
 const app = new Hono<{ Bindings: AppBindings; Variables: Variables }>();
 
@@ -24,13 +28,49 @@ app.use('/api/*', cors({
   allowHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Static asset caching — hashed assets (Vite output) get immutable long-term cache
-app.use('/assets/*', async (c, next) => {
-  await next();
-  // Vite outputs content-hashed filenames, safe to cache aggressively
-  if (c.res.status === 200) {
-    c.res.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+// Serve static assets with optimized cache headers (run_worker_first mode)
+app.use('*', async (c, next) => {
+  const path = new URL(c.req.url).pathname;
+
+  // Let API routes, SPA routes, and non-static paths go through normal routing
+  if (path.startsWith('/api/') || path.startsWith('/webdav/') || path.startsWith('/dir/') || path.startsWith('/view/')) {
+    return next();
   }
+
+  // Try to serve static assets via Assets binding
+  // @ts-ignore
+  const ASSETS = c.env.ASSETS || (globalThis as any).ASSETS;
+  if (ASSETS && typeof ASSETS.fetch === 'function') {
+    try {
+      const resp = await ASSETS.fetch(c.req.raw);
+      if (resp && resp.status === 200) {
+        // Clone response to modify headers
+        const newResp = new Response(resp.body, {
+          status: resp.status,
+          statusText: resp.statusText,
+          headers: new Headers(resp.headers),
+        });
+
+        // Set aggressive cache for hashed assets
+        if (path.startsWith('/assets/')) {
+          newResp.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+        } else if (path.startsWith('/icons/')) {
+          newResp.headers.set('Cache-Control', 'public, max-age=86400');
+        } else if (path === '/manifest.json') {
+          newResp.headers.set('Cache-Control', 'public, max-age=3600');
+        } else if (path === '/sw.js') {
+          newResp.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+        } else if (path === '/' || path.endsWith('.html')) {
+          newResp.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+        }
+
+        return newResp;
+      }
+    } catch {}
+  }
+
+  // If not a static asset, continue to API routing
+  return next();
 });
 
 // Icons, manifest, sw — shorter cache
@@ -56,28 +96,87 @@ app.use('/sw.js', async (c, next) => {
 });
 
 // Initialize DB on first request (skip for static assets)
-let dbInitialized = false;
+// Use a singleton pattern to avoid re-initialization across requests
+let dbInitPromise: Promise<void> | null = null;
+
+async function ensureDbInitialized(database: D1Database, adminPassword?: string) {
+  // Fast path: already initialized
+  if (dbInitPromise) return dbInitPromise;
+
+  // Slow path: initialize once
+  dbInitPromise = (async () => {
+    try {
+      await db.initDatabase(database);
+
+      // Create default admin if no users exist
+      const users = await db.listUsers(database);
+      if (users.length === 0) {
+        const defaultPassword = adminPassword || 'admin';
+        const hash = await hashPassword(defaultPassword);
+        await db.createUser(database, 'admin', hash, 'admin');
+      }
+    } catch (err) {
+      // Reset on error to allow retry
+      dbInitPromise = null;
+      throw err;
+    }
+  })();
+
+  return dbInitPromise;
+}
+
+// Skip DB init for static assets and health checks
+const SKIP_DB_PATHS = new Set(['/api/health', '/manifest.json', '/sw.js']);
+const SKIP_DB_PREFIXES = ['/assets/', '/icons/', '/webdav/'];
+
 app.use('*', async (c, next) => {
   const path = c.req.path;
-  // Skip DB init for static assets — served by Assets binding
-  if (path.startsWith('/assets/') || path.startsWith('/icons/') || path === '/manifest.json' || path === '/sw.js') {
-    await next();
-    return;
-  }
-  if (!dbInitialized) {
-    await db.initDatabase(c.env.DB);
 
-    // Create default admin if no users exist
-    const users = await db.listUsers(c.env.DB);
-    if (users.length === 0) {
-      const defaultPassword = c.env.ADMIN_PASSWORD || 'admin';
-      const hash = await hashPassword(defaultPassword);
-      await db.createUser(c.env.DB, 'admin', hash, 'admin');
-    }
-
-    dbInitialized = true;
+  // Fast skip for static assets
+  if (SKIP_DB_PATHS.has(path) || SKIP_DB_PREFIXES.some(p => path.startsWith(p))) {
+    return next();
   }
-  await next();
+
+  // Initialize DB (cached after first call)
+  await ensureDbInitialized(c.env.DB, c.env.ADMIN_PASSWORD);
+  return next();
+});
+
+// === CDN回源端点（给国内CDN用）===
+// 文件公开访问，设置长缓存
+app.get('/cdn/*', async (c) => {
+  const key = c.req.path.slice(5); // Remove '/cdn/'
+  if (!key) return c.text('Missing key', 400);
+
+  const obj = await c.env.R2_BUCKET.get(key);
+  if (!obj) return c.text('Not Found', 404);
+
+  const mime = (obj as any).httpMetadata?.contentType || getContentType(key);
+  return new Response((obj as any).body, {
+    headers: {
+      'Content-Type': mime,
+      'Content-Length': String(obj.size),
+      'Cache-Control': 'public, max-age=2592000, immutable', // 30天
+      'CDN-Cache-Control': 'max-age=2592000',
+      'Access-Control-Allow-Origin': '*',
+    },
+  });
+});
+
+// === CDN SPA 回源端点（给国内CDN用）===
+// 处理 /, /dir/* 等 SPA 路由，直接返回 index.html
+// 腾讯CDN配置：回源地址为 tu.zhangyubi.cn，回源Host为 tu.zhangyubi.cn
+app.get('/', async (c) => {
+  const spaResponse = serveSPA(c);
+  if (spaResponse) return spaResponse;
+  return c.html(getFallbackHTML());
+});
+
+// 处理 /dir/* SPA 路由
+app.get('/dir/*', async (c) => {
+  const spaResponse = serveSPA(c);
+  if (spaResponse) return spaResponse;
+  return c.html(getFallbackHTML());
 });
 
 // === Public endpoints (no auth) ===
@@ -85,14 +184,27 @@ app.use('*', async (c, next) => {
 // Health check
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
 
-// Public config (for frontend)
+// Public config (for frontend) — single query, cached 60s
+let configCache: { data: any; ts: number } | null = null;
 app.get('/api/config', async (c) => {
-  const db = c.env.DB;
-  const hideLogin = await db.prepare("SELECT value FROM settings WHERE key = 'hide_login_button'").first<{ value: string }>();
-  return c.json({
+  if (configCache && Date.now() - configCache.ts < 60_000) {
+    return c.json(configCache.data);
+  }
+  const database = c.env.DB;
+  const rows = await database.prepare(
+    "SELECT key, value FROM settings WHERE key IN ('hide_login_button', 'logo_url', 'header_text')"
+  ).all<{ key: string; value: string }>();
+  const map: Record<string, string> = {};
+  for (const r of rows.results) map[r.key] = r.value;
+  const data = {
     telegramBotUsername: c.env.TELEGRAM_BOT_USERNAME || null,
-    hideLoginButton: hideLogin?.value === 'true',
-  });
+    hideLoginButton: map.hide_login_button === 'true',
+    logoUrl: map.logo_url || null,
+    headerText: map.header_text || null,
+    cdnDomain: c.env.CDN_DOMAIN || null,
+  };
+  configCache = { data, ts: Date.now() };
+  return c.json(data);
 });
 
 // Ping — check auth status
@@ -174,6 +286,10 @@ app.post('/api/share/:id/verify', async (c) => {
 // Protected share management
 app.route('/api', sharesRouter);
 app.route('/api', adminRouter);
+app.route('/api', trashRouter);
+app.route('/api', activityRouter);
+app.route('/api', presignRouter);
+app.route('/', webdavRouter);
 
 // === OG (Open Graph) support for social sharing ===
 
@@ -237,12 +353,23 @@ function serveSPA(c: any): Response | null {
   return null;
 }
 
-// /view/* — Social sharing URLs with OG tags for bots
+// /view/* — Social sharing URLs with OG tags for bots; non-bots redirect to main page
 app.get('/view/*', async (c) => {
   const userAgent = c.req.header('User-Agent') || '';
   const filePath = decodeURIComponent(c.req.path.slice(6)); // Remove '/view/'
 
-  if (isBot(userAgent) && filePath) {
+  if (!filePath) return c.redirect('/', 302);
+
+  // Check if it's a directory — redirect to main page with dir path
+  try {
+    const dirMeta = await db.getFileMetadata(c.env.DB, filePath);
+    if (dirMeta?.mime === 'directory') {
+      return c.redirect(`/dir/${encodeURIComponent(filePath)}`, 302);
+    }
+  } catch {}
+
+  // Bot requests: serve OG preview HTML
+  if (isBot(userAgent)) {
     const host = c.req.header('Host') || 'tu.zhangyubi.cn';
     const scheme = c.req.header('X-Forwarded-Proto') || 'https';
     const base = `${scheme}://${host}`;
@@ -282,10 +409,8 @@ app.get('/view/*', async (c) => {
     });
   }
 
-  // Non-bot users: serve the SPA
-  const spaResponse = serveSPA(c);
-  if (spaResponse) return spaResponse;
-  return c.html(getFallbackHTML());
+  // Non-bot users: redirect to main page with file path as query param
+  return c.redirect(`/?view=${encodeURIComponent(filePath)}`, 302);
 });
 
 // === Static frontend (SPA fallback) ===

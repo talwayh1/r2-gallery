@@ -2,13 +2,21 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>R2 Gallery</title>
   <meta name="description" content="快速、美观的图片视频画廊，基于 Cloudflare R2" />
 
-  <!-- DNS prefetch & preconnect -->
-  <link rel="dns-prefetch" href="//tu.zhangyubi.cn" />
+  <!-- WeChat optimization -->
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="x5-orientation" content="portrait" />
+  <meta name="x5-fullscreen" content="true" />
+  <meta name="x5-page-mode" content="app" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-touch-fullscreen" content="yes" />
+
+  <!-- Preconnect to origin for faster asset loading -->
   <link rel="preconnect" href="https://tu.zhangyubi.cn" crossorigin />
+  <link rel="dns-prefetch" href="https://tu.zhangyubi.cn" />
 
   <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json" />
@@ -32,6 +40,9 @@
       } catch(e) {}
     })();
   </script>
+
+  <!-- Critical resource hints — browser starts fetching immediately -->
+  <link rel="modulepreload" crossorigin href="data:application/octet-stream;base64,aW1wb3J0IFJlYWN0IGZyb20gJ3JlYWN0JzsKaW1wb3J0IFJlYWN0RE9NIGZyb20gJ3JlYWN0LWRvbS9jbGllbnQnOwppbXBvcnQgQXBwIGZyb20gJy4vQXBwJzsKaW1wb3J0IHsgVG9hc3RQcm92aWRlciB9IGZyb20gJy4vaG9va3MvdXNlVG9hc3QnOwppbXBvcnQgeyBpbml0TW9iaWxlQ29tcGF0IH0gZnJvbSAnLi91dGlscy9tb2JpbGUnOwppbXBvcnQgJy4vc3R5bGVzL2dsb2JhbC5jc3MnOwppbXBvcnQgJy4vaTE4bic7CgovLyBJbml0aWFsaXplIG1vYmlsZS9XZUNoYXQgY29tcGF0aWJpbGl0eSBmaXhlcyBlYXJseQppbml0TW9iaWxlQ29tcGF0KCk7CgovLyBSZWdpc3RlciBTZXJ2aWNlIFdvcmtlciBmb3IgUFdBCmlmICgnc2VydmljZVdvcmtlcicgaW4gbmF2aWdhdG9yKSB7CiAgd2luZG93LmFkZEV2ZW50TGlzdGVuZXIoJ2xvYWQnLCAoKSA9PiB7CiAgICBuYXZpZ2F0b3Iuc2VydmljZVdvcmtlci5yZWdpc3RlcignL3N3LmpzJykudGhlbigocmVnKSA9PiB7CiAgICAgIC8vIENoZWNrIGZvciB1cGRhdGVzIHBlcmlvZGljYWxseQogICAgICByZWcudXBkYXRlKCkuY2F0Y2goKCkgPT4ge30pOwogICAgfSkuY2F0Y2goKGVycikgPT4gewogICAgICBjb25zb2xlLndhcm4oJ1NXIHJlZ2lzdHJhdGlvbiBmYWlsZWQ6JywgZXJyKTsKICAgIH0pOwogIH0pOwp9CgovLyBDYXB0dXJlIFBXQSBpbnN0YWxsIHByb21wdCBmb3IgY3VzdG9tIGluc3RhbGwgVUkKbGV0IGRlZmVycmVkUHJvbXB0OiBhbnkgPSBudWxsOwp3aW5kb3cuYWRkRXZlbnRMaXN0ZW5lcignYmVmb3JlaW5zdGFsbHByb21wdCcsIChlKSA9PiB7CiAgZS5wcmV2ZW50RGVmYXVsdCgpOwogIGRlZmVycmVkUHJvbXB0ID0gZTsKfSk7CgovLyBFeHBvc2UgaW5zdGFsbCBmdW5jdGlvbiBnbG9iYWxseQood2luZG93IGFzIGFueSkuaW5zdGFsbFBXQSA9IGFzeW5jICgpID0+IHsKICBpZiAoIWRlZmVycmVkUHJvbXB0KSByZXR1cm4gZmFsc2U7CiAgZGVmZXJyZWRQcm9tcHQucHJvbXB0KCk7CiAgY29uc3QgeyBvdXRjb21lIH0gPSBhd2FpdCBkZWZlcnJlZFByb21wdC51c2VyQ2hvaWNlOwogIGRlZmVycmVkUHJvbXB0ID0gbnVsbDsKICByZXR1cm4gb3V0Y29tZSA9PT0gJ2FjY2VwdGVkJzsKfTsKClJlYWN0RE9NLmNyZWF0ZVJvb3QoZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3Jvb3QnKSEpLnJlbmRlcigKICA8UmVhY3QuU3RyaWN0TW9kZT4KICAgIDxUb2FzdFByb3ZpZGVyPgogICAgICA8QXBwIC8+CiAgICA8L1RvYXN0UHJvdmlkZXI+CiAgPC9SZWFjdC5TdHJpY3RNb2RlPgopOwo=">
 
   <!-- Inline critical CSS for loading skeleton -->
   <style>
@@ -80,9 +91,9 @@
       .loading-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 12px; }
     }
   </style>
-  <script type="module" crossorigin src="/assets/index-Dh2x4gDO.js"></script>
+  <script type="module" crossorigin src="/assets/index-CDaDk49g.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/vendor-nf7bT_Uh.js">
-  <link rel="stylesheet" crossorigin href="/assets/index-CoeDtQCZ.css">
+  <link rel="stylesheet" crossorigin href="/assets/index-DU11TjNh.css">
 </head>
 <body class="bg-gray-50 dark:bg-gray-900">
   <div id="root">

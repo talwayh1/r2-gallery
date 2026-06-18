@@ -1,8 +1,11 @@
-import { useEffect, useCallback, useState, useRef } from 'react';
-import { getFileUrl, getExif, type ExifData } from '../api';
+import { useEffect, useCallback, useState, useRef, lazy, Suspense } from 'react';
+import { getFileUrl, getThumbUrl, getExif, saveFile, uploadCustomThumb, type ExifData } from '../api';
 import VideoPlayer from './VideoPlayer';
 import MarkdownEditor from './MarkdownEditor';
-import HlsPlayer from './HlsPlayer';
+
+// Lazy-load heavy components (hls.js is ~400KB)
+const HlsPlayer = lazy(() => import('./HlsPlayer'));
+const PanoramaViewer = lazy(() => import('./PanoramaViewer'));
 
 interface MediaItem {
   path: string;
@@ -160,10 +163,41 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   // Text content state
   const [textContent, setTextContent] = useState<string | null>(null);
   const [textLoading, setTextLoading] = useState(false);
+  const [textSaving, setTextSaving] = useState(false);
 
   // .url file content state
   const [urlContent, setUrlContent] = useState<string | null>(null);
   const [urlLoading, setUrlLoading] = useState(false);
+
+  // Panorama state
+  const [showPanorama, setShowPanorama] = useState(false);
+
+  // Cursor auto-hide for video (3s idle)
+  const [cursorVisible, setCursorVisible] = useState(true);
+  const cursorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Video poster upload state
+  const [posterUploading, setPosterUploading] = useState(false);
+  const posterInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePosterUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !current) return;
+    setPosterUploading(true);
+    try {
+      await uploadCustomThumb(current.path, file);
+      // Force refresh the thumbnail by adding a cache-busting param
+      const thumbImgs = document.querySelectorAll(`img[src*="/api/thumb?path=${encodeURIComponent(current.path)}"]`);
+      thumbImgs.forEach((img) => {
+        (img as HTMLImageElement).src = `/api/thumb?path=${encodeURIComponent(current.path)}&t=${Date.now()}`;
+      });
+    } catch (err) {
+      console.error('Poster upload failed:', err);
+    } finally {
+      setPosterUploading(false);
+      if (posterInputRef.current) posterInputRef.current.value = '';
+    }
+  };
 
   const isZoomed = scale > 1.05;
 
@@ -576,12 +610,22 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     return () => { cancelled = true; };
   }, [showInfo, current]);
 
-  // Fetch text content for text/code files
+  // Fetch text content for text/code files (with size limit)
   useEffect(() => {
     if (!current || !isTextMime(current.mime)) {
       setTextContent(null);
       return;
     }
+
+    // Check file size limit (default 2MB, configurable via localStorage)
+    const maxSizeStr = localStorage.getItem('codeMaxLoad');
+    const maxSize = maxSizeStr ? parseInt(maxSizeStr, 10) : 2 * 1024 * 1024;
+    if (current.size && current.size > maxSize) {
+      setTextContent(null);
+      setTextLoading(false);
+      return;
+    }
+
     let cancelled = false;
     setTextLoading(true);
     setTextContent(null);
@@ -629,14 +673,14 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     return () => { cancelled = true; };
   }, [current, isUrlFile]);
 
-  // Preload ±2 adjacent images for smoother navigation
+  // Preload ±2 adjacent thumbnails for smoother navigation (not full originals)
   useEffect(() => {
     const preloadIndices = [index - 2, index - 1, index + 1, index + 2];
     const preloaded: HTMLImageElement[] = [];
     for (const i of preloadIndices) {
       if (i >= 0 && i < items.length && items[i]?.mime.startsWith('image/')) {
         const img = new Image();
-        img.src = getFileUrl(items[i].path);
+        img.src = getThumbUrl(items[i].path);
         preloaded.push(img);
       }
     }
@@ -693,13 +737,27 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   const isAudio = current.mime.startsWith('audio/');
   const isPdf = current.mime === 'application/pdf';
   const isText = isTextMime(current.mime);
+  const isOffice = current.mime.includes('word') || current.mime.includes('document') ||
+    current.mime.includes('sheet') || current.mime.includes('excel') ||
+    current.mime.includes('presentation') || current.mime.includes('powerpoint') ||
+    current.mime === 'application/msword' ||
+    current.mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    current.mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+    current.mime === 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
   return (
     <div
       ref={swipeRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm touch-pan-y"
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm touch-pan-y ${!cursorVisible && isVideo ? 'cursor-none' : ''}`}
       onClick={(e) => {
         if (!isZoomed) { stopSlideshow(); onClose(); }
+      }}
+      onMouseMove={() => {
+        setCursorVisible(true);
+        if (cursorTimerRef.current) clearTimeout(cursorTimerRef.current);
+        if (isVideo) {
+          cursorTimerRef.current = setTimeout(() => setCursorVisible(false), 3000);
+        }
       }}
     >
       {/* Close button */}
@@ -856,6 +914,29 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
+        {/* Panorama button (for wide images) */}
+        {isImage && imageDimensions && imageDimensions.w / imageDimensions.h > 2 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowPanorama(true); }}
+            className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            title="全景查看"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
+          </button>
+        )}
+        {/* Set poster frame (for videos) */}
+        {isVideo && (
+          <>
+            <input ref={posterInputRef} type="file" accept="image/*" className="hidden" onChange={handlePosterUpload} />
+            <button
+              onClick={(e) => { e.stopPropagation(); posterInputRef.current?.click(); }}
+              className={`p-2 rounded-lg transition-colors ${posterUploading ? 'text-blue-400 animate-pulse' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+              title="设置视频封面"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+            </button>
+          </>
+        )}
         {/* Copy link */}
         <button
           onClick={(e) => { e.stopPropagation(); handleCopyLink(); }}
@@ -1199,7 +1280,9 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
           </div>
         ) : isHls ? (
           <div className="relative" onClick={(e) => e.stopPropagation()}>
-            <HlsPlayer src={url} autoplay onEnded={goNext} />
+            <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/50" /></div>}>
+              <HlsPlayer src={url} autoplay onEnded={goNext} />
+            </Suspense>
           </div>
         ) : isVideo ? (
           <div className="relative" onClick={(e) => e.stopPropagation()}>
@@ -1208,6 +1291,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
               path={current.path}
               name={name}
               autoplay={true}
+              loop={true}
               onEnded={goNext}
             />
           </div>
@@ -1301,20 +1385,57 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
             onClick={(e) => e.stopPropagation()}
           >
             <iframe
-              src={url}
+              src={`${url}#toolbar=1&navpanes=1&scrollbar=1`}
               className="w-full flex-1 rounded-lg border border-white/10 bg-white"
               title={name}
             />
-            <a
-              href={url}
-              download={name}
-              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white/80 rounded-lg transition-colors text-sm"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              下载 PDF
-            </a>
+            <div className="flex items-center gap-3">
+              <a
+                href={url}
+                download={name}
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white/80 rounded-lg transition-colors text-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                下载 PDF
+              </a>
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white/80 rounded-lg transition-colors text-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+                新窗口打开
+              </a>
+            </div>
+          </div>
+        ) : isOffice ? (
+          <div
+            className="flex flex-col items-center gap-4 w-[85vw] max-w-[900px] h-[85vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <iframe
+              src={`https://docs.google.com/gview?url=${encodeURIComponent(directUrl)}&embedded=true`}
+              className="w-full flex-1 rounded-lg border border-white/10 bg-white"
+              title={name}
+            />
+            <div className="flex items-center gap-3">
+              <a
+                href={url}
+                download={name}
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white/80 rounded-lg transition-colors text-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                下载文件
+              </a>
+              <span className="text-white/30 text-xs">预览由 Google Docs Viewer 提供</span>
+            </div>
           </div>
         ) : isText ? (
           <div
@@ -1326,7 +1447,22 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/50" />
               </div>
             ) : textContent !== null ? (
-              <MarkdownEditor content={textContent} fileName={name} readOnly />
+              <MarkdownEditor
+                content={textContent}
+                fileName={name}
+                onSave={async (newContent: string) => {
+                  if (!current) return;
+                  setTextSaving(true);
+                  try {
+                    await saveFile(current.path, newContent);
+                    setTextContent(newContent);
+                  } catch (e) {
+                    console.error('Save failed:', e);
+                  } finally {
+                    setTextSaving(false);
+                  }
+                }}
+              />
             ) : (
               <div className="flex items-center justify-center h-full text-white/40">
                 无法加载文本内容
@@ -1349,6 +1485,11 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
           </div>
         )}
       </div>
+      {showPanorama && current?.mime.startsWith('image/') && (
+        <Suspense fallback={<div className="fixed inset-0 bg-black z-50 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/50" /></div>}>
+          <PanoramaViewer src={url} onClose={() => setShowPanorama(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }

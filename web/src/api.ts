@@ -1,5 +1,16 @@
 const API_BASE = '/api';
 
+// CDN域名配置（从/api/config获取）
+let cdnDomain: string | null = null;
+
+export function setCdnDomain(domain: string | null) {
+  cdnDomain = domain;
+}
+
+export function getCdnDomain() {
+  return cdnDomain;
+}
+
 async function request(path: string, options: RequestInit = {}) {
   const token = localStorage.getItem('token');
   const headers: Record<string, string> = {
@@ -66,12 +77,20 @@ export async function listDirs() {
 }
 
 export function getFileUrl(path: string) {
+  // 如果有CDN域名，直接用CDN访问（公开文件，不需要token）
+  if (cdnDomain) {
+    return `${cdnDomain}/${path}`;
+  }
   const token = localStorage.getItem('token');
   const base = `${API_BASE}/file?path=${encodeURIComponent(path)}`;
   return token ? `${base}&token=${encodeURIComponent(token)}` : base;
 }
 
 export function getThumbUrl(path: string) {
+  // 如果有CDN域名，直接用CDN访问（公开文件，不需要token）
+  if (cdnDomain) {
+    return `${cdnDomain}/${path}`;
+  }
   const token = localStorage.getItem('token');
   const base = `${API_BASE}/thumb?path=${encodeURIComponent(path)}`;
   return token ? `${base}&token=${encodeURIComponent(token)}` : base;
@@ -84,6 +103,60 @@ export async function uploadFile(dir: string, file: File, relativePath?: string)
   if (relativePath) form.append('relativePath', relativePath);
   const res = await request('/upload', { method: 'POST', body: form });
   return res.json();
+}
+
+/**
+ * Upload a file with XHR progress tracking and abort support.
+ * Used by the upload queue for per-file progress reporting.
+ */
+export function uploadFileWithProgress(
+  dir: string,
+  file: File,
+  relativePath: string | undefined,
+  onProgress: (loaded: number, total: number) => void,
+  signal?: AbortSignal,
+): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const form = new FormData();
+    form.append('file', file);
+    form.append('dir', dir);
+    if (relativePath) form.append('relativePath', relativePath);
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) onProgress(e.loaded, e.total);
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try { resolve(JSON.parse(xhr.responseText)); } catch { resolve(xhr.responseText); }
+      } else {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          reject(new Error(data.error || `HTTP ${xhr.status}`));
+        } catch {
+          reject(new Error(`HTTP ${xhr.status}`));
+        }
+      }
+    });
+
+    xhr.addEventListener('error', () => reject(new Error('网络错误')));
+    xhr.addEventListener('abort', () => {
+      const err = new Error('上传已取消');
+      err.name = 'AbortError';
+      reject(err);
+    });
+
+    if (signal) {
+      if (signal.aborted) { reject(new Error('上传已取消')); return; }
+      signal.addEventListener('abort', () => xhr.abort());
+    }
+
+    const token = localStorage.getItem('token');
+    xhr.open('POST', '/api/upload');
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.send(form);
+  });
 }
 
 export async function mkdir(path: string) {
@@ -199,6 +272,21 @@ export async function discoverMedia(limit?: number, offset?: number): Promise<{ 
   if (limit) params.set('limit', String(limit));
   if (offset) params.set('offset', String(offset));
   const res = await fetch(`${API_BASE}/discover?${params}`);
+  return res.json();
+}
+
+// --- Memories (On this day) ---
+export interface MemoryYear {
+  year: number;
+  yearsAgo: number;
+  files: DiscoverFile[];
+}
+
+export async function getMemories(month?: number, day?: number): Promise<{ date: string; memories: MemoryYear[]; total: number }> {
+  const params = new URLSearchParams();
+  if (month) params.set('month', String(month));
+  if (day) params.set('day', String(day));
+  const res = await fetch(`${API_BASE}/memories?${params}`);
   return res.json();
 }
 
@@ -341,5 +429,110 @@ export async function uploadCustomThumb(filePath: string, file: File): Promise<{
   form.append('file', file);
   form.append('path', filePath);
   const res = await request('/custom-thumb', { method: 'POST', body: form });
+  return res.json();
+}
+
+// --- Save File Content ---
+export async function saveFile(path: string, content: string): Promise<{ success: boolean; path: string; size: number }> {
+  const res = await request(`/file?path=${encodeURIComponent(path)}`, {
+    method: 'PUT',
+    body: content,
+    headers: { 'Content-Type': 'text/plain' },
+  });
+  return res.json();
+}
+
+// --- Trash ---
+export async function listTrash(): Promise<{ items: any[]; total: number }> {
+  const res = await request('/trash');
+  return res.json();
+}
+
+export async function restoreTrash(paths: string[]): Promise<{ success: boolean; restored: string[] }> {
+  const res = await request('/trash/restore', { method: 'POST', body: JSON.stringify({ paths }) });
+  return res.json();
+}
+
+export async function purgeTrash(paths: string[]): Promise<{ success: boolean; purged: string[] }> {
+  const res = await request('/trash/purge', { method: 'POST', body: JSON.stringify({ paths }) });
+  return res.json();
+}
+
+export async function emptyTrash(): Promise<{ success: boolean; purged: number }> {
+  const res = await request('/trash/empty', { method: 'POST' });
+  return res.json();
+}
+
+// --- Activity Log ---
+export async function getActivity(limit?: number, offset?: number): Promise<{ items: any[]; total: number; hasMore: boolean }> {
+  const params = new URLSearchParams();
+  if (limit) params.set('limit', String(limit));
+  if (offset) params.set('offset', String(offset));
+  const res = await request(`/activity?${params}`);
+  return res.json();
+}
+
+export async function getTrafficStats(days?: number): Promise<{ totalBytes: number; requestCount: number; byDay: any[]; days: number }> {
+  const params = new URLSearchParams();
+  if (days) params.set('days', String(days));
+  const res = await request(`/stats/traffic?${params}`);
+  return res.json();
+}
+
+// --- ID3 Tags ---
+export interface Id3Data {
+  title?: string;
+  artist?: string;
+  album?: string;
+  year?: string;
+  genre?: string;
+  track?: string;
+  cover?: string;
+}
+
+export async function getId3(path: string): Promise<{ id3: Id3Data | null; message?: string }> {
+  const res = await fetch(`${API_BASE}/id3?path=${encodeURIComponent(path)}`);
+  return res.json();
+}
+
+// --- ZIP Download ---
+export async function downloadZip(paths: string[]): Promise<void> {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${API_BASE}/zip-download`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ paths }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'download.zip';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// --- ZIP Create ---
+export async function createZip(paths: string[], dir?: string): Promise<{ success: boolean; path: string }> {
+  const res = await request('/zip-create', {
+    method: 'POST',
+    body: JSON.stringify({ paths, dir }),
+  });
+  return res.json();
+}
+
+// --- Unzip ---
+export async function unzipFile(path: string, dir?: string): Promise<{ success: boolean; extracted: number; dir: string }> {
+  const res = await request('/unzip', {
+    method: 'POST',
+    body: JSON.stringify({ path, dir }),
+  });
   return res.json();
 }

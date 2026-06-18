@@ -3,9 +3,20 @@ import type { AppBindings, Variables, FileInfo, FileListResponse } from '../type
 import * as r2 from '../services/r2';
 import * as db from '../services/db';
 import { authMiddleware } from '../auth';
-import { generateThumbnail, getThumbKey, isSupportedImageType } from '../services/thumbnail';
+import { generateThumbnail, getThumbKey, isSupportedImageType, isSvg } from '../services/thumbnail';
+import { getMimeType } from '../utils/mime';
 
 const files = new Hono<{ Bindings: AppBindings; Variables: Variables }>();
+
+// Short-term cache for R2 list results (avoids repeated list ops on quick navigation)
+const listCache = new Map<string, { data: any; ts: number }>();
+const LIST_CACHE_TTL = 10_000; // 10 seconds
+function evictStaleListCache() {
+  const now = Date.now();
+  for (const [key, entry] of listCache) {
+    if (now - entry.ts > LIST_CACHE_TTL) listCache.delete(key);
+  }
+}
 
 // Demo mode middleware - blocks write operations
 const demoModeCheck = async (c: any, next: any) => {
@@ -13,6 +24,8 @@ const demoModeCheck = async (c: any, next: any) => {
     return c.json({ error: '操作在演示模式下被禁用' }, 403);
   }
   await next();
+  // Invalidate list cache after any successful write operation
+  listCache.clear();
 };
 
 // Public: file browsing (GET /files, GET /file, GET /dirs)
@@ -29,23 +42,22 @@ files.get('/files', async (c) => {
   const bucket = c.env.R2_BUCKET;
   const database = c.env.DB;
   const prefix = dir ? dir + '/' : '';
+
+  // Check short-term cache (skip for paginated requests)
+  const cacheKey = `${dir}:${sort}:${order}:${typeFilter}`;
+  if (!cursor) {
+    evictStaleListCache();
+    const cached = listCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < LIST_CACHE_TTL) {
+      return c.json(cached.data);
+    }
+  }
+
   const result = await r2.listObjects(bucket, prefix, '/', { limit, cursor });
 
   const filesMap: Record<string, FileInfo> = {};
 
-  // Add directories
-  for (const d of result.directories) {
-    const dirName = d.replace(prefix, '').replace(/\/$/, '');
-    if (!dirName) continue;
-    filesMap[dirName] = {
-      name: dirName,
-      type: 'directory',
-      size: 0,
-      mime: 'directory',
-      mtime: 0,
-      path: d.replace(/\/$/, ''),
-    };
-  }
+  // Directories are returned separately in `dirs` array — don't add to filesMap
 
   // Add files
   for (const obj of result.files) {
@@ -110,6 +122,28 @@ files.get('/files', async (c) => {
       return true;
     });
 
+  // Query file counts per directory from D1 (fast, single query)
+  let dirCounts: Record<string, number> = {};
+  if (dirs.length > 0 && database) {
+    try {
+      // Get all files at exactly one level deep under prefix: prefix/dir/filename
+      const countResult = await database.prepare(
+        "SELECT path FROM file_metadata WHERE path LIKE ? || '%' AND path != ? AND path NOT LIKE ? || '%/%/%' AND path LIKE ? || '%/%' AND mime != 'directory'"
+      ).bind(prefix, prefix, prefix, prefix).all<{path: string}>();
+      for (const d of dirs) dirCounts[d] = 0;
+      for (const row of countResult.results) {
+        const rel = row.path.slice(prefix.length);
+        const slashIdx = rel.indexOf('/');
+        if (slashIdx > 0) {
+          const dirName = rel.slice(0, slashIdx);
+          if (dirCounts[dirName] !== undefined) dirCounts[dirName]++;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to query dir counts:', err);
+    }
+  }
+
   // Fisher-Yates shuffle
   const shuffleArray = <T>(arr: T[]): T[] => {
     const a = [...arr];
@@ -150,13 +184,21 @@ files.get('/files', async (c) => {
     sortedFiles[key] = val;
   }
 
-  return c.json({
+  const responseData = {
     path: dir,
     files: sortedFiles,
     dirs,
+    dirCounts: Object.keys(dirCounts).length > 0 ? dirCounts : undefined,
     cursor: result.cursor,
     hasMore: result.truncated,
-  } as FileListResponse);
+  } as FileListResponse;
+
+  // Cache result for quick navigation (only first page, no cursor)
+  if (!cursor) {
+    listCache.set(cacheKey, { data: responseData, ts: Date.now() });
+  }
+
+  return c.json(responseData);
 });
 
 // GET /api/dirs
@@ -166,7 +208,7 @@ files.get('/dirs', async (c) => {
   return c.json(tree);
 });
 
-// GET /api/file?path=photos/image.jpg
+// GET /api/file?path=photos/image.jpg — supports Range requests for video seeking
 files.get('/file', async (c) => {
   const path = c.req.query('path');
   if (!path) return c.json({ error: 'Path required' }, 400);
@@ -175,17 +217,55 @@ files.get('/file', async (c) => {
   const obj = await r2.getObject(bucket, path);
   if (!obj) return c.json({ error: 'File not found' }, 404);
 
-  // Always use our getMimeType for correct type detection
-  const contentType = getMimeType(path);
+  const totalSize = obj.size;
+  const etag = `"${totalSize}-${(obj as any).uploaded?.getTime?.() || 0}"`;
+  if (c.req.header('If-None-Match') === etag) return new Response(null, { status: 304 });
 
+  const contentType = getMimeType(path);
+  const isDownload = c.req.query('download') === '1';
+
+  // Parse Range header for partial content (video seeking)
+  const rangeHeader = c.req.header('Range');
+  if (rangeHeader && !isDownload) {
+    const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
+    if (match) {
+      const start = parseInt(match[1], 10);
+      const end = match[2] ? parseInt(match[2], 10) : Math.min(start + 1024 * 1024 - 1, totalSize - 1); // 1MB chunks
+      const length = end - start + 1;
+
+      // Get the range from R2
+      const rangeObj = await bucket.get(path, { range: { offset: start, length } });
+      if (!rangeObj) return new Response(null, { status: 416 });
+
+      const headers = new Headers();
+      headers.set('Content-Type', contentType);
+      headers.set('Content-Length', String(length));
+      headers.set('Content-Range', `bytes ${start}-${end}/${totalSize}`);
+      headers.set('Accept-Ranges', 'bytes');
+      headers.set('Cache-Control', 'public, max-age=86400');
+      headers.set('ETag', etag);
+
+      // Log traffic
+      try { await db.logTraffic(c.env.DB, path, length, c.get('userId')); } catch {}
+
+      return new Response((rangeObj as any).body, { status: 206, headers });
+    }
+  }
+
+  // Full body response
   const headers = new Headers();
   headers.set('Content-Type', contentType);
-  headers.set('Content-Length', String(obj.size));
-  headers.set('Cache-Control', 'public, max-age=3600');
+  headers.set('Content-Length', String(totalSize));
+  headers.set('Accept-Ranges', 'bytes');
+  headers.set('Cache-Control', 'public, max-age=86400');
+  headers.set('ETag', etag);
 
-  if (c.req.query('download') === '1') {
+  if (isDownload) {
     headers.set('Content-Disposition', `attachment; filename="${path.split('/').pop()}"`);
   }
+
+  // Log traffic
+  try { await db.logTraffic(c.env.DB, path, totalSize, c.get('userId')); } catch {}
 
   return new Response((obj as any).body, { headers });
 });
@@ -204,10 +284,13 @@ files.get('/thumb', async (c) => {
   try {
     const customThumb = await r2.getObject(bucket, customThumbKey);
     if (customThumb) {
+      const etag = `"${customThumb.size}-${(customThumb as any).uploaded?.getTime?.() || 0}"`;
+      if (c.req.header('If-None-Match') === etag) return new Response(null, { status: 304 });
       const headers = new Headers();
       headers.set('Content-Type', 'image/webp');
       headers.set('Content-Length', String(customThumb.size));
       headers.set('Cache-Control', 'public, max-age=604800');
+      headers.set('ETag', etag);
       return new Response((customThumb as any).body, { headers });
     }
   } catch {}
@@ -216,10 +299,13 @@ files.get('/thumb', async (c) => {
   try {
     const cachedThumb = await r2.getObject(bucket, thumbKey);
     if (cachedThumb) {
+      const etag = `"${cachedThumb.size}-${(cachedThumb as any).uploaded?.getTime?.() || 0}"`;
+      if (c.req.header('If-None-Match') === etag) return new Response(null, { status: 304 });
       const headers = new Headers();
       headers.set('Content-Type', 'image/webp');
       headers.set('Content-Length', String(cachedThumb.size));
       headers.set('Cache-Control', 'public, max-age=604800');
+      headers.set('ETag', etag);
       return new Response((cachedThumb as any).body, { headers });
     }
   } catch {}
@@ -228,16 +314,28 @@ files.get('/thumb', async (c) => {
   const original = await r2.getObject(bucket, path);
   if (!original) return c.json({ error: 'File not found' }, 404);
 
+  // ETag from original object for conditional requests
+  const origEtag = `"orig-${original.size}-${(original as any).uploaded?.getTime?.() || 0}"`;
+  if (c.req.header('If-None-Match') === origEtag) return new Response(null, { status: 304 });
+
   const mime = getMimeType(path);
   const arrayBuffer = await (original as any).arrayBuffer();
+
+  // SVG: serve directly (browser renders natively, no WASM decode needed)
+  if (isSvg(mime)) {
+    return new Response(arrayBuffer, {
+      headers: { 'Content-Type': 'image/svg+xml', 'Content-Length': String(arrayBuffer.byteLength), 'Cache-Control': 'public, max-age=604800', 'ETag': origEtag },
+    });
+  }
 
   if (isSupportedImageType(mime)) {
     try {
       const thumbBuffer = await generateThumbnail(arrayBuffer, mime);
       if (thumbBuffer) {
         await r2.putObject(bucket, thumbKey, thumbBuffer, { contentType: 'image/webp' });
+        const newEtag = `"thumb-${thumbBuffer.byteLength}"`;
         return new Response(thumbBuffer, {
-          headers: { 'Content-Type': 'image/webp', 'Content-Length': String(thumbBuffer.byteLength), 'Cache-Control': 'public, max-age=604800' },
+          headers: { 'Content-Type': 'image/webp', 'Content-Length': String(thumbBuffer.byteLength), 'Cache-Control': 'public, max-age=604800', 'ETag': newEtag },
         });
       }
     } catch (err) {
@@ -247,7 +345,7 @@ files.get('/thumb', async (c) => {
 
   // Fallback: serve original from buffer
   return new Response(arrayBuffer, {
-    headers: { 'Content-Type': mime, 'Content-Length': String(arrayBuffer.byteLength), 'Cache-Control': 'public, max-age=3600' },
+    headers: { 'Content-Type': mime, 'Content-Length': String(arrayBuffer.byteLength), 'Cache-Control': 'public, max-age=86400', 'ETag': origEtag },
   });
 });
 
@@ -262,6 +360,31 @@ files.get('/url-content', async (c) => {
   return c.json({ url: text.trim() });
 });
 
+// PUT /api/file (protected) — save/update file content
+files.put('/file', authMiddleware, demoModeCheck, async (c) => {
+  const path = c.req.query('path');
+  if (!path) return c.json({ error: 'Path required' }, 400);
+
+  const bucket = c.env.R2_BUCKET;
+  const database = c.env.DB;
+
+  // Read body as ArrayBuffer
+  const arrayBuffer = await c.req.arrayBuffer();
+  const mime = c.req.header('Content-Type') || getMimeType(path);
+
+  await r2.putObject(bucket, path, arrayBuffer, { contentType: mime });
+
+  await db.upsertFileMetadata(database, {
+    path,
+    size: arrayBuffer.byteLength,
+    mime,
+    mtime: Math.floor(Date.now() / 1000),
+    created_at: new Date().toISOString(),
+  });
+
+  return c.json({ success: true, path, size: arrayBuffer.byteLength });
+});
+
 // POST /api/create-file (protected) — create empty file
 files.post('/create-file', authMiddleware, demoModeCheck, async (c) => {
   const { path: filePath } = await c.req.json<{ path: string }>();
@@ -274,6 +397,149 @@ files.post('/create-file', authMiddleware, demoModeCheck, async (c) => {
     mtime: Math.floor(Date.now() / 1000), created_at: new Date().toISOString(),
   });
   return c.json({ success: true });
+});
+
+// POST /api/zip-download — download multiple files as ZIP (recursive for directories)
+files.post('/zip-download', async (c) => {
+  const { paths } = await c.req.json<{ paths: string[] }>();
+  if (!paths?.length) return c.json({ error: 'No paths specified' }, 400);
+
+  const bucket = c.env.R2_BUCKET;
+
+  // Dynamic import JSZip
+  const JSZip = (await import('jszip')).default;
+  const zip = new JSZip();
+
+  // Collect all files (recursive for directories)
+  const allFiles: { key: string; zipPath: string }[] = [];
+
+  for (const inputPath of paths) {
+    // Check if it's a file
+    const obj = await bucket.get(inputPath);
+    if (obj) {
+      allFiles.push({ key: inputPath, zipPath: inputPath.split('/').pop() || inputPath });
+      continue;
+    }
+
+    // Check if it's a directory (list with prefix)
+    const prefix = inputPath.endsWith('/') ? inputPath : inputPath + '/';
+    let cursor: string | undefined;
+    do {
+      const listing = await bucket.list({ prefix, limit: 1000, ...(cursor ? { cursor } : {}) });
+      for (const item of listing.objects) {
+        if (item.key && !item.key.endsWith('/')) {
+          // Preserve relative path structure
+          const dirName = inputPath.split('/').pop() || inputPath;
+          const relativePath = item.key.replace(prefix, '');
+          allFiles.push({ key: item.key, zipPath: `${dirName}/${relativePath}` });
+        }
+      }
+      cursor = listing.truncated ? listing.cursor : undefined;
+    } while (cursor);
+  }
+
+  // Add each file to the ZIP
+  for (const { key, zipPath } of allFiles) {
+    try {
+      const obj = await bucket.get(key);
+      if (obj) {
+        const arrayBuffer = await obj.arrayBuffer();
+        zip.file(zipPath, arrayBuffer);
+      }
+    } catch (err) {
+      console.error(`Failed to add ${key} to ZIP:`, err);
+    }
+  }
+
+  const zipBuffer = await zip.generateAsync({ type: 'arraybuffer' });
+
+  return new Response(zipBuffer, {
+    headers: {
+      'Content-Type': 'application/zip',
+      'Content-Disposition': 'attachment; filename="download.zip"',
+      'Content-Length': String(zipBuffer.byteLength),
+    },
+  });
+});
+
+// POST /api/zip-create (protected) — compress selected files into a ZIP in the current directory
+files.post('/zip-create', authMiddleware, demoModeCheck, async (c) => {
+  const { paths, dir } = await c.req.json<{ paths: string[]; dir?: string }>();
+  if (!paths?.length) return c.json({ error: 'No paths specified' }, 400);
+
+  const bucket = c.env.R2_BUCKET;
+  const database = c.env.DB;
+  const JSZip = (await import('jszip')).default;
+  const zip = new JSZip();
+
+  for (const inputPath of paths) {
+    const obj = await bucket.get(inputPath);
+    if (obj) {
+      const name = inputPath.split('/').pop() || inputPath;
+      const buf = await obj.arrayBuffer();
+      zip.file(name, buf);
+      continue;
+    }
+    const prefix = inputPath.endsWith('/') ? inputPath : inputPath + '/';
+    let cursor: string | undefined;
+    do {
+      const listing = await bucket.list({ prefix, limit: 1000, ...(cursor ? { cursor } : {}) });
+      for (const item of listing.objects) {
+        if (item.key && !item.key.endsWith('/')) {
+          const dirName = inputPath.split('/').pop() || inputPath;
+          const relativePath = item.key.replace(prefix, '');
+          const fileObj = await bucket.get(item.key);
+          if (fileObj) zip.file(`${dirName}/${relativePath}`, await fileObj.arrayBuffer());
+        }
+      }
+      cursor = listing.truncated ? listing.cursor : undefined;
+    } while (cursor);
+  }
+
+  const zipBuffer = await zip.generateAsync({ type: 'arraybuffer' });
+  const zipName = `archive-${Date.now()}.zip`;
+  const zipPath = dir ? `${dir}/${zipName}` : zipName;
+
+  await r2.putObject(bucket, zipPath, zipBuffer, { contentType: 'application/zip' });
+  await db.upsertFileMetadata(database, {
+    path: zipPath, size: zipBuffer.byteLength, mime: 'application/zip',
+    mtime: Math.floor(Date.now() / 1000), created_at: new Date().toISOString(),
+  });
+
+  return c.json({ success: true, path: zipPath });
+});
+
+// POST /api/unzip (protected) — extract ZIP file contents
+files.post('/unzip', authMiddleware, demoModeCheck, async (c) => {
+  const { path: zipPath, dir } = await c.req.json<{ path: string; dir?: string }>();
+  if (!zipPath) return c.json({ error: 'Path required' }, 400);
+
+  const bucket = c.env.R2_BUCKET;
+  const database = c.env.DB;
+  const JSZip = (await import('jszip')).default;
+
+  const obj = await bucket.get(zipPath);
+  if (!obj) return c.json({ error: 'File not found' }, 404);
+
+  const arrayBuffer = await obj.arrayBuffer();
+  const zip = await JSZip.loadAsync(arrayBuffer);
+
+  const extractDir = dir || zipPath.replace(/\.zip$/i, '').split('/').pop() || 'extracted';
+  const results: string[] = [];
+
+  for (const [name, entry] of Object.entries(zip.files)) {
+    if (entry.dir) continue;
+    const content = await entry.async('arraybuffer');
+    const targetPath = `${extractDir}/${name}`;
+    await r2.putObject(bucket, targetPath, content, { contentType: getMimeType(name) });
+    await db.upsertFileMetadata(database, {
+      path: targetPath, size: content.byteLength, mime: getMimeType(name),
+      mtime: Math.floor(Date.now() / 1000), created_at: new Date().toISOString(),
+    });
+    results.push(targetPath);
+  }
+
+  return c.json({ success: true, extracted: results.length, dir: extractDir });
 });
 
 // POST /api/create-url (protected) — create .url shortcut file
@@ -295,7 +561,7 @@ files.post('/create-url', authMiddleware, demoModeCheck, async (c) => {
 files.post('/custom-thumb', authMiddleware, demoModeCheck, async (c) => {
   const formData = await c.req.formData();
   const filePath = formData.get('path') as string;
-  const file = formData.get('file') as File;
+  const file = formData.get('file') as unknown as File;
   if (!filePath || !file) return c.json({ error: 'Path and file required' }, 400);
   const bucket = c.env.R2_BUCKET;
   const thumbKey = '_thumbs/' + filePath + '.webp';
@@ -321,49 +587,77 @@ files.post('/mkdir', authMiddleware, demoModeCheck, async (c) => {
   const bucket = c.env.R2_BUCKET;
   const database = c.env.DB;
 
-  // Create directory marker in R2
   await r2.putObject(bucket, path + '/', '', { contentType: 'directory' });
-
-  // Store metadata in D1
   await db.upsertFileMetadata(database, {
-    path,
-    size: 0,
-    mime: 'directory',
-    mtime: Math.floor(Date.now() / 1000),
-    created_at: new Date().toISOString(),
+    path, size: 0, mime: 'directory',
+    mtime: Math.floor(Date.now() / 1000), created_at: new Date().toISOString(),
   });
 
+  try { await db.logActivity(database, 'mkdir', path, c.get('userId')); } catch {}
   return c.json({ success: true });
 });
 
-// POST /api/delete (protected)
+// POST /api/delete (protected) — soft delete to trash (ZPan pattern)
 files.post('/delete', authMiddleware, demoModeCheck, async (c) => {
   const { items } = await c.req.json<{ items: string[] }>();
   if (!items?.length) return c.json({ error: 'No items specified' }, 400);
 
   const bucket = c.env.R2_BUCKET;
   const database = c.env.DB;
+  const user = c.get('userId');
 
   for (const item of items) {
-    // List all objects with this prefix
-    const objects: string[] = [];
-    const listResult = await r2.listObjects(bucket, item.endsWith('/') ? item : item + '/');
-    for (const obj of listResult.files) {
-      if (obj.key) objects.push(obj.key);
-    }
-
-    // Also include the item itself if it's a file
+    // Check if it's a file
     const directObj = await r2.getObject(bucket, item);
-    if (directObj) objects.push(item);
-
-    // Delete from R2
-    if (objects.length > 0) {
-      await r2.deleteObjects(bucket, objects);
+    if (directObj) {
+      // Soft delete: add to trash, remove metadata (keep R2 object)
+      await db.addToTrash(database, {
+        original_path: item,
+        name: item.split('/').pop() || item,
+        mime: (directObj as any).httpMetadata?.contentType || 'application/octet-stream',
+        size: directObj.size,
+        is_dir: false,
+        deleted_by: user,
+      });
+      await db.deleteFileMetadata(database, item);
+      try { await db.logActivity(database, 'delete', item, user); } catch {}
+      continue;
     }
 
-    // Delete from D1
+    // It's a directory — soft delete all children
+    const listResult = await r2.listObjects(bucket, item.endsWith('/') ? item : item + '/');
+    const allKeys = listResult.files.map(f => f.key).filter(Boolean) as string[];
+
+    // Add directory to trash
+    await db.addToTrash(database, {
+      original_path: item,
+      name: item.split('/').pop() || item,
+      mime: 'directory',
+      size: 0,
+      is_dir: true,
+      deleted_by: user,
+    });
+
+    // Add each child file to trash (R2 objects stay in place)
+    for (const key of allKeys) {
+      if (key.endsWith('/')) continue;
+      const childObj = await r2.getObject(bucket, key);
+      if (childObj) {
+        await db.addToTrash(database, {
+          original_path: key,
+          name: key.split('/').pop() || key,
+          mime: (childObj as any).httpMetadata?.contentType || 'application/octet-stream',
+          size: childObj.size,
+          is_dir: false,
+          deleted_by: user,
+        });
+      }
+    }
+
+    // Remove metadata (but keep R2 objects for restore)
     await db.deleteFileMetadata(database, item);
     await db.deleteFileMetadataByPrefix(database, item + '/');
+    try { await db.logActivity(database, 'delete', item, user); } catch {}
   }
 
   return c.json({ success: true });
@@ -412,6 +706,7 @@ files.post('/move', authMiddleware, demoModeCheck, async (c) => {
       await r2.copyObject(bucket, oldThumbKey, newThumbKey);
     }
 
+    try { await db.logActivity(database, 'move', from, c.get('userId'), destPath); } catch {}
     return c.json({ success: true, newPath: destPath });
   }
 
@@ -475,6 +770,7 @@ files.post('/move', authMiddleware, demoModeCheck, async (c) => {
     }
   }
 
+  try { await db.logActivity(database, 'move', from, c.get('userId'), destDir); } catch {}
   return c.json({ success: true, newPath: destDir });
 });
 
@@ -533,6 +829,7 @@ files.post('/rename', authMiddleware, demoModeCheck, async (c) => {
       created_at: new Date().toISOString(),
     });
 
+    try { await db.logActivity(database, 'rename', oldPath, c.get('userId'), newPath); } catch {}
     return c.json({ success: true, newPath });
   }
 
@@ -547,6 +844,7 @@ files.post('/rename', authMiddleware, demoModeCheck, async (c) => {
     created_at: new Date().toISOString(),
   });
 
+  try { await db.logActivity(database, 'rename', oldPath, c.get('userId'), newPath); } catch {}
   return c.json({ success: true, newPath });
 });
 
@@ -676,25 +974,5 @@ files.post('/duplicate', authMiddleware, demoModeCheck, async (c) => {
 
   return c.json({ success: true, newPath });
 });
-
-function getMimeType(filename: string): string {
-  const ext = filename.split('.').pop()?.toLowerCase() || '';
-  const mimeMap: Record<string, string> = {
-    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
-    webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp', ico: 'image/x-icon',
-    mp4: 'video/mp4', webm: 'video/webm', avi: 'video/x-msvideo', mov: 'video/quicktime',
-    mkv: 'video/x-matroska', flv: 'video/x-flv', wmv: 'video/x-ms-wmv',
-    mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', flac: 'audio/flac',
-    aac: 'audio/aac', m4a: 'audio/mp4',
-    pdf: 'application/pdf', doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    ppt: 'application/vnd.ms-powerpoint', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    zip: 'application/zip', '7z': 'application/x-7z-compressed', rar: 'application/vnd.rar',
-    tar: 'application/x-tar', gz: 'application/gzip',
-    txt: 'text/plain', html: 'text/html', css: 'text/css', js: 'application/javascript',
-    json: 'application/json', xml: 'application/xml', csv: 'text/csv', md: 'text/markdown',
-  };
-  return mimeMap[ext] || 'application/octet-stream';
-}
 
 export default files;

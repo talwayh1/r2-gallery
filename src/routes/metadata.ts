@@ -241,6 +241,116 @@ metadata.get('/discover', async (c) => {
   }
 });
 
+// GET /api/memories?month=6&day=16
+// Returns "On this day" memories — media from the same month/day in previous years
+metadata.get('/memories', async (c) => {
+  const database = c.env.DB;
+  const now = new Date();
+  const month = parseInt(c.req.query('month') || String(now.getUTCMonth() + 1));
+  const day = parseInt(c.req.query('day') || String(now.getUTCDate()));
+
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    return c.json({ error: 'Invalid month/day' }, 400);
+  }
+
+  try {
+    const { getMemories } = await import('../services/db');
+    const results = await getMemories(database, month, day);
+
+    // Group by year for display
+    const grouped: Record<number, typeof results> = {};
+    for (const r of results) {
+      const d = new Date(r.mtime * 1000);
+      const year = d.getFullYear();
+      if (!grouped[year]) grouped[year] = [];
+      grouped[year].push(r);
+    }
+
+    const memories = Object.entries(grouped)
+      .sort(([a], [b]) => Number(b) - Number(a))
+      .map(([year, files]) => ({
+        year: Number(year),
+        yearsAgo: now.getFullYear() - Number(year),
+        files: files.map((r) => ({
+          path: r.path,
+          name: r.path.split('/').pop() || r.path,
+          mime: r.mime,
+          size: r.size,
+          mtime: r.mtime,
+          dir: r.path.includes('/') ? r.path.substring(0, r.path.lastIndexOf('/')) : '',
+        })),
+      }));
+
+    return c.json({
+      date: `${month}/${day}`,
+      memories,
+      total: results.length,
+    });
+  } catch (err: any) {
+    console.error('Memories error:', err);
+    return c.json({ error: 'Failed to load memories', memories: [] }, 500);
+  }
+});
+
+// GET /api/id3?path=song.mp3
+// Extracts ID3 tags from audio files
+metadata.get('/id3', async (c) => {
+  const path = c.req.query('path');
+  if (!path) return c.json({ error: 'Path required' }, 400);
+
+  const ext = path.split('.').pop()?.toLowerCase();
+  const supportedExts = ['mp3', 'm4a', 'ogg', 'flac', 'wav', 'aac', 'wma'];
+  if (!ext || !supportedExts.includes(ext)) {
+    return c.json({ id3: null, message: 'Not an audio file' });
+  }
+
+  const bucket = c.env.R2_BUCKET;
+  const obj = await r2.getObject(bucket, path);
+  if (!obj) return c.json({ error: 'File not found' }, 404);
+
+  try {
+    const body = (obj as any).body as ReadableStream;
+    const bytes = await readBody(body);
+
+    // Dynamic import jsmediatags
+    const jsmediatags = await import('jsmediatags');
+
+    return new Promise<Response>((resolve) => {
+      const reader = new jsmediatags.Reader(bytes.buffer);
+      reader.read({
+        onSuccess: (tag: any) => {
+          const tags = tag.tags || {};
+          const id3: Record<string, any> = {};
+
+          if (tags.title) id3.title = tags.title;
+          if (tags.artist) id3.artist = tags.artist;
+          if (tags.album) id3.album = tags.album;
+          if (tags.year) id3.year = tags.year;
+          if (tags.genre) id3.genre = tags.genre;
+          if (tags.track) id3.track = tags.track;
+          if (tags.picture) {
+            // Convert picture data to base64
+            const pic = tags.picture;
+            const base64 = btoa(
+              new Uint8Array(pic.data).reduce((data, byte) => data + String.fromCharCode(byte), '')
+            );
+            id3.cover = `data:${pic.format};base64,${base64}`;
+          }
+
+          resolve(c.json({ id3 }));
+        },
+        onError: (error: any) => {
+          console.error('ID3 parse error:', error);
+          resolve(c.json({ id3: null, message: 'Failed to parse ID3 tags' }));
+        },
+      });
+    });
+  } catch (err: any) {
+    console.error('ID3 error:', err);
+    return c.json({ id3: null, message: 'Failed to read audio file' });
+  }
+});
+
 // GET /api/thumbnail?dir=photos
 // Returns the URL of the first image in a directory (for folder thumbnails)
 metadata.get('/thumbnail', async (c) => {

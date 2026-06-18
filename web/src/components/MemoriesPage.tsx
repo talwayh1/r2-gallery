@@ -1,0 +1,197 @@
+import { useState, useEffect, useCallback } from 'react';
+import { getMemories, getThumbUrl, type MemoryYear, type DiscoverFile } from '../api';
+
+interface Props {
+  onClose: () => void;
+  onNavigate: (dir: string) => void;
+  onOpenFile: (path: string, mime: string) => void;
+}
+
+function formatSize(bytes: number) {
+  if (!bytes) return '';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
+}
+
+function formatDate(ts: number) {
+  if (!ts) return '';
+  return new Date(ts * 1000).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+/** Friendly label for "years ago" */
+function yearsAgoLabel(n: number): string {
+  if (n === 0) return '今年';
+  if (n === 1) return '去年';
+  if (n === 2) return '前年';
+  return `${n} 年前`;
+}
+
+/** Emoji for years ago milestones */
+function yearsAgoEmoji(n: number): string {
+  if (n === 0) return '🆕';
+  if (n === 1) return '📅';
+  if (n === 2) return '🌟';
+  if (n <= 5) return '💎';
+  if (n <= 10) return '🏆';
+  return '🕰️';
+}
+
+export default function MemoriesPage({ onClose, onNavigate, onOpenFile }: Props) {
+  const [memories, setMemories] = useState<MemoryYear[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [date, setDate] = useState('');
+  const [total, setTotal] = useState(0);
+  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
+
+  const loadMemories = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getMemories();
+      setMemories(data.memories);
+      setDate(data.date);
+      setTotal(data.total);
+    } catch (err) {
+      console.error('Memories load error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadMemories();
+  }, [loadMemories]);
+
+  // Keyboard: ESC to close
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  const handleImageLoad = (path: string) => {
+    setLoadedImages((prev) => new Set(prev).add(path));
+  };
+
+  return (
+    <div className="fixed inset-0 z-40 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div className="flex-1">
+            <h1 className="text-lg font-semibold">💭 那年今日</h1>
+            <p className="text-xs text-gray-400">
+              {date && `${date} 的回忆`}
+              {total > 0 && ` · ${total} 个媒体文件`}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Initial loading */}
+        {loading && (
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && memories.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+            <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-lg font-medium">暂无回忆</p>
+            <p className="text-sm">这一天没有历史照片或视频</p>
+            <p className="text-xs text-gray-300 mt-2">上传更多内容，未来的今天会有回忆 ✨</p>
+          </div>
+        )}
+
+        {/* Memories grouped by year */}
+        {memories.map((group) => (
+          <div key={group.year} className="mb-10">
+            {/* Year header */}
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-2xl">{yearsAgoEmoji(group.yearsAgo)}</span>
+              <div>
+                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">
+                  {group.year} 年
+                </h2>
+                <p className="text-sm text-gray-400">
+                  {yearsAgoLabel(group.yearsAgo)} · {group.files.length} 个文件
+                </p>
+              </div>
+            </div>
+
+            {/* Media grid */}
+            <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 xl:columns-6 gap-3 space-y-3">
+              {group.files.map((file) => {
+                const isImage = file.mime.startsWith('image/');
+                const isVideo = file.mime.startsWith('video/');
+                const isLoaded = loadedImages.has(file.path);
+
+                return (
+                  <div
+                    key={file.path}
+                    className="break-inside-avoid group relative rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 cursor-pointer"
+                    onClick={() => onOpenFile(file.path, file.mime)}
+                  >
+                    {isImage ? (
+                      <>
+                        {!isLoaded && <div className="shimmer w-full aspect-square" />}
+                        <img
+                          src={getThumbUrl(file.path)}
+                          alt={file.name}
+                          loading="lazy"
+                          className={`w-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0 absolute'}`}
+                          onLoad={() => handleImageLoad(file.path)}
+                        />
+                      </>
+                    ) : isVideo ? (
+                      <div className="w-full aspect-video flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                        <svg className="w-12 h-12 text-white/60" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                        <span className="absolute bottom-2 right-2 px-2 py-0.5 text-[10px] font-bold bg-black/60 text-white rounded">
+                          VIDEO
+                        </span>
+                      </div>
+                    ) : null}
+
+                    {/* Hover overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <div className="absolute bottom-0 left-0 right-0 p-3">
+                        <p className="text-white text-xs font-medium truncate">{file.name}</p>
+                        <div className="flex items-center gap-2 mt-1 text-white/60 text-[10px]">
+                          {file.dir && <span>📂 {file.dir}</span>}
+                          {file.size > 0 && <span>{formatSize(file.size)}</span>}
+                          {file.mtime > 0 && <span>{formatDate(file.mtime)}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        {/* Footer hint */}
+        {!loading && memories.length > 0 && (
+          <div className="text-center py-8 text-gray-300 dark:text-gray-600 text-xs">
+            💡 每天打开看看，会有不同的回忆出现
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

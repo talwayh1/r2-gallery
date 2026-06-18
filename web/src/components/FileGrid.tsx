@@ -1,12 +1,17 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense, useMemo } from 'react';
 import type { FileItem } from '../types';
-import { getFileUrl, getThumbUrl, moveItem, copyFile, duplicateFile } from '../api';
+import { getFileUrl, getThumbUrl, moveItem, copyFile, duplicateFile, downloadZip } from '../api';
 import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
+import { useVirtualGrid } from '../hooks/useVirtualGrid';
 import { toast } from '../hooks/useToast';
+import ShareDialog from './ShareDialog';
+
+const FolderPicker = lazy(() => import('./FolderPicker'));
 
 interface Props {
   files: Record<string, FileItem>;
   dirs: string[];
+  dirCounts?: Record<string, number>;
   currentDir: string;
   onNavigate: (path: string) => void;
   onOpen: (path: string, mime: string) => void;
@@ -30,6 +35,10 @@ function getIcon(mime: string) {
   if (mime === 'application/pdf') return '📄';
   if (mime.startsWith('text/')) return '📝';
   if (mime.includes('zip') || mime.includes('rar') || mime.includes('7z')) return '📦';
+  if (mime.includes('word') || mime.includes('document')) return '📄';
+  if (mime.includes('sheet') || mime.includes('excel')) return '📊';
+  if (mime.includes('presentation') || mime.includes('powerpoint')) return '📽️';
+  if (mime.includes('epub')) return '📚';
   return '📎';
 }
 
@@ -39,6 +48,10 @@ function getTypeBadge(mime: string): string | null {
   if (mime.startsWith('audio/')) return 'AUDIO';
   if (mime === 'application/pdf') return 'PDF';
   if (mime.includes('zip') || mime.includes('rar') || mime.includes('7z')) return 'ZIP';
+  if (mime.includes('word') || mime.includes('document')) return 'DOC';
+  if (mime.includes('sheet') || mime.includes('excel')) return 'XLS';
+  if (mime.includes('presentation') || mime.includes('powerpoint')) return 'PPT';
+  if (mime.includes('epub')) return 'EPUB';
   return null;
 }
 
@@ -47,12 +60,18 @@ function getBadgeColor(mime: string): string {
   if (mime.startsWith('video/')) return 'bg-purple-500/90 text-white';
   if (mime.startsWith('audio/')) return 'bg-green-500/90 text-white';
   if (mime === 'application/pdf') return 'bg-red-500/90 text-white';
+  if (mime.includes('word') || mime.includes('document')) return 'bg-blue-600/90 text-white';
+  if (mime.includes('sheet') || mime.includes('excel')) return 'bg-green-600/90 text-white';
+  if (mime.includes('presentation') || mime.includes('powerpoint')) return 'bg-orange-500/90 text-white';
   return 'bg-gray-500/90 text-white';
 }
 
 function formatSize(bytes: number) {
   if (bytes === 0) return '';
-  const units = ['B', 'KB', 'MB', 'GB'];
+  const standard = localStorage.getItem('filesizeStandard') || 'jedec';
+  const units = standard === 'iec'
+    ? ['B', 'KiB', 'MiB', 'GiB', 'TiB']
+    : ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
 }
@@ -67,6 +86,12 @@ function getExtBadge(name: string): string | null {
   const ext = name.split('.').pop()?.toUpperCase();
   if (!ext || ext.length > 5) return null;
   return ext;
+}
+
+/** Get display name — strip .url extension for shortcut files */
+function getDisplayName(name: string): string {
+  if (name.endsWith('.url')) return name.slice(0, -4);
+  return name;
 }
 
 /**
@@ -108,12 +133,15 @@ function ImageThumbnail({ src, alt, onClick }: { src: string; alt: string; onCli
 
 /**
  * Video thumbnail with hover-to-preview.
- * Shows a play icon by default; on hover, loads and plays the video muted.
+ * Shows a poster image (from /thumb) if available; on hover, loads and plays the video muted.
  */
-function VideoThumbnail({ src, onClick }: { src: string; onClick: () => void }) {
+function VideoThumbnail({ src, path, onClick }: { src: string; path: string; onClick: () => void }) {
   const [hovering, setHovering] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
+  const [posterLoaded, setPosterLoaded] = useState(false);
+  const [posterFailed, setPosterFailed] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const posterUrl = `/api/thumb?path=${encodeURIComponent(path)}`;
 
   useEffect(() => {
     if (hovering && videoRef.current) {
@@ -125,14 +153,28 @@ function VideoThumbnail({ src, onClick }: { src: string; onClick: () => void }) 
     }
   }, [hovering]);
 
+  const hasPoster = posterLoaded && !posterFailed;
+
   return (
     <div
       className="w-full h-full relative"
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
     >
-      {/* Default play icon background */}
-      <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 text-white transition-opacity duration-300 ${hovering && videoLoaded ? 'opacity-0' : 'opacity-100'}`}>
+      {/* Poster image (loaded from /thumb endpoint — custom or auto-generated) */}
+      {!posterFailed && (
+        <img
+          src={posterUrl}
+          alt=""
+          loading="lazy"
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${hasPoster && !(hovering && videoLoaded) ? 'opacity-100' : 'opacity-0'}`}
+          onLoad={() => setPosterLoaded(true)}
+          onError={() => setPosterFailed(true)}
+        />
+      )}
+
+      {/* Default play icon background (shown when no poster or video is playing) */}
+      <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 text-white transition-opacity duration-300 ${hasPoster ? 'opacity-0' : hovering && videoLoaded ? 'opacity-0' : 'opacity-100'}`}>
         <svg className="w-12 h-12 text-white/60" fill="currentColor" viewBox="0 0 24 24">
           <path d="M8 5v14l11-7z" />
         </svg>
@@ -160,7 +202,228 @@ function VideoThumbnail({ src, onClick }: { src: string; onClick: () => void }) 
   );
 }
 
-export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore }: Props) {
+/**
+ * Virtualized file grid — only renders visible items for large galleries.
+ * Inspired by Immich's virtual scroll pattern.
+ */
+function VirtualFileGrid({
+  files, columns, visibleRange, totalHeight, offsetY, containerRef,
+  selected, isSelectionMode, renaming, draggingFile, sortKey,
+  onOpen, onSelect, onRename, setRenaming, setInternalSelected,
+  handleCardClick, handleContextMenu, handleDragStart, handleDragEnd,
+}: {
+  files: FileItem[];
+  columns: number;
+  visibleRange: { start: number; end: number };
+  totalHeight: number;
+  offsetY: number;
+  containerRef: React.RefObject<HTMLDivElement>;
+  selected: Set<string>;
+  isSelectionMode: boolean;
+  renaming: { path: string; name: string } | null;
+  draggingFile: string | null;
+  sortKey: SortKey;
+  onOpen: (path: string, mime: string) => void;
+  onSelect?: (path: string) => void;
+  onRename?: (path: string, name: string) => void;
+  setRenaming: (r: { path: string; name: string } | null) => void;
+  setInternalSelected: (fn: (prev: Set<string>) => Set<string>) => void;
+  handleCardClick: (e: React.MouseEvent, path: string, mime: string) => void;
+  handleContextMenu: (e: React.MouseEvent, path: string, name: string, isDir: boolean) => void;
+  handleDragStart: (e: React.DragEvent, path: string) => void;
+  handleDragEnd: () => void;
+}) {
+  const [preview, setPreview] = useState<{ file: FileItem; rect: DOMRect } | null>(null);
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMouseEnter = useCallback((e: React.MouseEvent, file: FileItem) => {
+    if (!file.mime.startsWith('image/')) return;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    previewTimerRef.current = setTimeout(() => {
+      setPreview({ file, rect });
+    }, 300);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    if (previewTimerRef.current) {
+      clearTimeout(previewTimerRef.current);
+      previewTimerRef.current = null;
+    }
+    setPreview(null);
+  }, []);
+  const visibleFiles = files.slice(visibleRange.start, visibleRange.end);
+
+  return (
+    <div
+      ref={containerRef}
+      className="overflow-auto"
+      style={{ maxHeight: 'calc(100vh - 260px)' }}
+    >
+      {/* Top spacer — maintains scroll position */}
+      <div style={{ height: offsetY }} />
+
+      <div
+        className="grid gap-3"
+        style={{
+          gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+        }}
+      >
+        {visibleFiles.map((file) => {
+          const isImage = file.mime.startsWith('image/');
+          const isVideo = file.mime.startsWith('video/');
+          const isSelected = selected.has(file.path);
+          const badge = getTypeBadge(file.mime);
+          const extBadge = !isImage ? getExtBadge(file.name) : null;
+
+          return (
+            <button
+              key={file.path}
+              onClick={(e) => handleCardClick(e, file.path, file.mime)}
+              onDoubleClick={() => onOpen(file.path, file.mime)}
+              onContextMenu={(e) => handleContextMenu(e, file.path, file.name, false)}
+              onMouseEnter={(e) => handleMouseEnter(e, file)}
+              onMouseLeave={handleMouseLeave}
+              draggable={true}
+              onDragStart={(e) => handleDragStart(e, file.path)}
+              onDragEnd={handleDragEnd}
+              className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-colors group relative ${
+                isSelected
+                  ? 'bg-blue-100 dark:bg-blue-900/30 ring-2 ring-blue-500'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+              } ${draggingFile === file.path ? 'opacity-40' : ''}`}
+            >
+              <div className={`w-full flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-xl overflow-hidden relative ${localStorage.getItem('previewRatio') || 'aspect-square'}`}>
+                {isImage ? (
+                  <ImageThumbnail
+                    src={getThumbUrl(file.path)}
+                    alt={file.name}
+                    onClick={() => handleCardClick(new MouseEvent('click') as any, file.path, file.mime)}
+                  />
+                ) : isVideo ? (
+                  <VideoThumbnail
+                    src={getFileUrl(file.path)}
+                    path={file.path}
+                    onClick={() => handleCardClick(new MouseEvent('click') as any, file.path, file.mime)}
+                  />
+                ) : (
+                  <span className="text-4xl">{getIcon(file.mime)}</span>
+                )}
+
+                {/* Type badge */}
+                {!isImage && !isVideo && badge && (
+                  <span className={`absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-bold rounded ${getBadgeColor(file.mime)}`}>
+                    {badge}
+                  </span>
+                )}
+
+                {/* Ext badge */}
+                {!isImage && !isVideo && !badge && extBadge && (
+                  <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-bold rounded bg-gray-600/80 text-white">
+                    {extBadge}
+                  </span>
+                )}
+
+                {/* Selection checkbox */}
+                <div
+                  className={`absolute top-1.5 left-1.5 transition-opacity ${
+                    isSelectionMode ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onSelect) {
+                      onSelect(file.path);
+                    } else {
+                      setInternalSelected((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(file.path)) next.delete(file.path);
+                        else next.add(file.path);
+                        return next;
+                      });
+                    }
+                  }}
+                >
+                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                    isSelected
+                      ? 'bg-blue-500 border-blue-500'
+                      : 'bg-white/80 dark:bg-gray-800/80 border-gray-300 dark:border-gray-500 hover:border-blue-400'
+                  }`}>
+                    {isSelected && (
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {renaming?.path === file.path ? (
+                <input
+                  autoFocus
+                  defaultValue={renaming.name}
+                  className="w-full text-xs text-center px-1 py-0.5 rounded border border-blue-500 outline-none"
+                  onBlur={(e) => {
+                    if (e.target.value && e.target.value !== renaming.name) {
+                      onRename?.(file.path, e.target.value);
+                    }
+                    setRenaming(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                    if (e.key === 'Escape') setRenaming(null);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <span className="text-xs text-center truncate w-full group-hover:text-blue-500" title={file.name}>
+                  {getDisplayName(file.name)}
+                </span>
+              )}
+              <span className="text-[10px] text-gray-400">
+                {formatSize(file.size)}
+                {file.mtime > 0 && sortKey === 'date' && (
+                  <span className="ml-1">{formatDate(file.mtime)}</span>
+                )}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Bottom spacer */}
+      <div style={{ height: Math.max(0, totalHeight - offsetY - (visibleFiles.length > 0 ? 280 : 0)) }} />
+
+      {/* Hover preview popup — larger image on hover */}
+      {preview && (
+        <div
+          className="fixed z-50 pointer-events-none"
+          style={{
+            left: Math.min(preview.rect.left + preview.rect.width / 2 - 150, window.innerWidth - 320),
+            top: Math.max(12, preview.rect.top - 220),
+            width: 300,
+            height: 200,
+          }}
+        >
+          <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 bg-black">
+            <img
+              src={getFileUrl(preview.file.path)}
+              alt={preview.file.name}
+              className="w-full h-full object-contain"
+              loading="lazy"
+            />
+          </div>
+          <div className="mt-1 text-center">
+            <span className="text-[10px] text-gray-400 bg-black/60 px-2 py-0.5 rounded-full">
+              {preview.file.name} · {formatSize(preview.file.size)}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
@@ -168,9 +431,21 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
   const [draggingFile, setDraggingFile] = useState<string | null>(null);
+  const [shareDialog, setShareDialog] = useState<{ path: string; name: string } | null>(null);
+  const [folderPicker, setFolderPicker] = useState<{ mode: 'move' | 'copy'; path: string } | null>(null);
 
   // Folder thumbnail images
   const folderThumbs = useFolderThumbnails(dirs, currentDir);
+
+  // Virtual scroll for files — only render visible items (reference sortedFiles below)
+  const fileCount = Object.keys(files).length;
+  const virtualGrid = useVirtualGrid({
+    itemCount: fileCount,
+    minColumnWidth: 200,
+    rowHeight: 280,
+    gap: 12,
+    overscan: 2,
+  });
 
   // Infinite scroll sentinel
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -201,30 +476,32 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
     setInternalSelected(fn);
   };
 
-  // Build and sort items
-  const dirItems = dirs.map((name) => ({
-    name,
-    type: 'directory' as const,
-    size: 0,
-    mime: 'directory',
-    mtime: 0,
-    path: currentDir ? `${currentDir}/${name}` : name,
-  }));
+  // Build and sort items (memoized to avoid re-sorting on unrelated re-renders)
+  const sortedDirs = useMemo(() => {
+    const dirItems = dirs.map((name) => ({
+      name,
+      type: 'directory' as const,
+      size: 0,
+      mime: 'directory',
+      mtime: 0,
+      path: currentDir ? `${currentDir}/${name}` : name,
+    }));
+    return [...dirItems].sort((a, b) => {
+      const cmp = a.name.localeCompare(b.name);
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  }, [dirs, currentDir, sortDir]);
 
-  const fileItems = Object.values(files);
-
-  const sortedDirs = [...dirItems].sort((a, b) => {
-    const cmp = a.name.localeCompare(b.name);
-    return sortDir === 'asc' ? cmp : -cmp;
-  });
-
-  const sortedFiles = [...fileItems].sort((a, b) => {
-    let cmp = 0;
-    if (sortKey === 'name') cmp = a.name.localeCompare(b.name);
-    else if (sortKey === 'size') cmp = a.size - b.size;
-    else cmp = a.mtime - b.mtime;
-    return sortDir === 'asc' ? cmp : -cmp;
-  });
+  const sortedFiles = useMemo(() => {
+    const fileItems = Object.values(files);
+    return [...fileItems].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === 'name') cmp = a.name.localeCompare(b.name);
+      else if (sortKey === 'size') cmp = a.size - b.size;
+      else cmp = a.mtime - b.mtime;
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  }, [files, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -234,7 +511,7 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
   // Drag & Drop handlers
   const handleDragStart = (e: React.DragEvent, filePath: string) => {
     e.dataTransfer.setData('text/plain', filePath);
-    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.effectAllowed = 'copyMove';
     setDraggingFile(filePath);
   };
 
@@ -245,7 +522,8 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
 
   const handleDragOverFolder = (e: React.DragEvent, folderPath: string) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+    // Show copy indicator when Ctrl is held
+    e.dataTransfer.dropEffect = e.ctrlKey || e.metaKey ? 'copy' : 'move';
     setDragOverFolder(folderPath);
   };
 
@@ -261,16 +539,22 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
     const fromPath = e.dataTransfer.getData('text/plain');
     if (!fromPath || fromPath === folderPath) return;
 
+    const isCopy = e.ctrlKey || e.metaKey;
+
     // Don't allow dropping a folder into itself or its children
     if (folderPath.startsWith(fromPath + '/')) return;
 
     try {
-      const result = await moveItem(fromPath, folderPath);
+      const result = isCopy
+        ? await copyFile(fromPath, folderPath)
+        : await moveItem(fromPath, folderPath);
       if (result.success) {
+        toast('success', isCopy ? '复制成功' : '移动成功');
         onMove?.();
       }
     } catch (err) {
-      console.error('Move failed:', err);
+      console.error(`${isCopy ? 'Copy' : 'Move'} failed:`, err);
+      toast('error', `${isCopy ? '复制' : '移动'}失败`);
     }
   };
 
@@ -309,10 +593,14 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
       }
       return;
     }
-    // Normal click — open media
+    // Normal click — open in lightbox
     const isImage = mime.startsWith('image/');
     const isVideo = mime.startsWith('video/');
-    if (isImage || isVideo) {
+    const isAudio = mime.startsWith('audio/');
+    const isPdf = mime === 'application/pdf';
+    const isText = mime.startsWith('text/') || mime === 'application/json' || mime === 'application/xml' || mime === 'application/javascript';
+    const isOffice = mime.includes('word') || mime.includes('document') || mime.includes('sheet') || mime.includes('excel') || mime.includes('presentation') || mime.includes('powerpoint');
+    if (isImage || isVideo || isAudio || isPdf || isText || isOffice) {
       onOpen(path, mime);
     }
   };
@@ -386,135 +674,45 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
                   ) : (
                     <span className="text-3xl">📁</span>
                   )}
+                  {dirCounts && dirCounts[item.name] !== undefined && (
+                    <span className="absolute top-1 right-1 text-[10px] leading-none font-medium bg-blue-500/90 text-white px-1.5 py-1 rounded-full shadow-sm backdrop-blur-sm">
+                      {dirCounts[item.name]}
+                    </span>
+                  )}
                 </div>
-                <span className="text-sm text-center truncate w-full group-hover:text-blue-500">{item.name}</span>
+                <span className="text-xs text-center truncate w-full group-hover:text-blue-500">{item.name}</span>
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* Files */}
+      {/* Files — virtualized for large galleries (Immich-inspired) */}
       {sortedFiles.length > 0 && (
         <div>
           <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">文件</h3>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
-            {sortedFiles.map((file) => {
-              const isImage = file.mime.startsWith('image/');
-              const isVideo = file.mime.startsWith('video/');
-              const isSelected = selected.has(file.path);
-              const badge = getTypeBadge(file.mime);
-              const extBadge = !isImage ? getExtBadge(file.name) : null;
-
-              return (
-                <button
-                  key={file.path}
-                  onClick={(e) => handleCardClick(e, file.path, file.mime)}
-                  onDoubleClick={() => onOpen(file.path, file.mime)}
-                  onContextMenu={(e) => handleContextMenu(e, file.path, file.name, false)}
-                  draggable={true}
-                  onDragStart={(e) => handleDragStart(e, file.path)}
-                  onDragEnd={handleDragEnd}
-                  className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-colors group relative ${
-                    isSelected
-                      ? 'bg-blue-100 dark:bg-blue-900/30 ring-2 ring-blue-500'
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                  } ${draggingFile === file.path ? 'opacity-40' : ''}`}
-                >
-                  <div className="w-full aspect-square flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-xl overflow-hidden relative">
-                    {isImage ? (
-                      <ImageThumbnail
-                        src={getThumbUrl(file.path)}
-                        alt={file.name}
-                        onClick={() => handleCardClick(new MouseEvent('click') as any, file.path, file.mime)}
-                      />
-                    ) : isVideo ? (
-                      <VideoThumbnail
-                        src={getFileUrl(file.path)}
-                        onClick={() => handleCardClick(new MouseEvent('click') as any, file.path, file.mime)}
-                      />
-                    ) : (
-                      <span className="text-4xl">{getIcon(file.mime)}</span>
-                    )}
-
-                    {/* Type badge for non-image, non-video files (video has its own badge) */}
-                    {!isImage && !isVideo && badge && (
-                      <span className={`absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-bold rounded ${getBadgeColor(file.mime)}`}>
-                        {badge}
-                      </span>
-                    )}
-
-                    {/* Ext badge for generic files */}
-                    {!isImage && !isVideo && !badge && extBadge && (
-                      <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-bold rounded bg-gray-600/80 text-white">
-                        {extBadge}
-                      </span>
-                    )}
-
-                    {/* Selection checkbox overlay */}
-                    <div
-                      className={`absolute top-1.5 left-1.5 transition-opacity ${
-                        isSelectionMode ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (onSelect) {
-                          onSelect(file.path);
-                        } else {
-                          setInternalSelected((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(file.path)) next.delete(file.path);
-                            else next.add(file.path);
-                            return next;
-                          });
-                        }
-                      }}
-                    >
-                      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
-                        isSelected
-                          ? 'bg-blue-500 border-blue-500'
-                          : 'bg-white/80 dark:bg-gray-800/80 border-gray-300 dark:border-gray-500 hover:border-blue-400'
-                      }`}>
-                        {isSelected && (
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {renaming?.path === file.path ? (
-                    <input
-                      autoFocus
-                      defaultValue={renaming.name}
-                      className="w-full text-xs text-center px-1 py-0.5 rounded border border-blue-500 outline-none"
-                      onBlur={(e) => {
-                        if (e.target.value && e.target.value !== renaming.name) {
-                          onRename?.(file.path, e.target.value);
-                        }
-                        setRenaming(null);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                        if (e.key === 'Escape') setRenaming(null);
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  ) : (
-                    <span className="text-xs text-center truncate w-full group-hover:text-blue-500" title={file.name}>
-                      {file.name}
-                    </span>
-                  )}
-                  <span className="text-[10px] text-gray-400">
-                    {formatSize(file.size)}
-                    {file.mtime > 0 && sortKey === 'date' && (
-                      <span className="ml-1">{formatDate(file.mtime)}</span>
-                    )}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          <VirtualFileGrid
+            files={sortedFiles}
+            columns={virtualGrid.columns}
+            visibleRange={virtualGrid.visibleRange}
+            totalHeight={virtualGrid.totalHeight}
+            offsetY={virtualGrid.offsetY}
+            containerRef={virtualGrid.containerRef}
+            selected={selected}
+            isSelectionMode={isSelectionMode}
+            renaming={renaming}
+            draggingFile={draggingFile}
+            sortKey={sortKey}
+            onOpen={onOpen}
+            onSelect={onSelect}
+            onRename={onRename}
+            setRenaming={setRenaming}
+            setInternalSelected={setInternalSelected}
+            handleCardClick={handleCardClick}
+            handleContextMenu={handleContextMenu}
+            handleDragStart={handleDragStart}
+            handleDragEnd={handleDragEnd}
+          />
         </div>
       )}
 
@@ -606,6 +804,58 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
                 复制文件
               </button>
             )}
+            {/* Move to */}
+            <button
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              onClick={() => { setFolderPicker({ mode: 'move', path: contextMenu.path }); setContextMenu(null); }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+              移动到...
+            </button>
+            {/* Copy to */}
+            <button
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              onClick={() => { setFolderPicker({ mode: 'copy', path: contextMenu.path }); setContextMenu(null); }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+              复制到...
+            </button>
+            {/* Folder download as ZIP */}
+            {contextMenu.isDir && (
+              <button
+                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                onClick={async () => {
+                  toast('info', '正在打包下载...');
+                  try {
+                    await downloadZip([contextMenu.path]);
+                    toast('success', 'ZIP 下载已开始');
+                  } catch (e) { toast('error', `下载失败: ${(e as Error).message}`); }
+                  setContextMenu(null);
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                下载为 ZIP
+              </button>
+            )}
+            {/* Unzip */}
+            {!contextMenu.isDir && contextMenu.name.endsWith('.zip') && (
+              <button
+                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                onClick={async () => {
+                  toast('info', '正在解压...');
+                  try {
+                    const { unzipFile } = await import('../api');
+                    const result = await unzipFile(contextMenu.path, currentDir);
+                    toast('success', `已解压 ${result.extracted} 个文件到 ${result.dir}`);
+                    onMove?.();
+                  } catch (e) { toast('error', `解压失败: ${(e as Error).message}`); }
+                  setContextMenu(null);
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                解压到...
+              </button>
+            )}
             <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
             <button
               className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
@@ -614,6 +864,15 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
               重命名
             </button>
+            {!contextMenu.isDir && (
+              <button
+                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                onClick={() => { setShareDialog({ path: contextMenu.path, name: contextMenu.name }); setContextMenu(null); }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                分享
+              </button>
+            )}
             <button
               className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-500 flex items-center gap-2"
               onClick={() => { onDelete?.([contextMenu.path]); setContextMenu(null); }}
@@ -623,6 +882,32 @@ export default function FileGrid({ files, dirs, currentDir, onNavigate, onOpen, 
             </button>
           </div>
         </>
+      )}
+      {shareDialog && (
+        <ShareDialog filePath={shareDialog.path} fileName={shareDialog.name} onClose={() => setShareDialog(null)} />
+      )}
+      {folderPicker && (
+        <Suspense fallback={null}>
+          <FolderPicker
+            title={folderPicker.mode === 'move' ? '移动到' : '复制到'}
+            onSelect={async (target) => {
+              try {
+                if (folderPicker.mode === 'move') {
+                  await moveItem(folderPicker.path, target);
+                  toast('success', '移动成功');
+                } else {
+                  await copyFile(folderPicker.path, target);
+                  toast('success', '复制成功');
+                }
+                onMove?.();
+              } catch (e) {
+                toast('error', `${folderPicker.mode === 'move' ? '移动' : '复制'}失败: ${(e as Error).message}`);
+              }
+              setFolderPicker(null);
+            }}
+            onClose={() => setFolderPicker(null)}
+          />
+        </Suspense>
       )}
     </>
   );

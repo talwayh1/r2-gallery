@@ -6,15 +6,17 @@ interface Props {
   onDelete: () => void;
   onDownload: () => void;
   onDownloadZip?: () => void;
+  onCopyLinks?: () => void;
   onBatchRename?: () => void;
   onCopy?: () => void;
   onDuplicate?: () => void;
+  onCreateZip?: () => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
 }
 
 export default function BulkActions({
-  selectedCount, totalCount, onDelete, onDownload, onDownloadZip, onBatchRename, onCopy, onDuplicate, onSelectAll, onDeselectAll,
+  selectedCount, totalCount, onDelete, onDownload, onDownloadZip, onCopyLinks, onBatchRename, onCopy, onDuplicate, onCreateZip, onSelectAll, onDeselectAll,
 }: Props) {
   const [confirming, setConfirming] = useState(false);
 
@@ -89,6 +91,20 @@ export default function BulkActions({
           </button>
         )}
 
+        {/* Copy links */}
+        {onCopyLinks && (
+          <button
+            onClick={onCopyLinks}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
+            title="复制选中文件的链接"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            复制链接
+          </button>
+        )}
+
         {/* Copy */}
         {onCopy && (
           <button
@@ -114,6 +130,20 @@ export default function BulkActions({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
             重复
+          </button>
+        )}
+
+        {/* Create ZIP */}
+        {onCreateZip && (
+          <button
+            onClick={onCreateZip}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
+            title="压缩为 ZIP"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+            </svg>
+            压缩
           </button>
         )}
 

@@ -2,8 +2,12 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ToastProvider } from './hooks/useToast';
+import { initMobileCompat } from './utils/mobile';
 import './styles/global.css';
 import './i18n';
+
+// Initialize mobile/WeChat compatibility fixes early
+initMobileCompat();
 
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {

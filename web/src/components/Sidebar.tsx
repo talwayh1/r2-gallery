@@ -43,8 +43,13 @@ function sortNodes(nodes: DirNode[], sort: SortMode): DirNode[] {
   }));
 }
 
+// Cache directory tree across sidebar mount/unmount cycles
+let dirTreeCache: DirNode[] | null = null;
+let dirTreeCacheTime = 0;
+const DIR_TREE_CACHE_TTL = 30_000; // 30 seconds
+
 export default function Sidebar({ currentDir, onNavigate }: Props) {
-  const [tree, setTree] = useState<DirNode[]>([]);
+  const [tree, setTree] = useState<DirNode[]>(dirTreeCache || []);
   const [expanded, setExpanded] = useState<Set<string>>(loadExpanded);
   const [sort, setSort] = useState<SortMode>(
     () => (localStorage.getItem(STORAGE_KEY_SORT) as SortMode) || 'name_asc'
@@ -52,7 +57,16 @@ export default function Sidebar({ currentDir, onNavigate }: Props) {
   const [maxDepth] = useState(MAX_DEPTH);
 
   useEffect(() => {
-    listDirs().then(setTree).catch(console.error);
+    // Use cache if fresh
+    if (dirTreeCache && Date.now() - dirTreeCacheTime < DIR_TREE_CACHE_TTL) {
+      setTree(dirTreeCache);
+      return;
+    }
+    listDirs().then((data) => {
+      dirTreeCache = data;
+      dirTreeCacheTime = Date.now();
+      setTree(data);
+    }).catch(console.error);
   }, []);
 
   useEffect(() => {

@@ -8,7 +8,7 @@ interface Props {
   search: string;
   user: string | null;
   sidebarOpen: boolean;
-  sortBy: 'name' | 'size' | 'mtime';
+  sortBy: string;
   sortOrder: 'asc' | 'desc';
   typeFilter: string;
   isMobile: boolean;
@@ -24,22 +24,59 @@ interface Props {
   onCreateFolder?: () => void;
   onSearchClick?: () => void;
   onDiscoverClick?: () => void;
+  onMemoriesClick?: () => void;
   onStatsClick?: () => void;
-  onSortChange?: (sort: 'name' | 'size' | 'mtime', order: 'asc' | 'desc') => void;
+  onTrashClick?: () => void;
+  onActivityClick?: () => void;
+  onSortChange?: (sort: string, order: 'asc' | 'desc') => void;
   onTypeFilterChange?: (type: string) => void;
   hideLoginButton?: boolean;
+  selectMode?: boolean;
+  onSelectModeToggle?: () => void;
+  onDelete?: (paths: string[]) => void;
 }
+
+const LAYOUTS: { key: LayoutMode; label: string; icon: string }[] = [
+  { key: 'grid', label: '网格', icon: '▦' },
+  { key: 'rows', label: '行', icon: '☰' },
+  { key: 'list', label: '列表', icon: '≡' },
+  { key: 'imagelist', label: '图片列表', icon: '🖼' },
+  { key: 'blocks', label: '块', icon: '▣' },
+  { key: 'columns', label: '列', icon: '⫼' },
+];
+
+const SORTS: { key: string; label: string; icon: string }[] = [
+  { key: 'name', label: '名称', icon: '🔤' },
+  { key: 'size', label: '大小', icon: '📏' },
+  { key: 'mtime', label: '时间', icon: '🕐' },
+  { key: 'kind', label: '类型', icon: '📑' },
+  { key: 'shuffle', label: '随机', icon: '🔀' },
+];
+
+const TYPE_FILTERS: { key: string; label: string; icon: string }[] = [
+  { key: 'all', label: '全部', icon: '📁' },
+  { key: 'image', label: '图片', icon: '🖼️' },
+  { key: 'video', label: '视频', icon: '🎬' },
+  { key: 'audio', label: '音频', icon: '🎵' },
+  { key: 'document', label: '文档', icon: '📄' },
+];
 
 export default function Header({
   dir, layout, theme, search, user, sidebarOpen, sortBy, sortOrder, typeFilter, isMobile,
   onNavigate, onLayoutChange, onThemeToggle, onSearchChange,
   onSidebarToggle, onLogout, onRefresh, onLoginClick, onShortcutsClick,
-  onCreateFolder, onSearchClick, onDiscoverClick, onStatsClick, onSortChange, onTypeFilterChange, hideLoginButton,
+  onCreateFolder, onSearchClick, onDiscoverClick, onMemoriesClick, onStatsClick, onTrashClick, onActivityClick, onSortChange, onTypeFilterChange, hideLoginButton, selectMode, onSelectModeToggle, onDelete,
 }: Props) {
   const breadcrumbs = dir ? dir.split('/') : [];
   const [canInstall, setCanInstall] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [layoutOpen, setLayoutOpen] = useState(false);
+  const [dirMenuOpen, setDirMenuOpen] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
+  const layoutRef = useRef<HTMLDivElement>(null);
+  const dirMenuRef = useRef<HTMLDivElement>(null);
+  const langRef = useRef<HTMLDivElement>(null);
 
   // Listen for PWA install prompt availability
   useEffect(() => {
@@ -66,10 +103,46 @@ export default function Header({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [moreOpen]);
 
+  // Close layout dropdown on outside click
+  useEffect(() => {
+    if (!layoutOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (layoutRef.current && !layoutRef.current.contains(e.target as Node)) {
+        setLayoutOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [layoutOpen]);
+
+  // Close dir menu on outside click
+  useEffect(() => {
+    if (!dirMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (dirMenuRef.current && !dirMenuRef.current.contains(e.target as Node)) {
+        setDirMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [dirMenuOpen]);
+
+  // Close lang menu on outside click
+  useEffect(() => {
+    if (!langOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (langRef.current && !langRef.current.contains(e.target as Node)) {
+        setLangOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [langOpen]);
+
   const closeMore = () => setMoreOpen(false);
 
   return (
-    <header className="h-14 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
+    <header className="h-14 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0 sticky top-0 z-40">
       {/* Hamburger / sidebar toggle */}
       <button onClick={onSidebarToggle} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg shrink-0">
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -82,17 +155,83 @@ export default function Header({
         <button onClick={() => onNavigate('')} className="hover:text-blue-500 font-medium whitespace-nowrap">
           🖼️ R2 Gallery
         </button>
-        {breadcrumbs.map((part, i) => (
-          <span key={i} className="flex items-center gap-1">
+        {/* Parent directory button */}
+        {dir && (
+          <>
             <span className="text-gray-400">/</span>
             <button
-              onClick={() => onNavigate(breadcrumbs.slice(0, i + 1).join('/'))}
-              className="hover:text-blue-500 whitespace-nowrap"
+              onClick={() => {
+                const parts = dir.split('/');
+                parts.pop();
+                onNavigate(parts.join('/'));
+              }}
+              className="hover:text-blue-500 whitespace-nowrap text-gray-400 hover:text-blue-500"
+              title="上级目录"
             >
-              {part}
+              ..
             </button>
-          </span>
-        ))}
+          </>
+        )}
+        {breadcrumbs.map((part, i) => {
+          const isLast = i === breadcrumbs.length - 1;
+          const partPath = breadcrumbs.slice(0, i + 1).join('/');
+          return (
+            <span key={i} className="flex items-center gap-1 relative" ref={isLast ? dirMenuRef : undefined}>
+              <span className="text-gray-400">/</span>
+              {isLast && dir ? (
+                <button
+                  onClick={() => setDirMenuOpen(!dirMenuOpen)}
+                  className="hover:text-blue-500 whitespace-nowrap flex items-center gap-0.5"
+                  title="目录操作"
+                >
+                  {part}
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                  </svg>
+                </button>
+              ) : (
+                <button
+                  onClick={() => onNavigate(partPath)}
+                  className="hover:text-blue-500 whitespace-nowrap"
+                >
+                  {part}
+                </button>
+              )}
+              {isLast && dirMenuOpen && (
+                <div className="absolute left-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
+                  <button
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                    onClick={() => { onRefresh?.(); setDirMenuOpen(false); }}
+                  >
+                    <span>🔄</span><span>刷新</span>
+                  </button>
+                  {user && (
+                    <>
+                      <button
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                        onClick={() => { onCreateFolder?.(); setDirMenuOpen(false); }}
+                      >
+                        <span>📁</span><span>新建文件夹</span>
+                      </button>
+                      <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+                      <button
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-500 flex items-center gap-2"
+                        onClick={() => {
+                          if (confirm(`确认删除文件夹 "${dir}" 及其所有内容？`)) {
+                            onDelete?.([dir]);
+                          }
+                          setDirMenuOpen(false);
+                        }}
+                      >
+                        <span>🗑️</span><span>删除此文件夹</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </span>
+          );
+        })}
       </nav>
 
       {/* Mobile-only title */}
@@ -108,11 +247,7 @@ export default function Header({
           {/* Sort buttons */}
           {onSortChange && (
             <div className="flex items-center gap-0.5">
-              {([
-                { key: 'name' as const, label: '名称', icon: '🔤' },
-                { key: 'size' as const, label: '大小', icon: '📏' },
-                { key: 'mtime' as const, label: '时间', icon: '🕐' },
-              ]).map((s) => (
+              {SORTS.map((s) => (
                 <button
                   key={s.key}
                   onClick={() => {
@@ -137,12 +272,7 @@ export default function Header({
           {/* Type filter */}
           {onTypeFilterChange && (
             <div className="flex items-center gap-0.5">
-              {([
-                { key: 'all' as const, label: '全部', icon: '📁' },
-                { key: 'image' as const, label: '图片', icon: '🖼️' },
-                { key: 'video' as const, label: '视频', icon: '🎬' },
-                { key: 'audio' as const, label: '音频', icon: '🎵' },
-              ]).map((t) => (
+              {TYPE_FILTERS.map((t) => (
                 <button
                   key={t.key}
                   onClick={() => onTypeFilterChange(t.key)}
@@ -182,6 +312,19 @@ export default function Header({
           )}
         </button>
 
+        {/* Select mode toggle */}
+        {onSelectModeToggle && (
+          <button
+            onClick={onSelectModeToggle}
+            className={`p-2 rounded-lg transition-colors ${selectMode ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+            title={selectMode ? '退出选择模式' : '选择模式'}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+          </button>
+        )}
+
         {/* Desktop: show all action buttons inline */}
         {!isMobile && (
           <>
@@ -194,6 +337,19 @@ export default function Header({
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                </svg>
+              </button>
+            )}
+
+            {/* Memories button (On this day) */}
+            {onMemoriesClick && (
+              <button
+                onClick={onMemoriesClick}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                title="那年今日"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </button>
             )}
@@ -230,21 +386,33 @@ export default function Header({
               </svg>
             </button>
 
-            <button
-              onClick={() => onLayoutChange(layout === 'grid' ? 'rows' : 'grid')}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-              title={layout === 'grid' ? '列表视图' : '网格视图'}
-            >
-              {layout === 'grid' ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
-                </svg>
+            {/* Layout dropdown */}
+            <div className="relative" ref={layoutRef}>
+              <button
+                onClick={() => setLayoutOpen(!layoutOpen)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                title={`布局: ${LAYOUTS.find(l => l.key === layout)?.label || layout}`}
+              >
+                <span className="text-sm">{LAYOUTS.find(l => l.key === layout)?.icon || '▦'}</span>
+              </button>
+              {layoutOpen && (
+                <div className="absolute right-0 top-full mt-1 w-36 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
+                  {LAYOUTS.map((l) => (
+                    <button
+                      key={l.key}
+                      onClick={() => { onLayoutChange(l.key); setLayoutOpen(false); }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                        layout === l.key ? 'text-blue-600 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-900/20' : ''
+                      }`}
+                    >
+                      <span>{l.icon}</span>
+                      <span>{l.label}</span>
+                      {layout === l.key && <span className="ml-auto text-xs">✓</span>}
+                    </button>
+                  ))}
+                </div>
               )}
-            </button>
+            </div>
 
             <button onClick={onThemeToggle} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="切换主题">
               {theme === 'dark' ? (
@@ -257,6 +425,49 @@ export default function Header({
                 </svg>
               )}
             </button>
+
+            {/* Language switcher */}
+            <div className="relative" ref={langRef}>
+              <button
+                onClick={() => setLangOpen(!langOpen)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                title="语言"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                </svg>
+              </button>
+              {langOpen && (
+                <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
+                  {[
+                    { code: 'zh-CN', label: '简体中文' },
+                    { code: 'en', label: 'English' },
+                    { code: 'ja', label: '日本語' },
+                    { code: 'ko', label: '한국어' },
+                    { code: 'fi', label: 'Suomi' },
+                    { code: 'tr', label: 'Türkçe' },
+                    { code: 'el', label: 'Ελληνικά' },
+                    { code: 'id', label: 'Indonesia' },
+                    { code: 'sl', label: 'Slovenščina' },
+                    { code: 'uk', label: 'Українська' },
+                  ].map((lang) => (
+                    <button
+                      key={lang.code}
+                      onClick={() => {
+                        localStorage.setItem('language', lang.code);
+                        setLangOpen(false);
+                        window.location.reload();
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                        localStorage.getItem('language') === lang.code ? 'text-blue-600 dark:text-blue-400 font-medium' : ''
+                      }`}
+                    >
+                      {lang.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <button
               onClick={onShortcutsClick}
@@ -306,11 +517,7 @@ export default function Header({
                 {onSortChange && (
                   <>
                     <div className="px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">排序</div>
-                    {([
-                      { key: 'name' as const, label: '名称', icon: '🔤' },
-                      { key: 'size' as const, label: '大小', icon: '📏' },
-                      { key: 'mtime' as const, label: '时间', icon: '🕐' },
-                    ]).map((s) => (
+                    {SORTS.map((s) => (
                       <button
                         key={s.key}
                         onClick={() => {
@@ -340,12 +547,7 @@ export default function Header({
                 {onTypeFilterChange && (
                   <>
                     <div className="px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">类型筛选</div>
-                    {([
-                      { key: 'all' as const, label: '全部', icon: '📁' },
-                      { key: 'image' as const, label: '图片', icon: '🖼️' },
-                      { key: 'video' as const, label: '视频', icon: '🎬' },
-                      { key: 'audio' as const, label: '音频', icon: '🎵' },
-                    ]).map((t) => (
+                    {TYPE_FILTERS.map((t) => (
                       <button
                         key={t.key}
                         onClick={() => {
@@ -364,10 +566,32 @@ export default function Header({
                   </>
                 )}
 
+                {/* Layout submenu */}
+                <div className="px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">布局</div>
+                {LAYOUTS.map((l) => (
+                  <button
+                    key={l.key}
+                    onClick={() => { onLayoutChange(l.key); closeMore(); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                      layout === l.key ? 'text-blue-600 dark:text-blue-400 font-medium' : ''
+                    }`}
+                  >
+                    <span>{l.icon}</span>
+                    <span>{l.label}</span>
+                    {layout === l.key && <span className="ml-auto text-xs">✓</span>}
+                  </button>
+                ))}
+                <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+
                 {/* Action items */}
                 {onDiscoverClick && (
                   <button onClick={() => { onDiscoverClick(); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
                     <span>⭐</span><span>发现</span>
+                  </button>
+                )}
+                {onMemoriesClick && (
+                  <button onClick={() => { onMemoriesClick(); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <span>💭</span><span>那年今日</span>
                   </button>
                 )}
                 {user && onCreateFolder && (
@@ -380,11 +604,18 @@ export default function Header({
                     <span>📊</span><span>存储统计</span>
                   </button>
                 )}
+                {user && onTrashClick && (
+                  <button onClick={() => { onTrashClick(); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <span>🗑️</span><span>回收站</span>
+                  </button>
+                )}
+                {user && onActivityClick && (
+                  <button onClick={() => { onActivityClick(); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <span>📋</span><span>活动日志</span>
+                  </button>
+                )}
                 <button onClick={() => { onRefresh(); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
                   <span>🔄</span><span>刷新</span>
-                </button>
-                <button onClick={() => { onLayoutChange(layout === 'grid' ? 'rows' : 'grid'); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-                  <span>{layout === 'grid' ? '☰' : '▦'}</span><span>{layout === 'grid' ? '列表视图' : '网格视图'}</span>
                 </button>
                 <button onClick={() => { onThemeToggle(); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
                   <span>{theme === 'dark' ? '☀️' : '🌙'}</span><span>切换主题</span>

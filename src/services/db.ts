@@ -107,6 +107,24 @@ export async function getRecentMedia(db: D1Database, limit: number = 30, offset:
   return result.results;
 }
 
+/**
+ * Get "On this day" memories — media files from the same month/day in previous years.
+ * Uses mtime (file modification time) as proxy for photo date.
+ * Inspired by Immich's memories feature.
+ */
+export async function getMemories(db: D1Database, month: number, day: number): Promise<FileMetadata[]> {
+  // Query files where the month and day of mtime match, across all years
+  // SQLite datetime(mtime, 'unixepoch') gives us the date
+  const result = await db.prepare(
+    `SELECT * FROM file_metadata
+     WHERE (mime LIKE 'image/%' OR mime LIKE 'video/%')
+       AND CAST(strftime('%m', mtime, 'unixepoch') AS INTEGER) = ?
+       AND CAST(strftime('%d', mtime, 'unixepoch') AS INTEGER) = ?
+     ORDER BY mtime DESC`
+  ).bind(month, day).all<FileMetadata>();
+  return result.results;
+}
+
 /** Get total count of media files */
 export async function getMediaCount(db: D1Database): Promise<number> {
   const row = await db.prepare(
@@ -163,4 +181,97 @@ function buildTree(paths: string[]): DirTreeNode[] {
   }
 
   return root;
+}
+
+// === Trash (soft delete) ===
+export async function addToTrash(db: D1Database, item: { original_path: string; name: string; mime: string; size: number; is_dir: boolean; deleted_by?: string }): Promise<void> {
+  await db.prepare('INSERT OR REPLACE INTO trash (original_path, name, mime, size, is_dir, deleted_by) VALUES (?, ?, ?, ?, ?, ?)')
+    .bind(item.original_path, item.name, item.mime, item.size, item.is_dir ? 1 : 0, item.deleted_by || null).run();
+}
+
+export async function listTrash(db: D1Database): Promise<any[]> {
+  const result = await db.prepare('SELECT * FROM trash ORDER BY deleted_at DESC').all();
+  return result.results;
+}
+
+export async function restoreFromTrash(db: D1Database, originalPath: string): Promise<boolean> {
+  const row = await db.prepare('SELECT * FROM trash WHERE original_path = ?').bind(originalPath).first();
+  if (!row) return false;
+  await db.prepare('DELETE FROM trash WHERE original_path = ?').bind(originalPath).run();
+  return true;
+}
+
+export async function purgeFromTrash(db: D1Database, originalPath: string): Promise<void> {
+  await db.prepare('DELETE FROM trash WHERE original_path = ?').bind(originalPath).run();
+}
+
+export async function getTrashItem(db: D1Database, originalPath: string): Promise<any | null> {
+  return db.prepare('SELECT * FROM trash WHERE original_path = ?').bind(originalPath).first();
+}
+
+export async function getTrashByPrefix(db: D1Database, prefix: string): Promise<any[]> {
+  const result = await db.prepare('SELECT * FROM trash WHERE original_path LIKE ?').bind(`${prefix}%`).all();
+  return result.results;
+}
+
+// === Activity Log ===
+export async function logActivity(db: D1Database, action: string, path: string, user?: string, newPath?: string, details?: string): Promise<void> {
+  await db.prepare('INSERT INTO activity_log (action, path, new_path, user, details) VALUES (?, ?, ?, ?, ?)')
+    .bind(action, path, newPath || null, user || null, details || null).run();
+}
+
+export async function listActivity(db: D1Database, limit: number = 50, offset: number = 0): Promise<any[]> {
+  const result = await db.prepare('SELECT * FROM activity_log ORDER BY created_at DESC LIMIT ? OFFSET ?')
+    .bind(limit, offset).all();
+  return result.results;
+}
+
+export async function getActivityCount(db: D1Database): Promise<number> {
+  const row = await db.prepare('SELECT COUNT(*) as count FROM activity_log').first<{ count: number }>();
+  return row?.count ?? 0;
+}
+
+// === Traffic Stats ===
+export async function logTraffic(db: D1Database, path: string, bytes: number, user?: string): Promise<void> {
+  await db.prepare('INSERT INTO traffic_log (path, bytes, user) VALUES (?, ?, ?)')
+    .bind(path, bytes, user || null).run();
+}
+
+export async function getTrafficStats(db: D1Database, days: number = 30): Promise<{ totalBytes: number; requestCount: number }> {
+  const row = await db.prepare(
+    "SELECT COALESCE(SUM(bytes), 0) as totalBytes, COUNT(*) as requestCount FROM traffic_log WHERE created_at >= datetime('now', ?)"
+  ).bind(`-${days} days`).first<{ totalBytes: number; requestCount: number }>();
+  return row ?? { totalBytes: 0, requestCount: 0 };
+}
+
+export async function getTrafficByDay(db: D1Database, days: number = 7): Promise<{ date: string; bytes: number; count: number }[]> {
+  const result = await db.prepare(
+    "SELECT DATE(created_at) as date, SUM(bytes) as bytes, COUNT(*) as count FROM traffic_log WHERE created_at >= datetime('now', ?) GROUP BY DATE(created_at) ORDER BY date DESC"
+  ).bind(`-${days} days`).all();
+  return result.results as any[];
+}
+
+// === Upload Drafts ===
+export async function createDraft(db: D1Database, id: string, path: string, size: number, mime: string, user?: string): Promise<void> {
+  await db.prepare('INSERT INTO upload_drafts (id, path, size, mime, status, created_by) VALUES (?, ?, ?, ?, ?, ?)')
+    .bind(id, path, size, mime, 'draft', user || null).run();
+}
+
+export async function confirmDraft(db: D1Database, id: string): Promise<boolean> {
+  const result = await db.prepare("UPDATE upload_drafts SET status = 'confirmed' WHERE id = ? AND status = 'draft'").bind(id).run();
+  return result.meta.changes > 0;
+}
+
+export async function cancelDraft(db: D1Database, id: string): Promise<void> {
+  await db.prepare("UPDATE upload_drafts SET status = 'cancelled' WHERE id = ?").bind(id).run();
+}
+
+export async function getDraft(db: D1Database, id: string): Promise<any | null> {
+  return db.prepare('SELECT * FROM upload_drafts WHERE id = ?').bind(id).first();
+}
+
+export async function cleanOldDrafts(db: D1Database, hoursOld: number = 24): Promise<number> {
+  const result = await db.prepare("DELETE FROM upload_drafts WHERE status = 'draft' AND created_at < datetime('now', ?)")
+    .bind(`-${hoursOld} hours`).run();
+  return result.meta.changes;
 }
