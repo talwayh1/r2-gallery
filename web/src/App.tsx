@@ -106,16 +106,28 @@ export default function App() {
   const uploadDropzoneRef = useRef<UploadDropzoneHandle>(null);
   const sidebarTouchXRef = useRef<number>(0);
   const sidebarTouchActiveRef = useRef<boolean>(false);
+  // Abort controller for cancelling stale in-flight requests
+  const abortRef = useRef<AbortController | null>(null);
+  // Ref-based cursor avoids stale closure in loadFiles when append-loading
+  const cursorRef = useRef<string | undefined>(undefined);
 
   const loadFiles = useCallback(async (d: string, append = false) => {
+    // Cancel any pending request — prevents stale response from overwriting
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     try {
       const params: ListFilesParams = { sort: sortBy as any, order: sortOrder, type: typeFilter };
-      if (append && cursor) {
-        params.cursor = cursor;
+      // Use cursorRef to avoid stale closure — ref always has latest value
+      const cur = cursorRef.current;
+      if (append && cur) {
+        params.cursor = cur;
         params.limit = 100;
       }
-      const data = await listFiles(d, params);
+      const data = await listFiles(d, params, controller.signal);
+      if (controller.signal.aborted) return;
       if (append) {
         setFiles(prev => ({ ...prev, ...(data.files || {}) }));
       } else {
@@ -125,13 +137,18 @@ export default function App() {
       setDirCounts(data.dirCounts || {});
       setHasMore(data.hasMore || false);
       setCursor(data.cursor);
+      cursorRef.current = data.cursor;
     } catch (e) {
+      // AbortError is expected on navigation — don't log
+      if (e instanceof DOMException && e.name === 'AbortError') return;
       console.error('Failed to load files:', e);
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (controller === abortRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
-  }, [sortBy, sortOrder, typeFilter, cursor]);
+  }, [sortBy, sortOrder, typeFilter]);
 
   // Handle /view/* deep links and ?view= query param on mount
   useEffect(() => {
@@ -179,6 +196,7 @@ export default function App() {
 
   useEffect(() => {
     setCursor(undefined);
+    cursorRef.current = undefined;
     setHasMore(false);
     loadFiles(dir);
   }, [dir, sortBy, sortOrder, typeFilter]);
@@ -224,6 +242,11 @@ export default function App() {
       : 'R2 Gallery';
     document.title = title;
   }, [dir, files]);
+
+  // Cleanup: abort any in-flight request on unmount
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   // Auto-refresh (configurable interval, 0 = disabled)
   useEffect(() => {

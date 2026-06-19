@@ -20,7 +20,9 @@ async function request(path: string, options: RequestInit = {}) {
   if (options.body && typeof options.body === 'string') {
     headers['Content-Type'] = 'application/json';
   }
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  // Propagate signal to fetch — allows callers to cancel in-flight requests
+  const { signal, ...fetchOptions } = options;
+  const res = await fetch(`${API_BASE}${path}`, { ...fetchOptions, headers, signal });
   if (res.status === 401) {
     // Don't reload on public browsing — just clear stale token
     localStorage.removeItem('token');
@@ -56,7 +58,7 @@ export interface ListFilesParams {
   dirs_exclude?: string;
 }
 
-export async function listFiles(dir: string = '', params?: ListFilesParams) {
+export async function listFiles(dir: string = '', params?: ListFilesParams, signal?: AbortSignal) {
   const qs = new URLSearchParams({ dir });
   if (params?.sort) qs.set('sort', params.sort);
   if (params?.order) qs.set('order', params.order);
@@ -67,7 +69,7 @@ export async function listFiles(dir: string = '', params?: ListFilesParams) {
   if (params?.files_exclude) qs.set('files_exclude', params.files_exclude);
   if (params?.dirs_include) qs.set('dirs_include', params.dirs_include);
   if (params?.dirs_exclude) qs.set('dirs_exclude', params.dirs_exclude);
-  const res = await request(`/files?${qs.toString()}`);
+  const res = await request(`/files?${qs.toString()}`, { signal });
   return res.json();
 }
 
