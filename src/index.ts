@@ -33,7 +33,7 @@ app.use('*', async (c, next) => {
   const path = new URL(c.req.url).pathname;
 
   // Let API routes, SPA routes, and non-static paths go through normal routing
-  if (path.startsWith('/api/') || path.startsWith('/webdav/') || path.startsWith('/dir/') || path.startsWith('/view/')) {
+  if (path.startsWith('/api/') || path.startsWith('/webdav/') || path.startsWith('/dir/') || path.startsWith('/view/') || path.startsWith('/cdn/')) {
     return next();
   }
 

@@ -87,10 +87,7 @@ export function getFileUrl(path: string) {
 }
 
 export function getThumbUrl(path: string) {
-  // 如果有CDN域名，直接用CDN访问（公开文件，不需要token）
-  if (cdnDomain) {
-    return `${cdnDomain}/${path}`;
-  }
+  // 缩略图始终走 Worker 端生成（300x300 WebP），不走 CDN（CDN 只缓存原图）
   const token = localStorage.getItem('token');
   const base = `${API_BASE}/thumb?path=${encodeURIComponent(path)}`;
   return token ? `${base}&token=${encodeURIComponent(token)}` : base;

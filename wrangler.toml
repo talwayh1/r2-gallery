@@ -24,7 +24,7 @@ JWT_SECRET = "change-me-to-a-random-32-char-string"
 TELEGRAM_BOT_TOKEN = ""
 TELEGRAM_BOT_USERNAME = ""
 DEMO_MODE = "false"
-CDN_DOMAIN = "http://lz.zhangyubi.cn"
+CDN_DOMAIN = "http://lz.zhangyubi.cn/cdn"
 
 [[routes]]
 pattern = "tu.zhangyubi.cn/*"
