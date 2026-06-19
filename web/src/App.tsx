@@ -537,6 +537,29 @@ export default function App() {
     }
   }, []);
 
+  const handleLightboxDelete = async (path: string) => {
+    try {
+      await deleteItems([path]);
+      toast('success', `已删除 1 个项目`, 6000, {
+        label: '撤销',
+        onClick: async () => {
+          try {
+            await restoreTrash([path]);
+            toast('success', '已恢复删除的项目');
+            loadFiles(dir);
+          } catch (e) {
+            toast('error', `恢复失败: ${(e as Error).message}`);
+          }
+        },
+      });
+      loadFiles(dir);
+      // Close lightbox — the current file is gone
+      setLightbox(null);
+    } catch (e) {
+      toast('error', `删除失败: ${(e as Error).message}`);
+    }
+  };
+
   const handleDelete = async (paths: string[]) => {
     const names = paths.map(p => p.split('/').pop() || p).join(', ');
     const confirmed = confirm(`确认删除 ${paths.length} 个项目？\n${names}`);
@@ -897,6 +920,7 @@ export default function App() {
             index={lightbox.index}
             onClose={handleLightboxClose}
             onNavigate={handleLightboxNavigate}
+            onDelete={handleLightboxDelete}
           />
         </Suspense>
       )}

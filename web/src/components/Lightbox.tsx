@@ -20,6 +20,8 @@ interface Props {
   index: number;
   onClose: () => void;
   onNavigate: (index: number) => void;
+  /** Called when user wants to delete the current file */
+  onDelete?: (path: string) => void;
 }
 
 /** Touch gesture hook for swipe navigation (only when not zoomed) */
@@ -153,12 +155,14 @@ function isTextMime(mime: string): boolean {
          mime === 'application/yaml';
 }
 
-export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
+export default function Lightbox({ items, index, onClose, onNavigate, onDelete }: Props) {
   const current = items[index];
   const hasPrev = index > 0;
   const hasNext = index < items.length - 1;
   const [copied, setCopied] = useState(false);
   const [directUrlCopied, setDirectUrlCopied] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [exifData, setExifData] = useState<ExifData | null>(null);
   const [exifLoading, setExifLoading] = useState(false);
@@ -636,6 +640,22 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     }
   }, [isZoomed, isMobile, zoomAtPoint, resetZoom]);
 
+  const handleDeleteConfirm = useCallback(() => {
+    if (!current || deleting) return;
+    setConfirmDelete(true);
+  }, [current, deleting]);
+
+  const handleDeleteExecute = useCallback(async () => {
+    if (!current || !onDelete || deleting) return;
+    setDeleting(true);
+    setConfirmDelete(false);
+    try {
+      onDelete(current.path);
+    } catch {
+      setDeleting(false);
+    }
+  }, [current, onDelete, deleting]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -694,6 +714,9 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
         } else {
           document.exitFullscreen().catch(() => {});
         }
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && onDelete) {
+        e.preventDefault();
+        handleDeleteConfirm();
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -702,7 +725,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [onClose, goPrev, goNext, url, name, isZoomed, scale, resetZoom, toggleSlideshow, current]);
+  }, [onClose, goPrev, goNext, url, name, isZoomed, scale, resetZoom, toggleSlideshow, current, onDelete, handleDeleteConfirm]);
 
   // Reset state on navigation
   useEffect(() => {
@@ -1118,6 +1141,21 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
           </a>
+          {onDelete && (
+            <>
+              <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
+              <button
+                onClick={(e) => { e.stopPropagation(); handleDeleteConfirm(); }}
+                disabled={deleting}
+                className={`p-2 text-red-400/70 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors shrink-0 ${deleting ? 'opacity-50 animate-pulse' : ''}`}
+                title="删除 (Delete)"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </>
+          )}
         </div>
       ) : (
         <div className="absolute top-4 right-16 flex items-center gap-1 z-10">
@@ -1319,6 +1357,21 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
         </a>
+        {onDelete && (
+          <>
+            <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
+            <button
+              onClick={(e) => { e.stopPropagation(); handleDeleteConfirm(); }}
+              disabled={deleting}
+              className={`p-2 rounded-lg transition-colors ${deleting ? 'opacity-50 animate-pulse' : 'text-red-400/70 hover:text-red-400 hover:bg-red-500/10'}`}
+              title="删除 (Delete)"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </>
+        )}
       </div>
       )}
 
@@ -1927,6 +1980,59 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
         <Suspense fallback={null}>
           <KeyboardShortcutsLightbox onClose={() => setShowKeyboardHelp(false)} />
         </Suspense>
+      )}
+      {/* Delete confirmation dialog */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); }}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div
+            className="relative bg-gray-900 border border-white/10 rounded-xl p-6 max-w-sm w-[90vw] shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-white font-medium text-sm">确认删除</h3>
+                <p className="text-white/50 text-xs mt-0.5 break-all line-clamp-1">{name}</p>
+              </div>
+            </div>
+            <p className="text-white/60 text-sm mb-5">此操作不可撤销，文件将被移动到回收站。</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-white/80 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleDeleteExecute}
+                disabled={deleting}
+                className={`flex-1 px-4 py-2 rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-2 ${
+                  deleting
+                    ? 'bg-red-500/50 text-white/70 cursor-wait'
+                    : 'bg-red-500 hover:bg-red-600 text-white'
+                }`}
+              >
+                {deleting ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    删除中...
+                  </>
+                ) : (
+                  '删除'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       <style>{`@keyframes crossfade-out{from{opacity:1}to{opacity:0}}`}</style>
     </div>
