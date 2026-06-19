@@ -88,9 +88,17 @@ export default function App() {
   const [showDiscover, setShowDiscover] = useState(false);
   const [showMemories, setShowMemories] = useState(false);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-  const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [hasMore, setHasMore] = useState(false);
+
+  // Format bytes to human-readable string
+  const formatSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
+  };
 
   // Track pending /view/* deep link
   const pendingViewRef = useRef<string | null>(null);
@@ -260,6 +268,14 @@ export default function App() {
     ),
     [files, search, typeFilter]
   );
+
+  // Compute summary stats from visible files and directories
+  const summaryStats = useMemo(() => {
+    const filesList = Object.values(filteredFiles);
+    const fileCount = filesList.length;
+    const totalSize = filesList.reduce((sum, f) => sum + (f.size || 0), 0);
+    return { fileCount, totalSize, dirCount: dirs.length };
+  }, [filteredFiles, dirs]);
 
   // Global keyboard shortcuts (non-lightbox)
   useEffect(() => {
@@ -889,6 +905,16 @@ export default function App() {
                 renderLayout(filteredFiles, dirs, selected)
               )}
             </Suspense>
+          )}
+
+          {/* Summary bar */}
+          {!loading && (summaryStats.fileCount > 0 || summaryStats.dirCount > 0) && selected.size === 0 && (
+            <div className="mt-2 px-1 pb-1 flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+              <span>{summaryStats.fileCount} 个文件</span>
+              {summaryStats.dirCount > 0 && <span>· {summaryStats.dirCount} 个文件夹</span>}
+              {summaryStats.totalSize > 0 && <span>· 共 {formatSize(summaryStats.totalSize)}</span>}
+              {search && <span className="ml-1 px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">搜索: "{search}"</span>}
+            </div>
           )}
         </main>
       </div>

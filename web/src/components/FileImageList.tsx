@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import type { FileItem } from '../types';
-import { getThumbUrl, getFileUrl, duplicateFile, downloadZip, moveItem, copyFile } from '../api';
+import { getFileUrl, duplicateFile, downloadZip, moveItem, copyFile } from '../api';
 import { toast } from '../hooks/useToast';
+import SafeThumb from './SafeThumb';
 
 const FolderPicker = lazy(() => import('./FolderPicker'));
 const ShareDialog = lazy(() => import('./ShareDialog'));
@@ -186,7 +187,7 @@ export default function FileImageList({ files, dirs, currentDir, onNavigate, onO
                 {isDir ? (
                   <div className="w-full h-full flex items-center justify-center text-2xl">📁</div>
                 ) : isImage ? (
-                  <img src={getThumbUrl(item.path)} alt="" className="w-full h-full object-cover" loading="lazy" />
+                  <SafeThumb path={item.path} />
                 ) : isVideo ? (
                   <VideoListThumb path={item.path} />
                 ) : (

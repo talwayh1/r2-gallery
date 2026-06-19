@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import type { FileItem } from '../types';
-import { getThumbUrl, getFileUrl } from '../api';
+import { getFileUrl } from '../api';
 import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
+import SafeThumb from './SafeThumb';
 
 interface Props {
   files: Record<string, FileItem>;
@@ -90,7 +91,7 @@ export default function FileBlocks({ files, dirs, currentDir, onNavigate, onOpen
                     )}
                   </div>
                 ) : isImage ? (
-                  <img src={getThumbUrl(item.path)} alt="" className="w-full h-full object-cover" loading="lazy" />
+                  <SafeThumb path={item.path} />
                 ) : isVideo ? (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                     <svg className="w-12 h-12 text-white/60" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
