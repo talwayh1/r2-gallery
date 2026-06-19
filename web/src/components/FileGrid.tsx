@@ -345,7 +345,7 @@ function VirtualFileGrid({
     <div
       ref={containerRef}
       className="overflow-auto"
-      style={{ maxHeight: 'calc(100vh - 260px)' }}
+      style={{ maxHeight: 'calc(100dvh - 260px)' }}
     >
       {/* Top spacer — maintains scroll position */}
       <div style={{ height: offsetY }} />
@@ -499,7 +499,7 @@ function VirtualFileGrid({
         >
           <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 bg-black">
             <img
-              src={getFileUrl(preview.file.path)}
+              src={getThumbUrl(preview.file.path)}
               alt={preview.file.name}
               className="w-full h-full object-contain"
               loading="lazy"
