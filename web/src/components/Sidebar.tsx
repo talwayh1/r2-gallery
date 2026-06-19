@@ -160,8 +160,6 @@ export default function Sidebar({ currentDir, onNavigate, onClose }: Props) {
         >
           <option value="name_asc">名称 A→Z</option>
           <option value="name_desc">名称 Z→A</option>
-          <option value="date_asc">日期 旧→新</option>
-          <option value="date_desc">日期 新→旧</option>
         </select>
       </div>
       <div className="px-2 pb-3 space-y-0.5">

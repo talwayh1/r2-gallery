@@ -614,9 +614,10 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore when typing in inputs inside the lightbox (e.g. MarkdownEditor)
-      const tag = (e.target as HTMLElement).tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      // Ignore when typing in inputs or when a focusable element might conflict
+      const target = e.target as HTMLElement;
+      const tag = target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SELECT' || tag === 'A' || target.isContentEditable) return;
 
       if (e.key === 'Escape') {
         if (isZoomed) {
