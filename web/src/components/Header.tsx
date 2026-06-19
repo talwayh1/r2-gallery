@@ -67,12 +67,6 @@ const LANGUAGES = [
   { code: 'en', label: 'English' },
   { code: 'ja', label: '日本語' },
   { code: 'ko', label: '한국어' },
-  { code: 'fi', label: 'Suomi' },
-  { code: 'tr', label: 'Türkçe' },
-  { code: 'el', label: 'Ελληνικά' },
-  { code: 'id', label: 'Indonesia' },
-  { code: 'sl', label: 'Slovenščina' },
-  { code: 'uk', label: 'Українська' },
 ];
 
 export default function Header({
@@ -113,6 +107,7 @@ export default function Header({
   };
 
   return (
+    <>
     <header className="h-14 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0 sticky top-0 z-40">
       {/* Hamburger / sidebar toggle */}
       <button onClick={onSidebarToggle} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg shrink-0">
@@ -727,54 +722,55 @@ export default function Header({
           </button>
         ) : null}
       </div>
+      </header>
 
-      {/* Mobile inline filter bar */}
-      {isMobile && mobileFilterOpen && (
-        <div className="px-3 pb-2 border-b border-gray-200 dark:border-gray-700 space-y-2">
-          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-1.5">
-            <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="筛选文件名..."
-              className="flex-1 bg-transparent text-sm outline-none text-gray-700 dark:text-gray-200 placeholder-gray-400"
-              autoFocus
-            />
-            {search && (
-              <button
-                onClick={() => onSearchChange('')}
-                className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 shrink-0"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+        {/* Mobile inline filter bar — outside header flex to avoid layout breakage */}
+        {isMobile && mobileFilterOpen && (
+          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-14 z-30 space-y-2 shadow-sm">
+            <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-1.5">
+              <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="筛选文件名..."
+                className="flex-1 bg-transparent text-sm outline-none text-gray-700 dark:text-gray-200 placeholder-gray-400"
+                autoFocus
+              />
+              {search && (
+                <button
+                  onClick={() => onSearchChange('')}
+                  className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 shrink-0"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            {/* Mobile type filter chips */}
+            {onTypeFilterChange && (
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                {TYPE_FILTERS.map((t) => (
+                  <button
+                    key={t.key}
+                    onClick={() => onTypeFilterChange(t.key)}
+                    className={`shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                      typeFilter === t.key
+                        ? 'bg-blue-500 text-white shadow-sm'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <span className="text-[11px]">{t.icon}</span>
+                    <span>{t.label}</span>
+                  </button>
+                ))}
+              </div>
             )}
           </div>
-          {/* Mobile type filter chips */}
-          {onTypeFilterChange && (
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-              {TYPE_FILTERS.map((t) => (
-                <button
-                  key={t.key}
-                  onClick={() => onTypeFilterChange(t.key)}
-                  className={`shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                    typeFilter === t.key
-                      ? 'bg-blue-500 text-white shadow-sm'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <span className="text-[11px]">{t.icon}</span>
-                  <span>{t.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </header>
+        )}
+      </>
   );
 }
