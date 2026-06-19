@@ -183,6 +183,9 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
   const slideshowTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const slideshowProgressRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const playedIndicesRef = useRef<Set<number>>(new Set([index]));
+  // Ref for slideshowSpeed to avoid stale closures in keyboard handler
+  const slideshowSpeedRef = useRef(slideshowSpeed);
+  slideshowSpeedRef.current = slideshowSpeed;
 
   // === Zoom state ===
   const [scale, setScale] = useState(1);
@@ -768,6 +771,16 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && onDelete) {
         e.preventDefault();
         handleDeleteConfirm();
+      } else if (e.key === ']' || e.key === '[') {
+        // Slideshow speed shortcuts — only active when slideshow is playing
+        if (!slideshowTimerRef.current) return;
+        e.preventDefault();
+        const step = 0.5;
+        if (e.key === ']') {
+          setSlideshowSpeed(s => Math.max(1, s - step));
+        } else {
+          setSlideshowSpeed(s => Math.min(30, s + step));
+        }
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -1725,13 +1738,24 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
         )}
       </div>
 
-      {/* Slideshow progress bar */}
+      {/* Slideshow progress bar with speed indicator */}
       {slideshowPlaying && (
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10 z-20">
-          <div
-            className="h-full bg-blue-500 transition-all duration-75 ease-linear"
-            style={{ width: `${Math.min(slideshowProgress, 100)}%` }}
-          />
+        <div className="absolute bottom-0 left-0 right-0 z-20">
+          {/* Speed label above progress bar */}
+          <div className="flex items-center justify-between px-3 pb-0.5">
+            <span className="text-[10px] text-white/40 font-mono">[:,] 调速</span>
+            <span className="text-[10px] text-white/60 font-mono tracking-wider">
+              <span className="text-blue-400">{slideshowSpeed.toFixed(1)}s</span>
+              {slideshowShuffle && <span className="text-white/30 ml-1">· 随机</span>}
+              {slideshowLoop && <span className="text-white/30 ml-1">· 循环</span>}
+            </span>
+          </div>
+          <div className="h-1 bg-white/10">
+            <div
+              className="h-full bg-blue-500 transition-all duration-75 ease-linear"
+              style={{ width: `${Math.min(slideshowProgress, 100)}%` }}
+            />
+          </div>
         </div>
       )}
 
