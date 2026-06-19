@@ -21,6 +21,7 @@ const UploadPanel = lazy(() => import('./components/UploadPanel'));
 const Login = lazy(() => import('./components/Login'));
 const BulkActions = lazy(() => import('./components/BulkActions'));
 const CreateFolder = lazy(() => import('./components/CreateFolder'));
+const MoveToFolder = lazy(() => import('./components/MoveToFolder'));
 const InstallPrompt = lazy(() => import('./components/InstallPrompt'));
 
 // TypeFilter: static import (matchFilter used in useMemo, component small enough to keep in main chunk)
@@ -86,6 +87,7 @@ export default function App() {
   const [showSearch, setShowSearch] = useState(false);
   const [showDiscover, setShowDiscover] = useState(false);
   const [showMemories, setShowMemories] = useState(false);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -651,6 +653,57 @@ export default function App() {
     }
   };
 
+  // Bulk copy (Ctrl+C equivalent)
+  const handleCopy = useCallback(() => {
+    if (selected.size === 0) return;
+    clipboardRef.current = { paths: Array.from(selected), mode: 'copy' };
+    toast('info', `已复制 ${selected.size} 个项目`);
+  }, [selected]);
+
+  // Bulk duplicate
+  const handleDuplicate = useCallback(async () => {
+    if (selected.size === 0 || !user) return;
+    const paths = Array.from(selected);
+    toast('info', `正在复制 ${paths.length} 个项目...`);
+    let success = 0;
+    for (const path of paths) {
+      try {
+        const result = await duplicateFile(path);
+        if (result.success) success++;
+      } catch (err) {
+        console.error('Duplicate failed:', path, err);
+      }
+    }
+    toast('success', `已复制 ${success}/${paths.length} 个项目`);
+    setSelected(new Set());
+    loadFiles(dir);
+  }, [selected, user, dir, loadFiles]);
+
+  // Move to folder
+  const handleMoveToFolder = useCallback(() => {
+    if (selected.size === 0 || !user) return;
+    setShowMoveDialog(true);
+  }, [selected, user]);
+
+  const handleMoveConfirm = useCallback(async (targetDir: string) => {
+    if (selected.size === 0) return;
+    const paths = Array.from(selected);
+    setShowMoveDialog(false);
+    toast('info', `正在移动 ${paths.length} 个项目...`);
+    let success = 0;
+    for (const path of paths) {
+      try {
+        await moveItem(path, targetDir);
+        success++;
+      } catch (err) {
+        console.error('Move failed:', path, err);
+      }
+    }
+    toast('success', `已移动 ${success}/${paths.length} 个项目到目标文件夹`);
+    setSelected(new Set());
+    loadFiles(dir);
+  }, [selected, dir, loadFiles]);
+
   // Create folder
   const handleCreateFolder = async (name: string) => {
     const folderPath = dir ? `${dir}/${name}` : name;
@@ -810,6 +863,9 @@ export default function App() {
           onCopyLinks={handleBatchCopyLinks}
           onBatchRename={user ? () => setShowBatchRename(true) : undefined}
           onCreateZip={user ? handleBatchCreateZip : undefined}
+          onCopy={user ? handleCopy : undefined}
+          onDuplicate={user ? handleDuplicate : undefined}
+          onMoveToFolder={user ? handleMoveToFolder : undefined}
           onSelectAll={handleSelectAll}
           onDeselectAll={handleDeselectAll}
         />
@@ -856,6 +912,15 @@ export default function App() {
           onCreateUrl={handleCreateUrl}
           onClose={() => setShowCreateFolder(false)}
         />
+      )}
+      {showMoveDialog && user && (
+        <Suspense fallback={<LazyLoading />}>
+          <MoveToFolder
+            currentDir={dir}
+            onMove={handleMoveConfirm}
+            onClose={() => setShowMoveDialog(false)}
+          />
+        </Suspense>
       )}
       {showSearch && (
         <Suspense fallback={<LazyLoading />}>
