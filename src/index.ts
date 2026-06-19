@@ -167,21 +167,15 @@ app.get('/cdn/*', async (c) => {
 // 处理 /, /dir/* 等 SPA 路由，直接返回 index.html
 // 腾讯CDN配置：回源地址为 tu.zhangyubi.cn，回源Host为 tu.zhangyubi.cn
 app.get('/', async (c) => {
-  const spaResponse = serveSPA(c);
-  if (spaResponse) {
-    spaResponse.headers.set('CDN-Cache-Control', 'no-cache');
-    return spaResponse;
-  }
+  const spaResponse = await serveSPA(c);
+  if (spaResponse) return spaResponse;
   return c.html(getFallbackHTML());
 });
 
 // 处理 /dir/* SPA 路由
 app.get('/dir/*', async (c) => {
-  const spaResponse = serveSPA(c);
-  if (spaResponse) {
-    spaResponse.headers.set('CDN-Cache-Control', 'no-cache');
-    return spaResponse;
-  }
+  const spaResponse = await serveSPA(c);
+  if (spaResponse) return spaResponse;
   return c.html(getFallbackHTML());
 });
 
@@ -321,7 +315,7 @@ function getOGImageMime(filename: string): string | null {
 }
 
 /** Serve SSR HTML with OG meta tags for bots, SPA for users */
-function serveSPA(c: any): Response | null {
+async function serveSPA(c: any): Promise<Response | null> {
   // @ts-ignore — Cloudflare Workers Assets binding (new API)
   const ASSETS = c.env.ASSETS || (globalThis as any).ASSETS;
   if (ASSETS && typeof ASSETS.fetch === 'function') {
@@ -330,9 +324,16 @@ function serveSPA(c: any): Response | null {
       const assetUrl = new URL(c.req.url);
       assetUrl.pathname = '/index.html';
       const assetReq = new Request(assetUrl.toString(), c.req.raw);
-      const assetResponse = ASSETS.fetch(assetReq);
+      const assetResponse = await ASSETS.fetch(assetReq);
       if (assetResponse) {
-        return assetResponse as unknown as Response;
+        // Clone to mutable Response — ASSETS binding headers are read-only
+        const headers = new Headers(assetResponse.headers);
+        headers.set('CDN-Cache-Control', 'no-cache');
+        return new Response(assetResponse.body, {
+          status: assetResponse.status,
+          statusText: assetResponse.statusText,
+          headers,
+        });
       }
     } catch {}
   }
@@ -421,7 +422,7 @@ app.get('/view/*', async (c) => {
 
 // === Static frontend (SPA fallback) ===
 app.get('*', async (c) => {
-  const spaResponse = serveSPA(c);
+  const spaResponse = await serveSPA(c);
   if (spaResponse) {
     // SPA HTML 不应被 CDN 缓存 — 部署后 chunk hash 变化会导致旧 HTML 引用失效的 JS
     spaResponse.headers.set('CDN-Cache-Control', 'no-cache');
