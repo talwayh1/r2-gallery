@@ -322,6 +322,83 @@ function VirtualFileGrid({
 }) {
   const [preview, setPreview] = useState<{ file: FileItem; rect: DOMRect } | null>(null);
   const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [focusedIndex, setFocusedIndex] = useState<number>(-1);
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  // Track visible file paths for keyboard navigation
+  const visibleFiles = useMemo(() => files.slice(visibleRange.start, visibleRange.end), [files, visibleRange.start, visibleRange.end]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Don't navigate during rename
+    if (renaming) return;
+
+    const count = visibleFiles.length;
+    if (count === 0) return;
+
+    // Focus first item on initial keypress if nothing focused
+    let idx = focusedIndex >= 0 && focusedIndex < count ? focusedIndex : (focusedIndex === -1 ? 0 : focusedIndex);
+
+    switch (e.key) {
+      case 'ArrowRight':
+        e.preventDefault();
+        idx = Math.min(idx + 1, count - 1);
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        idx = Math.max(idx - 1, 0);
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        idx = Math.min(idx + columns, count - 1);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        idx = Math.max(idx - columns, 0);
+        break;
+      case 'Home':
+        e.preventDefault();
+        idx = 0;
+        break;
+      case 'End':
+        e.preventDefault();
+        idx = count - 1;
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        if (idx >= 0 && idx < count) {
+          const file = visibleFiles[idx];
+          if (e.key === 'Enter') {
+            onOpen(file.path, file.mime);
+          } else if (e.key === ' ') {
+            // Space toggles selection (like clicking with selection mode)
+            if (onSelect) {
+              onSelect(file.path);
+            } else {
+              setInternalSelected((prev) => {
+                const next = new Set(prev);
+                if (next.has(file.path)) next.delete(file.path);
+                else next.add(file.path);
+                return next;
+              });
+            }
+          }
+        }
+        return; // Don't proceed to focus
+      default:
+        return; // Ignore other keys
+    }
+
+    setFocusedIndex(idx);
+
+    // Find the button element and focus it
+    const buttons = gridRef.current?.querySelectorAll('button[data-file-idx]');
+    if (buttons && buttons[idx]) {
+      (buttons[idx] as HTMLElement).focus();
+      // Scroll into view if not fully visible
+      (buttons[idx] as HTMLElement).scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [focusedIndex, columns, visibleFiles, renaming, onOpen, onSelect, setInternalSelected]);
 
   const handleMouseEnter = useCallback((e: React.MouseEvent, file: FileItem) => {
     if (!file.mime.startsWith('image/')) return;
@@ -339,7 +416,11 @@ function VirtualFileGrid({
     }
     setPreview(null);
   }, []);
-  const visibleFiles = files.slice(visibleRange.start, visibleRange.end);
+
+  // Reset focused index when visible files change (e.g. scroll, filter)
+  useEffect(() => {
+    setFocusedIndex(-1);
+  }, [visibleFiles.length, columns]);
 
   return (
     <div
@@ -351,12 +432,17 @@ function VirtualFileGrid({
       <div style={{ height: offsetY }} />
 
       <div
+        ref={gridRef}
         className="grid gap-3"
         style={{
           gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
         }}
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
+        role="grid"
+        aria-label="文件网格"
       >
-        {visibleFiles.map((file) => {
+        {visibleFiles.map((file, idx) => {
           const isImage = file.mime.startsWith('image/');
           const isVideo = file.mime.startsWith('video/');
           const isSelected = selected.has(file.path);
@@ -366,6 +452,7 @@ function VirtualFileGrid({
           return (
             <button
               key={file.path}
+              data-file-idx={idx}
               onClick={(e) => handleCardClick(e, file.path, file.mime)}
               onDoubleClick={() => onOpen(file.path, file.mime)}
               onContextMenu={(e) => handleContextMenu(e, file.path, file.name, false)}
