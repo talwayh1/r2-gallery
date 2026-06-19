@@ -166,9 +166,16 @@ files.get('/files', async (c) => {
     } else if (sort === 'mtime') {
       cmp = a.mtime - b.mtime;
     } else if (sort === 'kind') {
-      const extA = a.name.split('.').pop()?.toLowerCase() || '';
-      const extB = b.name.split('.').pop()?.toLowerCase() || '';
-      cmp = extA.localeCompare(extB) || a.name.localeCompare(b.name, 'zh-CN');
+      const kindOrder = (mime: string): number => {
+        if (mime.startsWith('image/')) return 0;
+        if (mime.startsWith('video/')) return 1;
+        if (mime.startsWith('audio/')) return 2;
+        if (mime === 'application/pdf' || mime.startsWith('text/') ||
+            mime === 'application/json' || mime === 'application/xml' ||
+            mime === 'application/javascript' || mime === 'application/x-yaml') return 3;
+        return 4;
+      };
+      cmp = kindOrder(a.mime) - kindOrder(b.mime) || a.name.localeCompare(b.name, 'zh-CN');
     } else {
       cmp = a.name.localeCompare(b.name, 'zh-CN');
     }

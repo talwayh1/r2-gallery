@@ -730,7 +730,7 @@ export default function Header({
 
       {/* Mobile inline filter bar */}
       {isMobile && mobileFilterOpen && (
-        <div className="px-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+        <div className="px-3 pb-2 border-b border-gray-200 dark:border-gray-700 space-y-2">
           <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-1.5">
             <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -754,6 +754,25 @@ export default function Header({
               </button>
             )}
           </div>
+          {/* Mobile type filter chips */}
+          {onTypeFilterChange && (
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              {TYPE_FILTERS.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => onTypeFilterChange(t.key)}
+                  className={`shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                    typeFilter === t.key
+                      ? 'bg-blue-500 text-white shadow-sm'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <span className="text-[11px]">{t.icon}</span>
+                  <span>{t.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </header>
