@@ -69,6 +69,13 @@ export default function MarkdownEditor({ content, fileName, onSave, readOnly = f
     onSave?.(editContent);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      handleSave();
+    }
+  };
+
   if (isMarkdown) {
     return (
       <div className="flex flex-col h-full">
@@ -99,6 +106,7 @@ export default function MarkdownEditor({ content, fileName, onSave, readOnly = f
               onChange={(e) => setEditContent(e.target.value)}
               onScroll={handleScroll}
               readOnly={readOnly}
+              onKeyDown={handleKeyDown}
               className={`flex-1 bg-transparent text-gray-200 font-mono text-sm p-4 resize-none outline-none leading-relaxed ${mode === 'split' ? 'border-r border-white/10' : ''}`}
               placeholder="输入 Markdown 内容..."
               spellCheck={false}

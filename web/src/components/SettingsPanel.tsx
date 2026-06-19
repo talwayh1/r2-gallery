@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getSettings, saveSettings, getUsers, createUser, deleteUser, cleanCache, getDiagnostics } from '../api';
+import { toast } from '../hooks/useToast';
 
 interface SettingsPanelProps {
   onClose: () => void;
@@ -40,9 +41,9 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
   const handleSaveSettings = async () => {
     try {
       await saveSettings(settings);
-      alert('设置已保存');
+      toast('success', '设置已保存');
     } catch (err) {
-      alert('保存失败: ' + (err as Error).message);
+      toast('error', '保存失败: ' + (err as Error).message);
     }
   };
 
@@ -54,7 +55,7 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
       setNewPassword('');
       loadUsers();
     } catch (err) {
-      alert('创建失败: ' + (err as Error).message);
+      toast('error', '创建失败: ' + (err as Error).message);
     }
   };
 
@@ -64,7 +65,7 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
       await deleteUser(id);
       loadUsers();
     } catch (err) {
-      alert('删除失败: ' + (err as Error).message);
+      toast('error', '删除失败: ' + (err as Error).message);
     }
   };
 
@@ -72,9 +73,9 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
     setLoading(true);
     try {
       const result = await cleanCache();
-      alert(`已清理 ${result.deleted} 个缓存条目`);
+      toast('success', `已清理 ${result.deleted} 个缓存条目`);
     } catch (err) {
-      alert('清理失败: ' + (err as Error).message);
+      toast('error', '清理失败: ' + (err as Error).message);
     }
     setLoading(false);
   };
@@ -85,7 +86,7 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
       const data = await getDiagnostics();
       setDiagnostics(data);
     } catch (err) {
-      alert('加载失败: ' + (err as Error).message);
+      toast('error', '加载诊断信息失败: ' + (err as Error).message);
     }
     setLoading(false);
   };

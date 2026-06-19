@@ -2,6 +2,7 @@ import { useEffect, useCallback, useState, useRef, lazy, Suspense } from 'react'
 import { getFileUrl, getThumbUrl, getExif, saveFile, uploadCustomThumb, type ExifData } from '../api';
 import VideoPlayer from './VideoPlayer';
 import MarkdownEditor from './MarkdownEditor';
+import { toast } from '../hooks/useToast';
 
 // Lazy-load heavy components (hls.js is ~400KB)
 const HlsPlayer = lazy(() => import('./HlsPlayer'));
@@ -1764,8 +1765,10 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
                   try {
                     await saveFile(current.path, newContent);
                     setTextContent(newContent);
+                    toast('success', '文件已保存');
                   } catch (e) {
                     console.error('Save failed:', e);
+                    toast('error', '保存失败: ' + (e instanceof Error ? e.message : String(e)));
                   } finally {
                     setTextSaving(false);
                   }

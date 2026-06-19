@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { createShare } from '../api';
+import { toast } from '../hooks/useToast';
 
 interface ShareDialogProps {
   filePath: string;
@@ -19,14 +20,14 @@ export default function ShareDialog({ filePath, fileName, onClose }: ShareDialog
       const share = await createShare(filePath, password || undefined, expiresIn || undefined);
       setShareUrl(`${window.location.origin}/share/${share.id}`);
     } catch (err) {
-      alert('创建失败: ' + (err as Error).message);
+      toast('error', '创建失败: ' + (err as Error).message);
     }
     setLoading(false);
   };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(shareUrl).then(() => {
-      alert('链接已复制到剪贴板');
+      toast('success', '链接已复制到剪贴板');
     });
   };
 
