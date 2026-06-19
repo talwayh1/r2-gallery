@@ -653,6 +653,19 @@ export default function App() {
     }
   };
 
+  const handleBatchCopyDirectLinks = async (separator?: string) => {
+    if (selected.size === 0) return;
+    const paths = Array.from(selected);
+    const sep = separator || localStorage.getItem('copyLinksSeparator') || '\n';
+    const links = paths.map(p => `${window.location.origin}/api/file?path=${encodeURIComponent(p)}`).join(sep);
+    try {
+      await navigator.clipboard.writeText(links);
+      toast('success', `已复制 ${paths.length} 个直链`);
+    } catch {
+      toast('error', '复制失败');
+    }
+  };
+
   // Bulk copy (Ctrl+C equivalent)
   const handleCopy = useCallback(() => {
     if (selected.size === 0) return;
@@ -861,6 +874,7 @@ export default function App() {
           onDownload={handleBatchDownload}
           onDownloadZip={handleBatchDownloadZip}
           onCopyLinks={handleBatchCopyLinks}
+          onCopyDirectLinks={handleBatchCopyDirectLinks}
           onBatchRename={user ? () => setShowBatchRename(true) : undefined}
           onCreateZip={user ? handleBatchCreateZip : undefined}
           onCopy={user ? handleCopy : undefined}
