@@ -161,6 +161,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
   const hasNext = index < items.length - 1;
   const [copied, setCopied] = useState(false);
   const [directUrlCopied, setDirectUrlCopied] = useState(false);
+  const [imageCopied, setImageCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
@@ -673,7 +674,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goPrev(); }
       else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); goNext(); }
       else if (e.key === 'i') setShowInfo((s) => !s);
-      else if (e.key === 'h' || e.key === 'H') {
+      else if (e.key === '?' || e.key === 'h' || e.key === 'H') {
         e.preventDefault();
         setShowKeyboardHelp((s) => !s);
       }
@@ -730,6 +731,8 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
   // Reset state on navigation
   useEffect(() => {
     setCopied(false);
+    setDirectUrlCopied(false);
+    setImageCopied(false);
     setShowInfo(false);
     setExifData(null);
     setExifLoading(false);
@@ -891,6 +894,22 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
       document.body.removeChild(input);
       setDirectUrlCopied(true);
       setTimeout(() => setDirectUrlCopied(false), 2000);
+    }
+  };
+
+  const handleCopyImage = async () => {
+    if (!current?.mime.startsWith('image/')) return;
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Fetch failed');
+      const blob = await response.blob();
+      const mime = blob.type.startsWith('image/') ? blob.type : 'image/png';
+      const clipBlob = mime !== blob.type ? new Blob([blob], { type: 'image/png' }) : blob;
+      await navigator.clipboard.write([new ClipboardItem({ [mime]: clipBlob })]);
+      setImageCopied(true);
+      setTimeout(() => setImageCopied(false), 2000);
+    } catch {
+      toast('error', '复制图片失败');
     }
   };
 
@@ -1128,6 +1147,23 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
             )}
           </button>
+          {isImage && (
+            <>
+              <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
+              {/* Copy image data to clipboard */}
+              <button
+                onClick={(e) => { e.stopPropagation(); handleCopyImage(); }}
+                className={`p-2 rounded-lg transition-colors shrink-0 ${imageCopied ? 'text-green-400' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+                title={imageCopied ? '已复制!' : '复制图片'}
+              >
+                {imageCopied ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                )}
+              </button>
+            </>
+          )}
           <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
           {/* Download */}
           <a
@@ -1345,6 +1381,27 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
             </svg>
           )}
         </button>
+        {isImage && (
+          <>
+            <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
+            {/* Copy image data to clipboard */}
+            <button
+              onClick={(e) => { e.stopPropagation(); handleCopyImage(); }}
+              className={`p-2 rounded-lg transition-colors ${imageCopied ? 'text-green-400' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+              title={imageCopied ? '已复制!' : '复制图片'}
+            >
+              {imageCopied ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+              )}
+            </button>
+          </>
+        )}
         {/* Download */}
         <a
           href={url}
