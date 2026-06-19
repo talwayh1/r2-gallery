@@ -187,6 +187,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   const pinchStartDist = useRef(0);
   const pinchStartScale = useRef(1);
   const imgContainerRef = useRef<HTMLDivElement>(null);
+  const [showZoomIndicator, setShowZoomIndicator] = useState(false);
 
   // Audio player state
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -208,6 +209,11 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
 
   // Keyboard shortcuts help state
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
+
+  // === Crossfade transition state ===
+  // Holds the previous image URL to render while fading out during navigation
+  const prevImageUrlRef = useRef<string>('');
+  const [crossfadeUrl, setCrossfadeUrl] = useState<string | null>(null);
 
   // Mobile detection
   const [isMobile, setIsMobile] = useState(false);
@@ -270,6 +276,16 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     setScale(1);
     setOffset({ x: 0, y: 0 });
   }, []);
+
+  // Zoom indicator — briefly shows current zoom level when zooming
+  useEffect(() => {
+    if (scale > 1.05 && isImage) {
+      setShowZoomIndicator(true);
+      const timer = setTimeout(() => setShowZoomIndicator(false), 1200);
+      return () => clearTimeout(timer);
+    }
+    setShowZoomIndicator(false);
+  }, [scale]);
 
   // Zoom to a specific level centered on a point
   const zoomAtPoint = useCallback((clientX: number, clientY: number, newScale: number) => {
@@ -700,6 +716,16 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     setTextContent(null);
     setTextLoading(false);
   }, [index, resetZoom]);
+
+  // Crossfade transition — smoothly fades the previous image out as the new one loads
+  useEffect(() => {
+    const oldUrl = prevImageUrlRef.current;
+    prevImageUrlRef.current = url;
+    if (!oldUrl || oldUrl === url || !current?.mime.startsWith('image/')) return;
+    setCrossfadeUrl(oldUrl);
+    const timer = setTimeout(() => setCrossfadeUrl(null), 350);
+    return () => clearTimeout(timer);
+  }, [url]);
 
   // Fetch EXIF data when info panel is shown for an image
   useEffect(() => {
@@ -1520,6 +1546,13 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
         </div>
       )}
 
+      {/* Zoom level indicator — briefly appears when zooming */}
+      {isImage && showZoomIndicator && isZoomed && (
+        <div className="absolute bottom-4 left-4 bg-black/60 text-white/80 text-xs px-2.5 py-1 rounded-full z-10 pointer-events-none select-none transition-opacity duration-300">
+          {Math.round(scale * 100)}%
+        </div>
+      )}
+
       {/* Desktop zoom hint */}
       {isImage && !isZoomed && !slideshowPlaying && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden md:flex items-center gap-2 text-white/20 text-xs pointer-events-none select-none">
@@ -1577,6 +1610,21 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
               onLoad={handleImageLoad}
               onError={handleImageError}
             />
+            {/* Crossfade out: previous image fades away as new one loads */}
+            {crossfadeUrl && (
+              <img
+                key={crossfadeUrl}
+                src={crossfadeUrl}
+                alt=""
+                className="absolute inset-0 max-w-full max-h-[90vh] object-contain rounded-lg pointer-events-none"
+                style={{
+                  zIndex: 2,
+                  animation: 'crossfade-out 0.35s ease-out forwards',
+                }}
+                onAnimationEnd={() => setCrossfadeUrl(null)}
+                draggable={false}
+              />
+            )}
             {/* Image error state — shows when load fails */}
             {imageError && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 rounded-lg bg-black/60 backdrop-blur-sm z-10">
@@ -1843,6 +1891,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
           <KeyboardShortcutsLightbox onClose={() => setShowKeyboardHelp(false)} />
         </Suspense>
       )}
+      <style>{`@keyframes crossfade-out{from{opacity:1}to{opacity:0}}`}</style>
     </div>
   );
 }
