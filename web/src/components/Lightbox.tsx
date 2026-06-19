@@ -224,6 +224,9 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
   // Keyboard shortcuts help state
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
 
+  // Image rotation (0, 90, 180, 270)
+  const [rotation, setRotation] = useState(0);
+
   // === Crossfade transition state ===
   // Holds the previous image URL to render while fading out during navigation
   const prevImageUrlRef = useRef<string>('');
@@ -768,6 +771,12 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
         } else {
           document.exitFullscreen().catch(() => {});
         }
+      } else if (e.key === 'r') {
+        e.preventDefault();
+        setRotation(r => (r + 90) % 360);
+      } else if (e.key === 'R') {
+        e.preventDefault();
+        setRotation(r => (r - 90 + 360) % 360);
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && onDelete) {
         e.preventDefault();
         handleDeleteConfirm();
@@ -1127,6 +1136,37 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
                 </button>
               )}
               <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
+              {/* Rotation controls */}
+              <button
+                onClick={(e) => { e.stopPropagation(); setRotation(r => (r - 90 + 360) % 360); }}
+                className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
+                title="逆时针旋转 (Shift+R)"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setRotation(r => (r + 90) % 360); }}
+                className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
+                title="顺时针旋转 (R)"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              {rotation !== 0 && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setRotation(0); }}
+                  className="p-2 text-blue-400 hover:text-blue-300 hover:bg-white/10 rounded-lg transition-colors shrink-0"
+                  title="重置旋转"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                </button>
+              )}
+              <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             </>
           )}
           {/* Slideshow play/pause */}
@@ -1289,6 +1329,41 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
                 onClick={(e) => { e.stopPropagation(); resetZoom(); }}
                 className="p-2 text-blue-400 hover:text-blue-300 hover:bg-white/10 rounded-lg transition-colors"
                 title="重置缩放 (0)"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+              </button>
+            )}
+          </>
+        )}
+
+        {/* Rotation controls (images only) */}
+        {isImage && (
+          <>
+            <button
+              onClick={(e) => { e.stopPropagation(); setRotation(r => (r - 90 + 360) % 360); }}
+              className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              title="逆时针旋转 (Shift+R)"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setRotation(r => (r + 90) % 360); }}
+              className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              title="顺时针旋转 (R)"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            {rotation !== 0 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setRotation(0); }}
+                className="p-2 text-blue-400 hover:text-blue-300 hover:bg-white/10 rounded-lg transition-colors"
+                title="重置旋转"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
@@ -1828,7 +1903,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
                 className="absolute inset-0 w-full h-full object-contain rounded-lg pointer-events-none"
                 style={{
                   filter: 'blur(25px)',
-                  transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                  transform: `scale(${scale}) rotate(${rotation}deg) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
                   transition: isDragging.current ? 'none' : 'transform 0.15s ease-out',
                   transformOrigin: 'center center',
                 }}
@@ -1841,7 +1916,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
               alt={name}
               className={`max-w-full max-h-[90vh] object-contain rounded-lg transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
               style={{
-                transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                transform: `scale(${scale}) rotate(${rotation}deg) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
                 transition: isDragging.current ? 'none' : 'transform 0.15s ease-out',
                 transformOrigin: 'center center',
               }}

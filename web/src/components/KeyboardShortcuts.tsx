@@ -46,6 +46,7 @@ const shortcuts: { category: string; items: Shortcut[] }[] = [
       { keys: ['0'], description: '重置缩放' },
       { keys: ['[', ']'], description: '幻灯片播放中减速/加速' },
       { keys: ['F'], description: '切换全屏' },
+      { keys: ['R', 'Shift+R'], description: '顺时针/逆时针旋转' },
     ],
   },
   {

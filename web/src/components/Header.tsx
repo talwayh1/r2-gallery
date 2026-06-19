@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useClickOutside } from '../hooks/useClickOutside';
 import type { LayoutMode, ThemeMode } from '../types';
 
 interface Props {
@@ -88,10 +89,10 @@ export default function Header({
   const [langOpen, setLangOpen] = useState(false);
   const [mobileLangOpen, setMobileLangOpen] = useState(false);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
-  const moreRef = useRef<HTMLDivElement>(null);
-  const layoutRef = useRef<HTMLDivElement>(null);
-  const dirMenuRef = useRef<HTMLDivElement>(null);
-  const langRef = useRef<HTMLDivElement>(null);
+  const moreRef = useClickOutside<HTMLDivElement>(() => setMoreOpen(false), moreOpen);
+  const layoutRef = useClickOutside<HTMLDivElement>(() => setLayoutOpen(false), layoutOpen);
+  const dirMenuRef = useClickOutside<HTMLDivElement>(() => setDirMenuOpen(false), dirMenuOpen);
+  const langRef = useClickOutside<HTMLDivElement>(() => setLangOpen(false), langOpen);
 
   // Listen for PWA install prompt availability
   useEffect(() => {
@@ -105,54 +106,6 @@ export default function Header({
       window.removeEventListener('beforeinstallprompt', handler);
     };
   }, []);
-
-  // Close more menu on outside click
-  useEffect(() => {
-    if (!moreOpen) return;
-    const handleClick = (e: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
-        setMoreOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [moreOpen]);
-
-  // Close layout dropdown on outside click
-  useEffect(() => {
-    if (!layoutOpen) return;
-    const handleClick = (e: MouseEvent) => {
-      if (layoutRef.current && !layoutRef.current.contains(e.target as Node)) {
-        setLayoutOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [layoutOpen]);
-
-  // Close dir menu on outside click
-  useEffect(() => {
-    if (!dirMenuOpen) return;
-    const handleClick = (e: MouseEvent) => {
-      if (dirMenuRef.current && !dirMenuRef.current.contains(e.target as Node)) {
-        setDirMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [dirMenuOpen]);
-
-  // Close lang menu on outside click
-  useEffect(() => {
-    if (!langOpen) return;
-    const handleClick = (e: MouseEvent) => {
-      if (langRef.current && !langRef.current.contains(e.target as Node)) {
-        setLangOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [langOpen]);
 
   const closeMore = () => {
     setMoreOpen(false);
