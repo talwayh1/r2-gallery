@@ -162,6 +162,8 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   const [exifData, setExifData] = useState<ExifData | null>(null);
   const [exifLoading, setExifLoading] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const retryKeyRef = useRef(0);
   const [imageDimensions, setImageDimensions] = useState<{ w: number; h: number } | null>(null);
   const [swipeHint, setSwipeHint] = useState<'left' | 'right' | 'down' | null>(null);
 
@@ -687,6 +689,8 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     setExifData(null);
     setExifLoading(false);
     setImageLoaded(false);
+    setImageError(false);
+    retryKeyRef.current = 0;
     setImageDimensions(null);
     resetZoom();
     setSlideshowProgress(0);
@@ -822,6 +826,20 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     const img = e.currentTarget;
     setImageDimensions({ w: img.naturalWidth, h: img.naturalHeight });
     setImageLoaded(true);
+    setImageError(false);
+  };
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    console.error('Lightbox image load error:', current?.path, img.src);
+    setImageError(true);
+    setImageLoaded(false);
+  };
+
+  const retryImage = () => {
+    retryKeyRef.current += 1;
+    setImageError(false);
+    setImageLoaded(false);
   };
 
   const handleAudioSeek = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -1546,7 +1564,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
               />
             )}
             <img
-              key={current.path}
+              key={`${current.path}-retry${retryKeyRef.current}`}
               src={url}
               alt={name}
               className={`max-w-full max-h-[90vh] object-contain rounded-lg transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
@@ -1557,7 +1575,26 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
               }}
               draggable={false}
               onLoad={handleImageLoad}
+              onError={handleImageError}
             />
+            {/* Image error state — shows when load fails */}
+            {imageError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 rounded-lg bg-black/60 backdrop-blur-sm z-10">
+                <svg className="w-12 h-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-white/60 text-sm">图片加载失败</p>
+                <button
+                  onClick={retryImage}
+                  className="px-5 py-2 bg-blue-500/80 hover:bg-blue-500 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  重试
+                </button>
+              </div>
+            )}
           </>
         ) : isUrlFile ? (
           <div className="flex flex-col items-center gap-4 w-[85vw] max-w-[900px] h-[85vh]" onClick={(e) => e.stopPropagation()}>

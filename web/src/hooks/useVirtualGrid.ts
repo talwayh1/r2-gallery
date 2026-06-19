@@ -75,8 +75,11 @@ export function useVirtualGrid({
     };
   }, []);
 
-  // Calculate columns from container width
-  const columns = Math.max(1, Math.floor((state.containerWidth + gap) / (minColumnWidth + gap)));
+  // Calculate columns from container width — responsive: narrower containers use smaller min width
+  const effectiveMinWidth = state.containerWidth < 480
+    ? Math.max(minColumnWidth - 50, 130)
+    : minColumnWidth;
+  const columns = Math.max(1, Math.floor((state.containerWidth + gap) / (effectiveMinWidth + gap)));
 
   // Calculate visible range
   const totalRows = Math.ceil(itemCount / columns);

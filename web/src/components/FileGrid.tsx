@@ -759,7 +759,7 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
       {sortedDirs.length > 0 && (
         <div className="mb-6">
           <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">文件夹</h3>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
             {sortedDirs.map((item) => (
               <button
                 key={item.path}
