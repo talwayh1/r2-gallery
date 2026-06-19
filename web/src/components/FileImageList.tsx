@@ -34,6 +34,41 @@ function formatDate(ts: number) {
   return new Date(ts * 1000).toLocaleDateString();
 }
 
+/**
+ * Video thumbnail for list views — loads poster image from /api/thumb.
+ * Falls back to a play icon if the poster fails to load.
+ */
+function VideoListThumb({ path }: { path: string }) {
+  const [posterFailed, setPosterFailed] = useState(false);
+  const posterUrl = `/api/thumb?path=${encodeURIComponent(path)}`;
+
+  if (posterFailed) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gray-800 text-white">
+        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full h-full relative">
+      <img
+        src={posterUrl}
+        alt=""
+        loading="lazy"
+        className="w-full h-full object-cover"
+        onError={() => setPosterFailed(true)}
+      />
+      {/* Play icon overlay */}
+      <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+        <svg className="w-5 h-5 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 export default function FileImageList({ files, dirs, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
@@ -153,9 +188,7 @@ export default function FileImageList({ files, dirs, currentDir, onNavigate, onO
                 ) : isImage ? (
                   <img src={getThumbUrl(item.path)} alt="" className="w-full h-full object-cover" loading="lazy" />
                 ) : isVideo ? (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-800 text-white">
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                  </div>
+                  <VideoListThumb path={item.path} />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-2xl">📄</div>
                 )}

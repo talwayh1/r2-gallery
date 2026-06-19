@@ -877,7 +877,7 @@ export default function App() {
 
           {loading ? (
             <div className="py-4">
-              <SkeletonGrid />
+              <SkeletonGrid layoutMode={layout} />
             </div>
           ) : (
             <Suspense fallback={<LazyLoading />}>
