@@ -6,7 +6,7 @@ import { useTheme } from './hooks/useTheme';
 import { toast } from './hooks/useToast';
 import { listFiles, telegramLogin, getConfig, setCdnDomain, mkdir, getFileUrl, deleteItems, restoreTrash, renameItem, downloadZip, createFile, createUrlShortcut, moveItem, copyFile, duplicateFile } from './api';
 import type { ListFilesParams } from './api';
-import { UploadQueueProvider } from './hooks/useUploadQueue';
+import { UploadQueueProvider, useUploadQueue } from './hooks/useUploadQueue';
 
 // Lazy-load heavy components — reduces first-paint JS from ~580KB to ~300KB
 const Header = lazy(() => import('./components/Header'));
@@ -977,17 +977,7 @@ export default function App() {
       {/* Upload floating button + progress panel */}
       {user && (
         <>
-          <div className="fixed bottom-6 right-6 z-30">
-            <button
-              onClick={() => uploadDropzoneRef.current?.openFileDialog()}
-              className="w-14 h-14 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-110"
-              title="上传文件"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
-          </div>
+          <UploadFab uploadRef={uploadDropzoneRef} />
           <Suspense fallback={null}>
             <UploadPanel />
           </Suspense>
@@ -995,5 +985,80 @@ export default function App() {
       )}
     </div>
     </UploadQueueProvider>
+  );
+}
+
+/** Upload FAB with progress badge — toggles UploadPanel when uploads active */
+function UploadFab({ uploadRef }: { uploadRef: React.RefObject<UploadDropzoneHandle | null> }) {
+  const { tasks, setOpen, isOpen, hasActiveUploads, activeCount, completedCount, failedCount } = useUploadQueue();
+
+  // Calculate overall progress
+  const totalBytes = tasks.reduce((s, t) => s + t.total, 0);
+  const loadedBytes = tasks.reduce((s, t) => s + Math.min(t.loaded, t.total), 0);
+  const pct = totalBytes > 0 ? Math.round((loadedBytes / totalBytes) * 100) : 0;
+
+  // For completed tasks: 100% each
+  const completedPct = tasks.length > 0
+    ? Math.round((completedCount / tasks.length) * 100)
+    : 0;
+
+  const displayPct = hasActiveUploads ? pct : (completedCount > 0 && failedCount === 0 ? 100 : completedPct);
+
+  const handleClick = () => {
+    if (hasActiveUploads || isOpen) {
+      setOpen(!isOpen);
+    } else {
+      uploadRef.current?.openFileDialog();
+    }
+  };
+
+  // SVG progress ring settings
+  const r = 24;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference - (Math.min(displayPct, 100) / 100) * circumference;
+  const showRing = hasActiveUploads || completedCount > 0;
+
+  return (
+    <div className="fixed bottom-6 right-6 z-30">
+      <button
+        onClick={handleClick}
+        className="relative w-16 h-16 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+        title={hasActiveUploads ? `上传进度 ${displayPct}%` : (isOpen ? '关闭上传面板' : '上传文件')}
+      >
+        {showRing ? (
+          <>
+            {/* Background ring */}
+            <svg className="absolute inset-0" viewBox="0 0 56 56" width="56" height="56">
+              <circle cx="28" cy="28" r={r} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="3" />
+              <circle
+                cx="28" cy="28" r={r}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={offset}
+                className="transition-all duration-300"
+                transform="rotate(-90 28 28)"
+              />
+            </svg>
+            {/* Active count badge */}
+            {activeCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1 shadow">
+                {activeCount > 9 ? '9+' : activeCount}
+              </span>
+            )}
+            {/* Icon */}
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </>
+        ) : (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+        )}
+      </button>
+    </div>
   );
 }

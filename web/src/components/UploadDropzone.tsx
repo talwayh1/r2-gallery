@@ -175,6 +175,38 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
     openDirectoryDialog: () => folderInputRef.current?.click(),
   }), []);
 
+  // Clipboard paste — extract images from clipboard and upload
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      const items = Array.from(e.clipboardData?.items || []);
+      const imageItems = items.filter(item => item.type.startsWith('image/'));
+      if (imageItems.length === 0) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const files: { file: File; relativePath?: string }[] = [];
+      for (const item of imageItems) {
+        const blob = item.getAsFile();
+        if (blob) {
+          // Derive a sensible filename
+          const ext = blob.type.split('/')[1] || 'png';
+          const name = `pasted_${Date.now()}.${ext}`;
+          const file = new File([blob], name, { type: blob.type });
+          files.push({ file, relativePath: name });
+        }
+      }
+
+      if (files.length > 0) {
+        toast('info', `检测到 ${files.length} 个剪贴板图片，开始上传`);
+        handleUpload(files);
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [handleUpload]);
+
   return (
     <div
       className="relative h-full"
