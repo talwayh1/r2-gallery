@@ -526,6 +526,32 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
         isDragging.current = true;
         dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
         dragOffsetStart.current = { ...offsetRef.current };
+      } else if (e.touches.length === 1) {
+        // Double-tap detection for mobile — works independently of pinch/drag
+        const now = Date.now();
+        const touch = e.touches[0];
+        const lastTime = lastTapTimeRef.current;
+        const lastPos = lastTapPosRef.current;
+        if (
+          lastTime > 0 &&
+          now - lastTime < 300 &&
+          Math.abs(touch.clientX - lastPos.x) < 30 &&
+          Math.abs(touch.clientY - lastPos.y) < 30
+        ) {
+          // Double-tap — toggle zoom at the tap point
+          e.preventDefault();
+          isDoubleTapRef.current = true;
+          if (scaleRef.current > 1.05) {
+            resetZoom();
+          } else {
+            zoomAtPoint(touch.clientX, touch.clientY, 2.5);
+          }
+          lastTapTimeRef.current = 0;
+          return;
+        }
+        // Store this tap's time/position for potential double-tap
+        lastTapTimeRef.current = now;
+        lastTapPosRef.current = { x: touch.clientX, y: touch.clientY };
       }
     };
 
@@ -622,8 +648,17 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
 
   // === Double click/tap to toggle zoom, single tap to toggle UI ===
   const lastClickTime = useRef(0);
+  const lastTapTimeRef = useRef(0);
+  const lastTapPosRef = useRef({ x: 0, y: 0 });
+  const isDoubleTapRef = useRef(false);
   const handleImageClick = useCallback((e: React.MouseEvent) => {
     const now = Date.now();
+    // If a mobile double-tap was already handled by the touch handler,
+    // skip the UI toggle that would fire on the second tap's synthesize click
+    if (isDoubleTapRef.current) {
+      isDoubleTapRef.current = false;
+      return;
+    }
     if (now - lastClickTime.current < 300) {
       // Double click — toggle zoom
       if (isZoomed) {
@@ -1667,6 +1702,8 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
             <span>← 滑动切换</span>
             <span>·</span>
             <span>下滑关闭</span>
+            <span>·</span>
+            <span>双击放大</span>
             <span>·</span>
             <span>切换 →</span>
           </>

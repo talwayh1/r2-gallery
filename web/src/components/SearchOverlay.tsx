@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { searchFiles, getFileUrl, getThumbUrl, type SearchResult } from '../api';
 
 interface Props {
@@ -70,8 +70,39 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [total, setTotal] = useState(0);
   const [recentSearches, setRecentSearches] = useState<string[]>(getRecentSearches);
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Client-side type filtering
+  const filteredResults = useMemo(() => {
+    if (!typeFilter) return results;
+    return results.filter(r => {
+      switch (typeFilter) {
+        case 'image': return r.mime.startsWith('image/');
+        case 'video': return r.mime.startsWith('video/');
+        case 'audio': return r.mime.startsWith('audio/');
+        case 'document': return r.mime.startsWith('application/') || r.mime.startsWith('text/');
+        default: return true;
+      }
+    });
+  }, [results, typeFilter]);
+
+  // Per-type counts for the filter chips
+  const typeCounts = useMemo(() => ({
+    image: results.filter(r => r.mime.startsWith('image/')).length,
+    video: results.filter(r => r.mime.startsWith('video/')).length,
+    audio: results.filter(r => r.mime.startsWith('audio/')).length,
+    document: results.filter(r => r.mime.startsWith('application/') || r.mime.startsWith('text/')).length,
+  }), [results]);
+
+  const filteredTotal = filteredResults.length;
+  const hasMore = typeFilter ? false : total > results.length;
+
+  // Reset selection when filter changes
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [typeFilter]);
 
   // Focus input on mount
   useEffect(() => {
@@ -167,22 +198,20 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
       onClose();
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setSelectedIndex((i) => Math.min(i + 1, results.length - 1));
+      setSelectedIndex((i) => Math.min(i + 1, Math.max(filteredResults.length - 1, 0)));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setSelectedIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (results.length > 0) {
-        const r = results[selectedIndex];
+      if (filteredResults.length > 0) {
+        const r = filteredResults[selectedIndex];
         if (r) handleResultClick(r);
       } else if (query.length >= 2) {
         handleSearchSubmit();
       }
     }
   };
-
-  const hasMore = total > results.length;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-start justify-center sm:pt-[15vh] pt-[5vh] overscroll-contain" onClick={onClose} style={{ height: '100dvh' }}>
@@ -214,6 +243,37 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
           <kbd className="hidden sm:inline-block text-xs text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">ESC</kbd>
         </div>
 
+        {/* Type filter chips — only show when there are results */}
+        {results.length > 0 && (
+          <div className="flex items-center gap-1.5 px-4 py-2 border-b border-gray-100 dark:border-gray-700/50 overflow-x-auto scrollbar-hide">
+            {[
+              { key: null, label: '全部', icon: '🔍' },
+              { key: 'image', label: '图片', icon: '🖼️', count: typeCounts.image },
+              { key: 'video', label: '视频', icon: '🎬', count: typeCounts.video },
+              { key: 'audio', label: '音频', icon: '🎵', count: typeCounts.audio },
+              { key: 'document', label: '文档', icon: '📄', count: typeCounts.document },
+            ].filter(item => item.key === null || (item.count > 0)).map(item => (
+              <button
+                key={item.key ?? 'all'}
+                onClick={() => setTypeFilter(item.key)}
+                className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-full whitespace-nowrap transition-colors shrink-0 ${
+                  typeFilter === item.key
+                    ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-medium'
+                    : 'bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600/50'
+                }`}
+              >
+                <span>{item.icon}</span>
+                <span>{item.label}</span>
+                {item.key !== null && (
+                  <span className={`text-[10px] ml-0.5 ${typeFilter === item.key ? 'text-blue-400' : 'text-gray-400'}`}>
+                    {item.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Results / Recent searches */}
         <div className="max-h-[50dvh] sm:max-h-[60vh] overflow-y-auto overscroll-contain">
           {/* Loading indicator */}
@@ -227,12 +287,16 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
           {!loading && results.length > 0 && (
             <div className="py-2">
               <div className="px-4 py-1.5 text-xs text-gray-400 dark:text-gray-500 flex items-center justify-between">
-                <span>找到 {total} 个结果</span>
+                <span>
+                  {typeFilter
+                    ? `${filteredTotal} / ${total} 个结果`
+                    : `找到 ${total} 个结果`}
+                </span>
                 {hasMore && (
                   <span className="text-[10px] opacity-60">显示前 {results.length} 个</span>
                 )}
               </div>
-              {results.map((r, i) => (
+              {filteredResults.map((r, i) => (
                 <button
                   key={r.path}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
