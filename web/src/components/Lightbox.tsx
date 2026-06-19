@@ -1324,6 +1324,13 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
               </svg>
             </button>
+            {/* Zoom level percentage */}
+            <span
+              className="min-w-[3rem] text-center text-xs text-white/60 font-mono cursor-default select-none"
+              title={isZoomed ? '点击指示器重置缩放' : ''}
+            >
+              {Math.round(scale * 100)}%
+            </span>
             {isZoomed && (
               <button
                 onClick={(e) => { e.stopPropagation(); resetZoom(); }}
@@ -1586,11 +1593,14 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
       </div>
       )}
 
-      {/* Zoom level indicator */}
+      {/* Zoom level indicator - clickable to reset zoom */}
       {isImage && isZoomed && (
-        <div className={`absolute bottom-16 left-1/2 -translate-x-1/2 bg-black/70 text-white/80 text-xs px-3 py-1.5 rounded-full z-10 pointer-events-none select-none transition-opacity duration-200 ${isMobile && !uiVisible ? 'opacity-0' : ''}`}>
-          {Math.round(scale * 100)}% · 拖动平移 · 双击重置
-        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); resetZoom(); }}
+          className={`absolute bottom-16 left-1/2 -translate-x-1/2 bg-black/70 text-white/80 text-xs px-3 py-1.5 rounded-full z-10 select-none transition-opacity duration-200 hover:bg-black/85 hover:text-white active:scale-95 ${isMobile && !uiVisible ? 'opacity-0' : ''}`}
+        >
+          {Math.round(scale * 100)}% · 拖动平移 · 点击重置
+        </button>
       )}
 
       {/* Info panel */}
