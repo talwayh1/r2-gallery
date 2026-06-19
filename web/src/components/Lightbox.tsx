@@ -158,6 +158,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   const hasPrev = index > 0;
   const hasNext = index < items.length - 1;
   const [copied, setCopied] = useState(false);
+  const [directUrlCopied, setDirectUrlCopied] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [exifData, setExifData] = useState<ExifData | null>(null);
   const [exifLoading, setExifLoading] = useState(false);
@@ -188,6 +189,11 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
   const pinchStartScale = useRef(1);
   const imgContainerRef = useRef<HTMLDivElement>(null);
   const [showZoomIndicator, setShowZoomIndicator] = useState(false);
+  // Refs for zoom state to avoid event listener re-registration per frame
+  const scaleRef = useRef(scale);
+  const offsetRef = useRef(offset);
+  scaleRef.current = scale;
+  offsetRef.current = offset;
 
   // Audio player state
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -472,10 +478,10 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       e.preventDefault();
 
       const delta = e.deltaY > 0 ? -0.15 : 0.15;
-      const newScale = scale * (1 + delta);
+      const currentScale = scaleRef.current;
+      const newScale = currentScale * (1 + delta);
       zoomAtPoint(e.clientX, e.clientY, newScale);
 
-      // If zoomed back to 1, reset offset
       if (newScale <= 1.05) {
         setTimeout(() => resetZoom(), 50);
       }
@@ -483,7 +489,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
 
     el.addEventListener('wheel', handleWheel, { passive: false });
     return () => el.removeEventListener('wheel', handleWheel);
-  }, [scale, current, zoomAtPoint, resetZoom]);
+  }, [current, zoomAtPoint, resetZoom]);
 
   // === Pinch zoom (touch) ===
   useEffect(() => {
@@ -509,12 +515,12 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       if (e.touches.length === 2) {
         e.preventDefault();
         pinchStartDist.current = getTouchDist(e.touches);
-        pinchStartScale.current = scale;
-      } else if (e.touches.length === 1 && isZoomed) {
+        pinchStartScale.current = scaleRef.current;
+      } else if (e.touches.length === 1 && scaleRef.current > 1.05) {
         // Dragging when zoomed
         isDragging.current = true;
         dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        dragOffsetStart.current = { ...offset };
+        dragOffsetStart.current = { ...offsetRef.current };
       }
     };
 
@@ -525,7 +531,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
         const center = getTouchCenter(e.touches);
         const newScale = pinchStartScale.current * (dist / pinchStartDist.current);
         zoomAtPoint(center.x, center.y, newScale);
-      } else if (e.touches.length === 1 && isDragging.current && isZoomed) {
+      } else if (e.touches.length === 1 && isDragging.current && scaleRef.current > 1.05) {
         e.preventDefault();
         const dx = e.touches[0].clientX - dragStart.current.x;
         const dy = e.touches[0].clientY - dragStart.current.y;
@@ -538,7 +544,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
 
     const handleTouchEnd = (e: TouchEvent) => {
       isDragging.current = false;
-      if (e.touches.length < 2 && scale <= 1.05) {
+      if (e.touches.length < 2 && scaleRef.current <= 1.05) {
         resetZoom();
       }
     };
@@ -551,7 +557,7 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
       el.removeEventListener('touchmove', handleTouchMove);
       el.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [scale, offset, isZoomed, current, zoomAtPoint, resetZoom]);
+  }, [current, zoomAtPoint, resetZoom]);
 
   // === Preload adjacent images for instant navigation ===
   useEffect(() => {
@@ -848,6 +854,23 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
     }
   };
 
+  const handleCopyDirectUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(directUrl);
+      setDirectUrlCopied(true);
+      setTimeout(() => setDirectUrlCopied(false), 2000);
+    } catch {
+      const input = document.createElement('input');
+      input.value = directUrl;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      setDirectUrlCopied(true);
+      setTimeout(() => setDirectUrlCopied(false), 2000);
+    }
+  };
+
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
     setImageDimensions({ w: img.naturalWidth, h: img.naturalHeight });
@@ -1069,6 +1092,20 @@ export default function Lightbox({ items, index, onClose, onNavigate }: Props) {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
             )}
           </button>
+          <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
+          {/* Copy direct URL */}
+          <button
+            onClick={(e) => { e.stopPropagation(); handleCopyDirectUrl(); }}
+            className={`p-2 rounded-lg transition-colors shrink-0 ${directUrlCopied ? 'text-green-400' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+            title={directUrlCopied ? '已复制!' : '复制直链'}
+          >
+            {directUrlCopied ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+            )}
+          </button>
+          <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
           {/* Download */}
           <a
             href={url}
