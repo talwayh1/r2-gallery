@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 interface Props {
   path: string;
@@ -29,6 +29,10 @@ const FallbackIcon = ({ size }: { size: string }) => (
 
 export default function SafeThumb({ path, className = 'w-full h-full object-cover', containerSize = 'md' }: Props) {
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  const handleLoad = useCallback(() => setLoaded(true), []);
+  const handleError = useCallback(() => setFailed(true), []);
 
   if (failed) {
     return <FallbackIcon size={iconSizes[containerSize]} />;
@@ -38,9 +42,10 @@ export default function SafeThumb({ path, className = 'w-full h-full object-cove
     <img
       src={`/api/thumb?path=${encodeURIComponent(path)}`}
       alt=""
-      className={className}
+      className={`${className} ${loaded ? 'img-fade-in' : ''}`}
       loading="lazy"
-      onError={() => setFailed(true)}
+      onLoad={handleLoad}
+      onError={handleError}
     />
   );
 }
@@ -50,6 +55,10 @@ export default function SafeThumb({ path, className = 'w-full h-full object-cove
  */
 export function SafeThumbUrl({ url, className = 'w-full h-full object-cover', containerSize = 'md' }: { url: string; className?: string; containerSize?: string }) {
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  const handleLoad = useCallback(() => setLoaded(true), []);
+  const handleError = useCallback(() => setFailed(true), []);
 
   if (failed) {
     return <FallbackIcon size={containerSize === 'sm' ? 'text-xl' : containerSize === 'lg' ? 'text-4xl' : 'text-2xl'} />;
@@ -59,9 +68,10 @@ export function SafeThumbUrl({ url, className = 'w-full h-full object-cover', co
     <img
       src={url}
       alt=""
-      className={className}
+      className={`${className} ${loaded ? 'img-fade-in' : ''}`}
       loading="lazy"
-      onError={() => setFailed(true)}
+      onLoad={handleLoad}
+      onError={handleError}
     />
   );
 }

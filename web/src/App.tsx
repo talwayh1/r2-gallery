@@ -28,6 +28,7 @@ const InstallPrompt = lazy(() => import('./components/InstallPrompt'));
 import TypeFilter, { matchFilter } from './components/TypeFilter';
 import type { TypeFilter as TypeFilterKind } from './components/TypeFilter';
 import SkeletonGrid from './components/SkeletonGrid';
+import ScrollToTop from './components/ScrollToTop';
 
 // Lazy-loaded components (not needed for first paint)
 const Lightbox = lazy(() => import('./components/Lightbox'));
@@ -1122,6 +1123,9 @@ export default function App() {
           </Suspense>
         </>
       )}
+
+      {/* Floating scroll-to-top button */}
+      <ScrollToTop />
     </div>
     </UploadQueueProvider>
   );
