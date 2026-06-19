@@ -168,14 +168,20 @@ app.get('/cdn/*', async (c) => {
 // 腾讯CDN配置：回源地址为 tu.zhangyubi.cn，回源Host为 tu.zhangyubi.cn
 app.get('/', async (c) => {
   const spaResponse = serveSPA(c);
-  if (spaResponse) return spaResponse;
+  if (spaResponse) {
+    spaResponse.headers.set('CDN-Cache-Control', 'no-cache');
+    return spaResponse;
+  }
   return c.html(getFallbackHTML());
 });
 
 // 处理 /dir/* SPA 路由
 app.get('/dir/*', async (c) => {
   const spaResponse = serveSPA(c);
-  if (spaResponse) return spaResponse;
+  if (spaResponse) {
+    spaResponse.headers.set('CDN-Cache-Control', 'no-cache');
+    return spaResponse;
+  }
   return c.html(getFallbackHTML());
 });
 
@@ -416,7 +422,11 @@ app.get('/view/*', async (c) => {
 // === Static frontend (SPA fallback) ===
 app.get('*', async (c) => {
   const spaResponse = serveSPA(c);
-  if (spaResponse) return spaResponse;
+  if (spaResponse) {
+    // SPA HTML 不应被 CDN 缓存 — 部署后 chunk hash 变化会导致旧 HTML 引用失效的 JS
+    spaResponse.headers.set('CDN-Cache-Control', 'no-cache');
+    return spaResponse;
+  }
   return c.html(getFallbackHTML());
 });
 
