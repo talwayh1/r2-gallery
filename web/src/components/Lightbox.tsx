@@ -227,6 +227,22 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
   // Image rotation (0, 90, 180, 270)
   const [rotation, setRotation] = useState(0);
 
+  // === Fullscreen API state ===
+  const [isFullscreen, setIsFullscreen] = useState(() => !!document.fullscreenElement);
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+  const toggleFullscreen = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }, []);
+
   // === Crossfade transition state ===
   // Holds the previous image URL to render while fading out during navigation
   const prevImageUrlRef = useRef<string>('');
@@ -1102,6 +1118,22 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+          {/* Fullscreen toggle */}
+          <button
+            onClick={toggleFullscreen}
+            className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
+            title={isFullscreen ? '退出全屏 (F)' : '全屏显示 (F)'}
+          >
+            {isFullscreen ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+              </svg>
+            )}
+          </button>
           <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
           {/* Zoom controls (images only) */}
           {isImage && (
@@ -1124,6 +1156,13 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
                 </svg>
               </button>
+              {/* Zoom percentage on mobile */}
+              <span
+                className="min-w-[2.5rem] text-center text-xs text-white/60 font-mono shrink-0 select-none"
+                title="缩放比例"
+              >
+                {Math.round(scale * 100)}%
+              </span>
               {isZoomed && (
                 <button
                   onClick={(e) => { e.stopPropagation(); resetZoom(); }}
@@ -1393,6 +1432,23 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
           ) : (
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
+            </svg>
+          )}
+        </button>
+
+        {/* Fullscreen toggle */}
+        <button
+          onClick={toggleFullscreen}
+          className={`p-2 rounded-lg transition-colors ${isFullscreen ? 'text-blue-400 bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+          title={isFullscreen ? '退出全屏 (F)' : '全屏显示 (F)'}
+        >
+          {isFullscreen ? (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
             </svg>
           )}
         </button>
