@@ -87,6 +87,7 @@ export default function Header({
   const [dirMenuOpen, setDirMenuOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [mobileLangOpen, setMobileLangOpen] = useState(false);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
   const dirMenuRef = useRef<HTMLDivElement>(null);
@@ -566,6 +567,12 @@ export default function Header({
                 </svg>
               )}
             </button>
+            {/* Mobile filter toggle */}
+            <button onClick={() => setMobileFilterOpen(!mobileFilterOpen)} className={`p-1.5 rounded-lg shrink-0 transition-colors ${mobileFilterOpen ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`} title="筛选">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
           </>
         )}
 
@@ -767,6 +774,35 @@ export default function Header({
           </button>
         ) : null}
       </div>
+
+      {/* Mobile inline filter bar */}
+      {isMobile && mobileFilterOpen && (
+        <div className="px-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-1.5">
+            <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="筛选文件名..."
+              className="flex-1 bg-transparent text-sm outline-none text-gray-700 dark:text-gray-200 placeholder-gray-400"
+              autoFocus
+            />
+            {search && (
+              <button
+                onClick={() => onSearchChange('')}
+                className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 shrink-0"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 }
