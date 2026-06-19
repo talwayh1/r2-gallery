@@ -685,7 +685,7 @@ files.post('/move', authMiddleware, demoModeCheck, async (c) => {
     }
 
     // Copy to new location, delete old
-    await r2.copyObject(bucket, from, destPath);
+    await r2.moveObject(bucket, from, destPath);
 
     // Update D1 metadata
     await db.deleteFileMetadata(database, from);
@@ -703,7 +703,7 @@ files.post('/move', authMiddleware, demoModeCheck, async (c) => {
     const newThumbKey = getThumbKey(destPath);
     const thumbObj = await r2.getObject(bucket, oldThumbKey);
     if (thumbObj) {
-      await r2.copyObject(bucket, oldThumbKey, newThumbKey);
+      await r2.moveObject(bucket, oldThumbKey, newThumbKey);
     }
 
     try { await db.logActivity(database, 'move', from, c.get('userId'), destPath); } catch {}
@@ -738,12 +738,12 @@ files.post('/move', authMiddleware, demoModeCheck, async (c) => {
     const newKey = key.replace(from, destDir);
     const obj = await r2.getObject(bucket, key);
     if (obj) {
-      await r2.copyObject(bucket, key, newKey);
+      await r2.moveObject(bucket, key, newKey);
     }
   }
 
   // Copy directory marker
-  await r2.copyObject(bucket, from + '/', destDir + '/');
+  await r2.moveObject(bucket, from + '/', destDir + '/');
 
   // Update D1 metadata for all moved files
   await db.deleteFileMetadata(database, from);
@@ -808,7 +808,7 @@ files.post('/rename', authMiddleware, demoModeCheck, async (c) => {
 
     for (const key of allObjects) {
       const newKey = key.replace(oldPath, newPath);
-      await r2.copyObject(bucket, key, newKey);
+      await r2.moveObject(bucket, key, newKey);
       await db.deleteFileMetadata(database, key);
       await db.upsertFileMetadata(database, {
         path: newKey.replace(/\/$/, ''),
@@ -834,7 +834,7 @@ files.post('/rename', authMiddleware, demoModeCheck, async (c) => {
   }
 
   // Rename single file
-  await r2.copyObject(bucket, oldPath, newPath);
+  await r2.moveObject(bucket, oldPath, newPath);
   await db.deleteFileMetadata(database, oldPath);
   await db.upsertFileMetadata(database, {
     path: newPath,
@@ -870,8 +870,8 @@ files.post('/batch-rename', authMiddleware, demoModeCheck, async (c) => {
         continue;
       }
 
-      // Copy to new key, delete old key
-      await r2.copyObject(bucket, oldPath, newPath);
+      // Move to new key, delete old key
+      await r2.moveObject(bucket, oldPath, newPath);
 
       // Update D1 metadata
       await db.deleteFileMetadata(database, oldPath);
@@ -889,7 +889,7 @@ files.post('/batch-rename', authMiddleware, demoModeCheck, async (c) => {
       const newThumbKey = getThumbKey(newPath);
       const thumbObj = await r2.getObject(bucket, oldThumbKey);
       if (thumbObj) {
-        await r2.copyObject(bucket, oldThumbKey, newThumbKey);
+        await r2.moveObject(bucket, oldThumbKey, newThumbKey);
       }
 
       success++;

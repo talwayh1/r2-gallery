@@ -89,8 +89,8 @@ export async function deleteObjects(
 }
 
 /**
- * Copy an object within the same bucket (used for rename operations).
- * Downloads from source and re-uploads to destination.
+ * Copy an object within the same bucket — pure copy (does NOT delete source).
+ * Used for copy, duplicate, and paste operations.
  */
 export async function copyObject(
   bucket: R2Bucket,
@@ -100,18 +100,28 @@ export async function copyObject(
   const srcObj = await bucket.get(source);
   if (!srcObj) return null;
 
-  // Copy httpMetadata from source
   const metadata: R2HTTPMetadata | undefined = srcObj.httpMetadata
     ? { ...srcObj.httpMetadata }
     : undefined;
 
-  const result = await bucket.put(dest, srcObj.body, {
+  return bucket.put(dest, srcObj.body, {
     ...(metadata ? { httpMetadata: metadata } : {}),
     customMetadata: srcObj.customMetadata ?? undefined,
   });
+}
 
-  // Delete the source after successful copy
-  await bucket.delete(source);
-
+/**
+ * Move an object within the same bucket — copies then deletes source.
+ * Used for rename, move, and directory relocation.
+ */
+export async function moveObject(
+  bucket: R2Bucket,
+  source: string,
+  dest: string
+): Promise<R2Object | null> {
+  const result = await copyObject(bucket, source, dest);
+  if (result) {
+    await bucket.delete(source);
+  }
   return result;
 }

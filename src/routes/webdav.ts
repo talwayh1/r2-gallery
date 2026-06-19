@@ -239,7 +239,7 @@ webdav.on('MOVE', '/webdav/*', webdavAuth, async (c) => {
   const bucket = c.env.R2_BUCKET;
   const database = c.env.DB;
 
-  await r2.copyObject(bucket, srcPath, destPath);
+  await r2.moveObject(bucket, srcPath, destPath);
   await db.deleteFileMetadata(database, srcPath);
   await db.upsertFileMetadata(database, {
     path: destPath, size: 0, mime: getMimeType(destPath),
