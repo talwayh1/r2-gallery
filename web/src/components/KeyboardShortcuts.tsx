@@ -60,6 +60,13 @@ const shortcuts: { category: string; items: Shortcut[] }[] = [
 export default function KeyboardShortcuts({ onClose }: Props) {
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement).isContentEditable) {
+        if (e.key === 'Escape') {
+          (e.target as HTMLElement).blur();
+        }
+        return;
+      }
       if (e.key === 'Escape' || e.key === '?') {
         e.preventDefault();
         onClose();

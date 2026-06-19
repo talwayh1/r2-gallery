@@ -61,6 +61,19 @@ const TYPE_FILTERS: { key: string; label: string; icon: string }[] = [
   { key: 'document', label: '文档', icon: '📄' },
 ];
 
+const LANGUAGES = [
+  { code: 'zh-CN', label: '简体中文' },
+  { code: 'en', label: 'English' },
+  { code: 'ja', label: '日本語' },
+  { code: 'ko', label: '한국어' },
+  { code: 'fi', label: 'Suomi' },
+  { code: 'tr', label: 'Türkçe' },
+  { code: 'el', label: 'Ελληνικά' },
+  { code: 'id', label: 'Indonesia' },
+  { code: 'sl', label: 'Slovenščina' },
+  { code: 'uk', label: 'Українська' },
+];
+
 export default function Header({
   dir, layout, theme, search, user, sidebarOpen, sortBy, sortOrder, typeFilter, isMobile,
   onNavigate, onLayoutChange, onThemeToggle, onSearchChange,
@@ -73,6 +86,7 @@ export default function Header({
   const [layoutOpen, setLayoutOpen] = useState(false);
   const [dirMenuOpen, setDirMenuOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
+  const [mobileLangOpen, setMobileLangOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
   const dirMenuRef = useRef<HTMLDivElement>(null);
@@ -139,7 +153,10 @@ export default function Header({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [langOpen]);
 
-  const closeMore = () => setMoreOpen(false);
+  const closeMore = () => {
+    setMoreOpen(false);
+    setMobileLangOpen(false);
+  };
 
   return (
     <header className="h-14 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0 sticky top-0 z-40">
@@ -439,18 +456,7 @@ export default function Header({
               </button>
               {langOpen && (
                 <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
-                  {[
-                    { code: 'zh-CN', label: '简体中文' },
-                    { code: 'en', label: 'English' },
-                    { code: 'ja', label: '日本語' },
-                    { code: 'ko', label: '한국어' },
-                    { code: 'fi', label: 'Suomi' },
-                    { code: 'tr', label: 'Türkçe' },
-                    { code: 'el', label: 'Ελληνικά' },
-                    { code: 'id', label: 'Indonesia' },
-                    { code: 'sl', label: 'Slovenščina' },
-                    { code: 'uk', label: 'Українська' },
-                  ].map((lang) => (
+                  {LANGUAGES.map((lang) => (
                     <button
                       key={lang.code}
                       onClick={() => {
@@ -549,6 +555,39 @@ export default function Header({
 
             {moreOpen && (
               <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
+                {mobileLangOpen ? (
+                  <>
+                    {/* Language submenu header with back button */}
+                    <div className="flex items-center gap-2 px-2 py-1.5 border-b border-gray-200 dark:border-gray-700 mb-1">
+                      <button
+                        onClick={() => setMobileLangOpen(false)}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                        title="返回"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">选择语言</span>
+                    </div>
+                    {LANGUAGES.map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={() => {
+                          localStorage.setItem('language', lang.code);
+                          closeMore();
+                          window.location.reload();
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                          localStorage.getItem('language') === lang.code ? 'text-blue-600 dark:text-blue-400 font-medium' : ''
+                        }`}
+                      >
+                        {lang.label}
+                      </button>
+                    ))}
+                  </>
+                ) : (
+                <>
                 {/* Sort submenu */}
                 {onSortChange && (
                   <>
@@ -659,15 +698,22 @@ export default function Header({
                 <button onClick={() => { onShortcutsClick?.(); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
                   <span>⚡</span><span>快捷键</span>
                 </button>
+                <button onClick={() => { setMobileLangOpen(true); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <span>🌐</span><span>语言</span>
+                </button>
                 {canInstall && (
                   <button onClick={async () => { const accepted = await (window as any).installPWA(); if (accepted) setCanInstall(false); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
                     <span>📲</span><span>安装应用</span>
                   </button>
                 )}
+                </>
+                )}
               </div>
             )}
           </div>
         )}
+
+        {/* Language button for mobile — always visible in More menu */}
 
         {/* User info / login — always visible */}
         {user ? (

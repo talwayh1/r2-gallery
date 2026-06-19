@@ -268,7 +268,7 @@ export default function App() {
     const handleKey = (e: KeyboardEvent) => {
       // Ignore when typing in inputs
       const tag = (e.target as HTMLElement).tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'A' || (e.target as HTMLElement).isContentEditable) return;
 
       if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
         e.preventDefault();
