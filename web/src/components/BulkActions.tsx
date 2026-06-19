@@ -25,7 +25,7 @@ export default function BulkActions({
   if (selectedCount === 0) return null;
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 animate-slide-up max-w-[calc(100vw-1rem)]">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 animate-slide-up max-w-[calc(100vw-1rem)]" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       <div className="flex items-center gap-3 px-4 py-3 bg-gray-900 dark:bg-gray-800 text-white rounded-2xl shadow-2xl border border-white/10 overflow-x-auto scrollbar-none flex-nowrap">
         {/* Count */}
         <span className="text-sm font-medium">

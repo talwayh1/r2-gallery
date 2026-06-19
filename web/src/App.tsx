@@ -804,10 +804,12 @@ export default function App() {
       />
       <InstallPrompt />
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Mobile sidebar overlay */}
-        {isMobile && sidebarOpen && (
+        {/* Mobile sidebar overlay — always rendered for fade-out animation */}
+        {isMobile && (
           <div
-            className="fixed inset-0 z-30 bg-black/40 top-14 transition-opacity duration-300"
+            className={`fixed inset-0 z-30 bg-black/40 top-14 transition-opacity duration-300 ${
+              sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
             onClick={() => setSidebarOpen(false)}
             onTouchStart={() => {}}
           />
@@ -830,9 +832,12 @@ export default function App() {
           onTouchEnd={() => {
             sidebarTouchActiveRef.current = false;
           }}
-          className={`transition-transform duration-300 ${
-            sidebarOpen ? 'block' : 'hidden'
-          } ${isMobile ? 'fixed left-0 top-14 bottom-0 z-40 shadow-xl' : ''}`}
+          className={`${isMobile
+            ? `fixed left-0 top-14 bottom-0 z-40 shadow-xl transition-transform duration-300 ease-out ${
+                sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+              }`
+            : `transition-transform duration-300 ${sidebarOpen ? 'block' : 'hidden'}`
+          }`}
         >
           <Sidebar currentDir={dir} onNavigate={navigate} onClose={isMobile ? () => setSidebarOpen(false) : undefined} />
         </div>
