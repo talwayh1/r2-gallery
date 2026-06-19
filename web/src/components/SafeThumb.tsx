@@ -17,6 +17,7 @@ const iconSizes: Record<string, string> = {
 /**
  * Image thumbnail with graceful fallback when the thumbnail fails to load.
  * Shows an SVG file icon instead of a broken image.
+ * Shows a shimmer skeleton while the image is loading.
  */
 const FallbackIcon = ({ size }: { size: string }) => (
   <div className={`w-full h-full flex items-center justify-center text-gray-400 ${size}`}>
@@ -24,6 +25,12 @@ const FallbackIcon = ({ size }: { size: string }) => (
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
         d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
     </svg>
+  </div>
+);
+
+const ShimmerSkeleton = () => (
+  <div className="absolute inset-0 overflow-hidden">
+  <div className="absolute inset-0 shimmer" />
   </div>
 );
 
@@ -39,14 +46,17 @@ export default function SafeThumb({ path, className = 'w-full h-full object-cove
   }
 
   return (
-    <img
-      src={`/api/thumb?path=${encodeURIComponent(path)}`}
-      alt=""
-      className={`${className} ${loaded ? 'img-fade-in' : ''}`}
-      loading="lazy"
-      onLoad={handleLoad}
-      onError={handleError}
-    />
+    <div className="relative w-full h-full">
+      {!loaded && <ShimmerSkeleton />}
+      <img
+        src={`/api/thumb?path=${encodeURIComponent(path)}`}
+        alt=""
+        className={`${className} ${loaded ? 'img-fade-in' : 'opacity-0'}`}
+        loading="lazy"
+        onLoad={handleLoad}
+        onError={handleError}
+      />
+    </div>
   );
 }
 
@@ -65,13 +75,16 @@ export function SafeThumbUrl({ url, className = 'w-full h-full object-cover', co
   }
 
   return (
-    <img
-      src={url}
-      alt=""
-      className={`${className} ${loaded ? 'img-fade-in' : ''}`}
-      loading="lazy"
-      onLoad={handleLoad}
-      onError={handleError}
-    />
+    <div className="relative w-full h-full">
+      {!loaded && <ShimmerSkeleton />}
+      <img
+        src={url}
+        alt=""
+        className={`${className} ${loaded ? 'img-fade-in' : 'opacity-0'}`}
+        loading="lazy"
+        onLoad={handleLoad}
+        onError={handleError}
+      />
+    </div>
   );
 }
