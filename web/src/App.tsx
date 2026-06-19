@@ -110,6 +110,11 @@ export default function App() {
   const abortRef = useRef<AbortController | null>(null);
   // Ref-based cursor avoids stale closure in loadFiles when append-loading
   const cursorRef = useRef<string | undefined>(undefined);
+  // Ref to track whether we pushed a history entry for the lightbox (browser back support)
+  const lightboxHistoryPushedRef = useRef(false);
+  // Refs for mobile sidebar edge swipe gesture (swipe right from left edge to open)
+  const edgeSwipeStartXRef = useRef<number | null>(null);
+  const edgeSwipeStartTimeRef = useRef<number>(0);
 
   const loadFiles = useCallback(async (d: string, append = false) => {
     // Cancel any pending request — prevents stale response from overwriting
@@ -556,22 +561,40 @@ export default function App() {
   const openLightbox = useCallback((path: string, _mime: string) => {
     const idx = mediaItems.findIndex(item => item.path === path);
     setLightbox({ index: idx >= 0 ? idx : 0 });
-    // Update URL for sharing
-    window.history.replaceState(null, '', `/view/${encodeURIComponent(path)}`);
+    // Push history state so browser back button closes the lightbox
+    if (!window.location.pathname.startsWith('/view/')) {
+      window.history.pushState({ lightbox: true }, '');
+      lightboxHistoryPushedRef.current = true;
+    }
+    window.history.replaceState({ lightbox: true }, '', `/view/${encodeURIComponent(path)}`);
   }, [mediaItems]);
 
   const handleLightboxNavigate = useCallback((newIndex: number) => {
     setLightbox({ index: newIndex });
     const newPath = mediaItems[newIndex]?.path;
     if (newPath) {
-      window.history.replaceState(null, '', `/view/${encodeURIComponent(newPath)}`);
+      window.history.replaceState({ lightbox: true }, '', `/view/${encodeURIComponent(newPath)}`);
     }
   }, [mediaItems]);
 
+  // Popstate handler: browser back button closes the lightbox instead of navigating away
+  useEffect(() => {
+    const handlePopState = () => {
+      if (lightbox !== null) {
+        lightboxHistoryPushedRef.current = false;
+        setLightbox(null);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [lightbox]);
+
   const handleLightboxClose = useCallback(() => {
     setLightbox(null);
-    // Restore clean URL
-    if (window.location.pathname.startsWith('/view/')) {
+    if (lightboxHistoryPushedRef.current) {
+      lightboxHistoryPushedRef.current = false;
+      window.history.back();
+    } else if (window.location.pathname.startsWith('/view/')) {
       window.history.replaceState(null, '', '/');
     }
   }, []);
@@ -865,7 +888,31 @@ export default function App() {
         onSelectModeToggle={() => setSelectMode(!selectMode)}
       />
       <InstallPrompt />
-      <div className="flex flex-1 overflow-hidden relative">
+      <div
+        className="flex flex-1 overflow-hidden relative"
+        onTouchStart={(e) => {
+          if (!isMobile || sidebarOpen) return;
+          const touchX = e.touches[0].clientX;
+          // Only react to swipes starting from the left edge (within 30px)
+          if (touchX < 30) {
+            edgeSwipeStartXRef.current = touchX;
+            edgeSwipeStartTimeRef.current = Date.now();
+          }
+        }}
+        onTouchMove={(e) => {
+          if (!isMobile || sidebarOpen || edgeSwipeStartXRef.current === null) return;
+          const dx = e.touches[0].clientX - edgeSwipeStartXRef.current;
+          const dt = Date.now() - edgeSwipeStartTimeRef.current;
+          // Quick swipe right (60px+ within 300ms) from left edge opens sidebar
+          if (dx > 60 && dt < 350) {
+            edgeSwipeStartXRef.current = null;
+            setSidebarOpen(true);
+          }
+        }}
+        onTouchEnd={() => {
+          edgeSwipeStartXRef.current = null;
+        }}
+      >
         {/* Mobile sidebar overlay — always rendered for fade-out animation */}
         {isMobile && (
           <div
