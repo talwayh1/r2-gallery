@@ -310,6 +310,34 @@ export default function FileList({ files, dirs, currentDir, onNavigate, onOpen, 
                 className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                 onClick={async () => {
                   try {
+                    await navigator.clipboard.writeText(contextMenu.name);
+                    toast('success', '文件名已复制');
+                  } catch (_e) { toast('error', '复制失败'); }
+                  setContextMenu(null);
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                复制文件名
+              </button>
+            )}
+            <button
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(contextMenu.path);
+                  toast('success', '路径已复制');
+                } catch (_e) { toast('error', '复制失败'); }
+                setContextMenu(null);
+              }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+              复制路径
+            </button>
+            {!contextMenu.isDir && (
+              <button
+                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                onClick={async () => {
+                  try {
                     const result = await duplicateFile(contextMenu.path);
                     if (result.success) { toast('success', `已复制到 ${result.newPath}`); onMove?.(); }
                   } catch (e) { toast('error', `复制失败: ${(e as Error).message}`); }
