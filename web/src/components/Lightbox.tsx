@@ -715,12 +715,27 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
       }
       else if (e.key === '+' || e.key === '=') {
         e.preventDefault();
-        setScale((s) => Math.min(s * 1.3, 8));
+        // Zoom in centered on the image container
+        const container = imgContainerRef.current;
+        if (container) {
+          const rect = container.getBoundingClientRect();
+          zoomAtPoint(rect.left + rect.width / 2, rect.top + rect.height / 2, scale * 1.3);
+        } else {
+          setScale((s) => Math.min(s * 1.3, 8));
+        }
       } else if (e.key === '-') {
         e.preventDefault();
         const newScale = scale / 1.3;
-        if (newScale <= 1.05) resetZoom();
-        else setScale(newScale);
+        if (newScale <= 1.05) { resetZoom(); }
+        else {
+          const container = imgContainerRef.current;
+          if (container) {
+            const rect = container.getBoundingClientRect();
+            zoomAtPoint(rect.left + rect.width / 2, rect.top + rect.height / 2, newScale);
+          } else {
+            setScale(newScale);
+          }
+        }
       } else if (e.key === '0') {
         resetZoom();
       } else if (e.key === 'd' || e.key === 'D') {

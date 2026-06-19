@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { discoverMedia, getThumbUrl, type DiscoverFile } from '../api';
 
 interface Props {
@@ -22,27 +22,38 @@ function formatDate(ts: number) {
 export default function DiscoverPage({ onClose, onNavigate, onOpenFile }: Props) {
   const [files, setFiles] = useState<DiscoverFile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
   const pageSize = 30;
+  const loadingRef = useRef(false); // prevent concurrent loads
 
   const loadMore = useCallback(async (currentOffset: number) => {
-    setLoading(true);
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+
+    const isInitial = currentOffset === 0;
+    if (isInitial) setLoading(true);
+    else setLoadingMore(true);
+
     try {
       const data = await discoverMedia(pageSize, currentOffset);
-      setFiles((prev) => currentOffset === 0 ? data.files : [...prev, ...data.files]);
+      setFiles((prev) => isInitial ? data.files : [...prev, ...data.files]);
       setHasMore(data.hasMore);
       setTotal(data.total);
       setOffset(currentOffset + data.files.length);
     } catch (err) {
       console.error('Discover load error:', err);
     } finally {
+      loadingRef.current = false;
       setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
 
+  // Initial load
   useEffect(() => {
     loadMore(0);
   }, [loadMore]);
@@ -55,6 +66,24 @@ export default function DiscoverPage({ onClose, onNavigate, onOpenFile }: Props)
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
   }, [onClose]);
+
+  // Infinite scroll sentinel
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingRef.current && hasMore) {
+          // defer to avoid React-internal state-batch issues
+          setTimeout(() => loadMore(offset), 100);
+        }
+      },
+      { rootMargin: '600px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, offset, loadMore]);
 
   const handleImageLoad = (path: string) => {
     setLoadedImages((prev) => new Set(prev).add(path));
@@ -145,25 +174,15 @@ export default function DiscoverPage({ onClose, onNavigate, onOpenFile }: Props)
           })}
         </div>
 
-        {/* Load more button */}
-        {hasMore && (
-          <div className="flex justify-center mt-8">
-            <button
-              onClick={() => loadMore(offset)}
-              disabled={loading}
-              className="px-6 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors disabled:opacity-50"
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500" />
-                  加载中...
-                </span>
-              ) : (
-                '加载更多'
-              )}
-            </button>
-          </div>
-        )}
+        {/* Infinite scroll sentinel + loading indicator */}
+        <div ref={sentinelRef} className="flex justify-center mt-8">
+          {loadingMore && (
+            <div className="flex items-center gap-2 text-gray-400 text-sm">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500" />
+              加载更多...
+            </div>
+          )}
+        </div>
 
         {/* Initial loading */}
         {loading && files.length === 0 && (
