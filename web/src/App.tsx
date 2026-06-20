@@ -5,7 +5,7 @@ import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { toast } from './hooks/useToast';
 import { useDebounce } from './hooks/useDebounce';
-import { listFiles, telegramLogin, getConfig, setCdnDomain, mkdir, getFileUrl, deleteItems, restoreTrash, renameItem, downloadZip, createFile, createUrlShortcut, moveItem, copyFile, duplicateFile } from './api';
+import { listFiles, telegramLogin, getConfig, setCdnDomain, mkdir, getFileUrl, deleteItems, restoreTrash, renameItem, downloadZip, createFile, createUrlShortcut, moveItem, copyFile, duplicateFile, createZip } from './api';
 import type { ListFilesParams } from './api';
 import { UploadQueueProvider, useUploadQueue } from './hooks/useUploadQueue';
 import { formatSize, formatDate } from './utils';
@@ -760,7 +760,6 @@ export default function App() {
     const paths = Array.from(selected);
     toast('info', `正在压缩 ${paths.length} 个文件...`);
     try {
-      const { createZip } = await import('./api');
       const result = await createZip(paths, dir);
       toast('success', `已创建 ZIP: ${result.path}`);
       setSelected(new Set());

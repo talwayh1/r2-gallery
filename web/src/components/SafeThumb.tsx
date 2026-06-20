@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 interface Props {
   path: string;
@@ -41,6 +41,17 @@ export default function SafeThumb({ path, className = 'w-full h-full object-cove
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
+  // Reset loading state when path changes — prevents stale thumbnail from
+  // lingering or showing a fallback from a previously failed image.
+  const prevPathRef = useRef(path);
+  useEffect(() => {
+    if (prevPathRef.current !== path) {
+      prevPathRef.current = path;
+      setLoaded(false);
+      setFailed(false);
+    }
+  }, [path]);
+
   const handleLoad = useCallback(() => setLoaded(true), []);
   const handleError = useCallback(() => setFailed(true), []);
 
@@ -52,6 +63,7 @@ export default function SafeThumb({ path, className = 'w-full h-full object-cove
     <div className="relative w-full h-full">
       {!loaded && <ShimmerSkeleton />}
       <img
+        key={path}
         src={`/api/thumb?path=${encodeURIComponent(path)}`}
         alt=""
         className={`${className} ${loaded ? 'img-fade-in' : 'opacity-0'}`}
