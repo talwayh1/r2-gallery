@@ -367,19 +367,29 @@ export default function BulkActions({
 
             {showMore && (
               <>
-                {/* Dropdown backdrop (closes on tap) */}
-                <div className="fixed inset-0 z-40" onClick={() => setShowMore(false)} />
-                <div className="absolute bottom-full right-0 mb-2 z-50 bg-gray-800 dark:bg-gray-900 rounded-xl shadow-xl border border-white/10 py-1.5 min-w-[160px] max-h-[50vh] overflow-y-auto">
-                  {visibleMoreActions.map((action) => (
-                    <button
-                      key={action.label}
-                      onClick={() => { action.onClick?.(); setShowMore(false); }}
-                      className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-white/10 flex items-center gap-2.5 transition-colors"
-                    >
-                      {action.icon}
-                      <span>{action.label}</span>
-                    </button>
-                  ))}
+                {/* Bottom sheet backdrop */}
+                <div
+                  className="fixed inset-0 z-40 bg-black/40 animate-in fade-in duration-200"
+                  onClick={() => setShowMore(false)}
+                />
+                {/* Bottom sheet */}
+                <div className="fixed inset-x-0 bottom-0 z-50 animate-slide-up-bottom" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+                  <div className="bg-gray-800 dark:bg-gray-900 rounded-t-2xl shadow-2xl border-t border-white/10 pb-2">
+                    {/* Drag handle */}
+                    <div className="flex justify-center pt-3 pb-1">
+                      <div className="w-8 h-1 rounded-full bg-gray-500/50" />
+                    </div>
+                    {visibleMoreActions.map((action) => (
+                      <button
+                        key={action.label}
+                        onClick={() => { action.onClick?.(); setShowMore(false); }}
+                        className="w-full text-left px-5 py-3.5 text-sm text-gray-200 hover:bg-white/10 flex items-center gap-3 transition-colors active:bg-white/15"
+                      >
+                        <span className="text-gray-400 shrink-0">{action.icon}</span>
+                        <span>{action.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </>
             )}

@@ -78,6 +78,16 @@
   animation: slideUp 0.2s ease-out;
 }
 
+/* Bottom sheet slide-up (no horizontal translate) */
+@keyframes slideUpBottom {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.animate-slide-up-bottom {
+  animation: slideUpBottom 0.25s ease-out;
+}
+
 /* Toast enter/exit animations */
 @keyframes toastEnter {
   from { transform: translateY(16px); opacity: 0; }

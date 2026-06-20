@@ -134,8 +134,8 @@ function isTextMime(mime: string): boolean {
 
 export default function Lightbox({ items, index, onClose, onNavigate, onDelete, onDuplicate }: Props) {
   const current = items[index];
-  const hasPrev = index > 0;
-  const hasNext = index < items.length - 1;
+  const hasPrev = items.length > 1;
+  const hasNext = items.length > 1;
   const [copied, setCopied] = useState(false);
   const [directUrlCopied, setDirectUrlCopied] = useState(false);
   const [imageCopied, setImageCopied] = useState(false);
@@ -324,20 +324,20 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const goPrev = useCallback(() => {
     if (hasPrev) {
       resetZoom();
-      onNavigate(index - 1);
+      onNavigate(index === 0 ? items.length - 1 : index - 1);
       setSwipeHint('right');
       setTimeout(() => setSwipeHint(null), 300);
     }
-  }, [hasPrev, index, onNavigate, resetZoom]);
+  }, [hasPrev, index, onNavigate, resetZoom, items.length]);
 
   const goNext = useCallback(() => {
     if (hasNext) {
       resetZoom();
-      onNavigate(index + 1);
+      onNavigate(index === items.length - 1 ? 0 : index + 1);
       setSwipeHint('left');
       setTimeout(() => setSwipeHint(null), 300);
     }
-  }, [hasNext, index, onNavigate, resetZoom]);
+  }, [hasNext, index, onNavigate, resetZoom, items.length]);
 
   // === Slideshow logic ===
   const getNextSlideshowIndex = useCallback(() => {
