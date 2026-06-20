@@ -7,6 +7,7 @@ import { toast } from './hooks/useToast';
 import { listFiles, telegramLogin, getConfig, setCdnDomain, mkdir, getFileUrl, deleteItems, restoreTrash, renameItem, downloadZip, createFile, createUrlShortcut, moveItem, copyFile, duplicateFile } from './api';
 import type { ListFilesParams } from './api';
 import { UploadQueueProvider, useUploadQueue } from './hooks/useUploadQueue';
+import { formatSize, formatDate } from './utils';
 
 // Lazy-load heavy components — reduces first-paint JS from ~580KB to ~300KB
 const Header = lazy(() => import('./components/Header'));
@@ -92,14 +93,6 @@ export default function App() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [hasMore, setHasMore] = useState(false);
-
-  // Format bytes to human-readable string
-  const formatSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
-  };
 
   // Track pending /view/* deep link
   const pendingViewRef = useRef<string | null>(null);

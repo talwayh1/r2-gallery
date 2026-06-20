@@ -8,6 +8,7 @@ import { toast } from '../hooks/useToast';
 // Lazy-load heavy components (hls.js is ~400KB)
 const HlsPlayer = lazy(() => import('./HlsPlayer'));
 const PanoramaViewer = lazy(() => import('./PanoramaViewer'));
+import { formatSize, getAspectRatio } from '../utils';
 const KeyboardShortcutsLightbox = lazy(() => import('./KeyboardShortcuts'));
 
 interface MediaItem {
@@ -113,32 +114,6 @@ function useSwipeGesture({
   }, [onSwipeLeft, onSwipeRight, onSwipeDown, onSwipeProgress, enabled]);
 
   return containerRef;
-}
-
-function formatSize(bytes: number) {
-  if (!bytes) return '';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
-}
-
-/** Compute a human-readable aspect ratio string */
-function getAspectRatio(w: number, h: number): string {
-  function gcd(a: number, b: number): number {
-    return b === 0 ? a : gcd(b, a % b);
-  }
-  const d = gcd(w, h);
-  const rw = w / d;
-  const rh = h / d;
-  const ratio = w / h;
-  if (Math.abs(ratio - 16 / 9) < 0.02) return '16:9';
-  if (Math.abs(ratio - 4 / 3) < 0.02) return '4:3';
-  if (Math.abs(ratio - 3 / 2) < 0.02) return '3:2';
-  if (Math.abs(ratio - 1) < 0.02) return '1:1';
-  if (Math.abs(ratio - 21 / 9) < 0.02) return '21:9';
-  if (Math.abs(ratio - 9 / 16) < 0.02) return '9:16';
-  if (rw > 50 || rh > 50) return `${ratio.toFixed(2)}:1`;
-  return `${rw}:${rh}`;
 }
 
 function formatTime(seconds: number): string {
