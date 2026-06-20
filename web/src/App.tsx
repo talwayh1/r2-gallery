@@ -4,6 +4,7 @@ import type { UploadDropzoneHandle } from './components/UploadDropzone';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { toast } from './hooks/useToast';
+import { useDebounce } from './hooks/useDebounce';
 import { listFiles, telegramLogin, getConfig, setCdnDomain, mkdir, getFileUrl, deleteItems, restoreTrash, renameItem, downloadZip, createFile, createUrlShortcut, moveItem, copyFile, duplicateFile } from './api';
 import type { ListFilesParams } from './api';
 import { UploadQueueProvider, useUploadQueue } from './hooks/useUploadQueue';
@@ -68,6 +69,7 @@ export default function App() {
   });
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 200);
   const [showLogin, setShowLogin] = useState(false);
   const [telegramBotUsername, setTelegramBotUsername] = useState<string | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -287,12 +289,12 @@ export default function App() {
   const filteredFiles = useMemo(() =>
     Object.fromEntries(
       Object.entries(files).filter(([name, f]) => {
-        if (search && !name.toLowerCase().includes(search.toLowerCase())) return false;
+        if (debouncedSearch && !name.toLowerCase().includes(debouncedSearch.toLowerCase())) return false;
         if (typeFilter !== 'all' && !matchFilter(f.mime, typeFilter)) return false;
         return true;
       })
     ),
-    [files, search, typeFilter]
+    [files, debouncedSearch, typeFilter]
   );
 
   // Compute summary stats from visible files and directories
@@ -341,9 +343,14 @@ export default function App() {
         e.preventDefault();
         const filteredKeys = Object.keys(filteredFiles);
         setSelected(new Set(filteredKeys));
-      } else if (e.key === 'Escape' && selected.size > 0) {
-        e.preventDefault();
-        setSelected(new Set());
+      } else if (e.key === 'Escape') {
+        if (selected.size > 0) {
+          e.preventDefault();
+          setSelected(new Set());
+        } else if (search) {
+          e.preventDefault();
+          setSearch('');
+        }
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         // Delete — delete selected files
         if (selected.size > 0 && user) {
