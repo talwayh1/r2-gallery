@@ -81,17 +81,23 @@ export function useVirtualGrid({
     : minColumnWidth;
   const columns = Math.max(1, Math.floor((state.containerWidth + gap) / (effectiveMinWidth + gap)));
 
+  // Adaptive row height — scales proportionally to effectiveMinWidth on mobile
+  // Base: 200px min width → rowHeight (280px). On narrow screens, shrink proportionally.
+  const effectiveRowHeight = state.containerWidth < 600
+    ? Math.max(rowHeight * (effectiveMinWidth / minColumnWidth), 180)
+    : rowHeight;
+
   // Calculate visible range
   const totalRows = Math.ceil(itemCount / columns);
-  const totalHeight = totalRows * rowHeight;
+  const totalHeight = totalRows * effectiveRowHeight;
 
-  const startRow = Math.max(0, Math.floor(state.scrollTop / rowHeight) - overscan);
-  const visibleRows = Math.ceil(state.containerHeight / rowHeight) + 2 * overscan;
+  const startRow = Math.max(0, Math.floor(state.scrollTop / effectiveRowHeight) - overscan);
+  const visibleRows = Math.ceil(state.containerHeight / effectiveRowHeight) + 2 * overscan;
   const endRow = Math.min(totalRows, startRow + visibleRows);
 
   const start = startRow * columns;
   const end = Math.min(itemCount, endRow * columns);
-  const offsetY = startRow * rowHeight;
+  const offsetY = startRow * effectiveRowHeight;
 
   return {
     containerRef,

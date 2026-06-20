@@ -186,6 +186,9 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const [slideshowProgress, setSlideshowProgress] = useState(0);
   const [showSlideshowMenu, setShowSlideshowMenu] = useState(false);
   const [showMoreTools, setShowMoreTools] = useState(false);
+  // Toolbar horizontal scroll indicator — shows fade on right edge when content overflows
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const [toolbarCanScroll, setToolbarCanScroll] = useState(false);
   const slideshowTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const slideshowProgressRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const playedIndicesRef = useRef<Set<number>>(new Set([index]));
@@ -464,6 +467,27 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       if (slideshowProgressRef.current) clearInterval(slideshowProgressRef.current);
     };
   }, []);
+
+  // Mobile toolbar scroll detection — shows fade when content overflows
+  const checkToolbarScroll = useCallback(() => {
+    const el = toolbarRef.current;
+    if (!el) return;
+    setToolbarCanScroll(el.scrollWidth > el.clientWidth && el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+  useEffect(() => {
+    const el = toolbarRef.current;
+    if (!el) return;
+    checkToolbarScroll();
+    const handleScroll = () => checkToolbarScroll();
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    // Recheck on resize
+    const ro = new ResizeObserver(() => checkToolbarScroll());
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+      ro.disconnect();
+    };
+  }, [checkToolbarScroll]);
 
   // Close slideshow settings menu on outside click
   useEffect(() => {
@@ -1132,7 +1156,8 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
           onClick={(e) => e.stopPropagation()}
         >
           {/* Primary toolbar: most-used actions always visible */}
-          <div className="bg-gradient-to-t from-black/80 via-black/60 to-transparent pt-8 pb-2 px-2 flex items-center justify-center gap-0.5 overflow-x-auto scrollbar-hide">
+          <div className={`relative scroll-fade-right ${toolbarCanScroll ? 'can-scroll' : ''}`}>
+            <div ref={toolbarRef} className="flex items-center justify-start gap-0.5 overflow-x-auto scrollbar-hide py-2 px-2" style={{ scrollbarWidth: 'none' }}>
             {/* Close button */}
             <button
               onClick={(e) => { e.stopPropagation(); handleClose(); }}
@@ -1258,6 +1283,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                 </svg>
               </button>
+            </div>
             </div>
           </div>
 

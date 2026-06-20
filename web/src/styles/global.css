@@ -326,6 +326,35 @@ html {
   }
 }
 
+/* Hide scrollbar utility (keep scrolling functional) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Horizontal scroll fade indicator (used on mobile Lightbox toolbar) */
+.scroll-fade-right {
+  position: relative;
+}
+.scroll-fade-right::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 32px;
+  background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.6));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.scroll-fade-right.can-scroll::after {
+  opacity: 1;
+}
+
 /* Mobile bottom sheet */
 .mobile-bottom-sheet {
   position: fixed;
