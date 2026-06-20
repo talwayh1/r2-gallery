@@ -14,8 +14,10 @@ initMobileCompat();
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then((reg) => {
-      // Periodic update check every 10 minutes
-      setInterval(() => { reg.update().catch(() => {}); }, 10 * 60 * 1000);
+      // Periodic update check every 10 minutes, with error logging
+      setInterval(() => {
+        reg.update().catch((err) => console.warn('SW update check failed:', err));
+      }, 10 * 60 * 1000);
 
       // Detect new service worker waiting to activate
       reg.addEventListener('updatefound', () => {

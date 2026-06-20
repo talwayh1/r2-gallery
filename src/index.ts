@@ -66,7 +66,9 @@ app.use('*', async (c, next) => {
 
         return newResp;
       }
-    } catch {}
+    } catch (e) {
+        console.debug('Assets binding fetch failed:', e);
+      }
   }
 
   // If not a static asset, continue to API routing
@@ -335,9 +337,11 @@ async function serveSPA(c: any): Promise<Response | null> {
           headers,
         });
       }
-    } catch {}
+    } catch (e) {
+      console.debug('serveSPA: ASSETS.fetch failed:', e);
+    }
   }
-  
+
   // Fallback: try old __STATIC_CONTENT binding
   // @ts-ignore
   const OLD_ASSETS = (globalThis as any).__STATIC_CONTENT;
@@ -373,7 +377,9 @@ app.get('/view/*', async (c) => {
     if (dirMeta?.mime === 'directory') {
       return c.redirect(`/dir/${encodeURIComponent(filePath)}`, 302);
     }
-  } catch {}
+  } catch (e) {
+    console.debug('getFileMetadata for directory check failed:', e);
+  }
 
   // Bot requests: serve OG preview HTML
   if (isBot(userAgent)) {
