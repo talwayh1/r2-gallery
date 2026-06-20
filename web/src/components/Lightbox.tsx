@@ -177,6 +177,10 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const MAX_RETRIES = 3;
   const [imageDimensions, setImageDimensions] = useState<{ w: number; h: number } | null>(null);
   const [swipeHint, setSwipeHint] = useState<'left' | 'right' | 'down' | null>(null);
+  // Ref to prevent click-after-swipe bug on mobile — browsers synthesize a click
+  // after touchend even when the user was swiping, which would close the lightbox
+  const wasSwipingRef = useRef(false);
+  const wasSwipingTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   // === Slideshow state ===
   const [slideshowPlaying, setSlideshowPlaying] = useState(false);
@@ -460,11 +464,14 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     playedIndicesRef.current = new Set([index]);
   }, [slideshowShuffle, index]);
 
-  // Stop slideshow on unmount
+  // Stop slideshow on unmount; lock body scroll while lightbox is open
   useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     return () => {
       if (slideshowTimerRef.current) clearTimeout(slideshowTimerRef.current);
       if (slideshowProgressRef.current) clearInterval(slideshowProgressRef.current);
+      document.body.style.overflow = prevOverflow;
     };
   }, []);
 
@@ -510,10 +517,21 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     onClose();
   }, [stopSlideshow, onClose]);
 
+  // Wrapper — sets wasSwiping ref to prevent the browser's synthesized
+  // click event from closing the lightbox immediately after a swipe gesture
+  const wrapSwipe = useCallback((fn: () => void) => {
+    return () => {
+      wasSwipingRef.current = true;
+      clearTimeout(wasSwipingTimerRef.current);
+      wasSwipingTimerRef.current = setTimeout(() => { wasSwipingRef.current = false; }, 350);
+      fn();
+    };
+  }, []);
+
   const swipeRef = useSwipeGesture({
-    onSwipeLeft: goNext,
-    onSwipeRight: goPrev,
-    onSwipeDown: handleClose,
+    onSwipeLeft: wrapSwipe(goNext),
+    onSwipeRight: wrapSwipe(goPrev),
+    onSwipeDown: wrapSwipe(handleClose),
     onSwipeProgress: setSwipeDragY,
     enabled: !isZoomed,
   });
@@ -1111,6 +1129,8 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       } : {}}
       className={`fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm touch-pan-y ${!cursorVisible && isVideo ? 'cursor-none' : ''}`}
       onClick={(e) => {
+        // Skip click if it was synthesized from a swipe gesture (mobile)
+        if (wasSwipingRef.current) return;
         if (!isZoomed) handleClose();
       }}
       onMouseMove={() => {

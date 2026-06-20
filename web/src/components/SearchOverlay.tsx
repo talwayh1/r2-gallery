@@ -104,6 +104,15 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     };
   }, []);
 
+  // Lock body scroll when search overlay is open
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
   // Debounced search
   const doSearch = useCallback(async (q: string, appendOffset?: number) => {
     if (q.length < 2) {
