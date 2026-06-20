@@ -6,6 +6,8 @@ interface Props {
   className?: string;
   /** Size class of the parent container — used for the fallback icon size */
   containerSize?: 'sm' | 'md' | 'lg';
+  /** If true, sets fetchpriority="high" and removes loading="lazy" for initial-viewport images */
+  priority?: boolean;
 }
 
 const iconSizes: Record<string, string> = {
@@ -18,6 +20,7 @@ const iconSizes: Record<string, string> = {
  * Image thumbnail with graceful fallback when the thumbnail fails to load.
  * Shows an SVG file icon instead of a broken image.
  * Shows a shimmer skeleton while the image is loading.
+ * Uses decoding="async" for non-blocking decode and supports fetchpriority for viewport-prioritized images.
  */
 const FallbackIcon = ({ size }: { size: string }) => (
   <div className={`w-full h-full flex items-center justify-center text-gray-400 ${size}`}>
@@ -34,7 +37,7 @@ const ShimmerSkeleton = () => (
   </div>
 );
 
-export default function SafeThumb({ path, className = 'w-full h-full object-cover', containerSize = 'md' }: Props) {
+export default function SafeThumb({ path, className = 'w-full h-full object-cover', containerSize = 'md', priority = false }: Props) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -52,7 +55,9 @@ export default function SafeThumb({ path, className = 'w-full h-full object-cove
         src={`/api/thumb?path=${encodeURIComponent(path)}`}
         alt=""
         className={`${className} ${loaded ? 'img-fade-in' : 'opacity-0'}`}
-        loading="lazy"
+        loading={priority ? undefined : 'lazy'}
+        decoding="async"
+        fetchPriority={priority ? 'high' : undefined}
         onLoad={handleLoad}
         onError={handleError}
       />
@@ -62,8 +67,9 @@ export default function SafeThumb({ path, className = 'w-full h-full object-cove
 
 /**
  * Same as SafeThumb but accepts a direct URL instead of a path.
+ * Supports fetchpriority for initial-viewport images.
  */
-export function SafeThumbUrl({ url, className = 'w-full h-full object-cover', containerSize = 'md' }: { url: string; className?: string; containerSize?: string }) {
+export function SafeThumbUrl({ url, className = 'w-full h-full object-cover', containerSize = 'sm', priority = false }: { url: string; className?: string; containerSize?: string; priority?: boolean }) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -81,7 +87,9 @@ export function SafeThumbUrl({ url, className = 'w-full h-full object-cover', co
         src={url}
         alt=""
         className={`${className} ${loaded ? 'img-fade-in' : 'opacity-0'}`}
-        loading="lazy"
+        loading={priority ? undefined : 'lazy'}
+        decoding="async"
+        fetchPriority={priority ? 'high' : undefined}
         onLoad={handleLoad}
         onError={handleError}
       />

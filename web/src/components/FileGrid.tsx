@@ -714,6 +714,18 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
     }
   }, [sortBy, sortOrder]);
 
+  // Close context menu on Escape key
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setContextMenu(null);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [contextMenu]);
+
   // FileGrid ref for drag event data (reused in VirtualFileGrid above)
   // Note: VirtualFileGrid handles its own IntersectionObserver-based infinite scroll sentinel
 
