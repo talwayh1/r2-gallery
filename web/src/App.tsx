@@ -850,6 +850,12 @@ export default function App() {
   return (
     <UploadQueueProvider>
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      {/* Top loading bar — appears during file load operations */}
+      {loading && (
+        <div className="fixed top-0 left-0 w-full h-0.5 z-[9999] overflow-hidden">
+          <div className="w-full h-full bg-blue-500 animate-loading-bar" />
+        </div>
+      )}
       <Header
         dir={dir}
         layout={layout}

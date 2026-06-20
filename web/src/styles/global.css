@@ -294,6 +294,16 @@ html.wechat-browser body {
   max-width: 100%;
 }
 
+/* Top loading bar animation — indeterminate progress */
+@keyframes loadingBar {
+  0% { transform: translateX(-100%); width: 30%; }
+  50% { width: 60%; }
+  100% { transform: translateX(400%); width: 30%; }
+}
+.animate-loading-bar {
+  animation: loadingBar 1.5s ease-in-out infinite;
+}
+
 /* Prevent pull-to-refresh on mobile */
 html {
   overscroll-behavior-y: contain;

@@ -296,6 +296,7 @@ function VirtualFileGrid({
   onOpen, onSelect, onRename, setRenaming, setInternalSelected,
   handleCardClick, handleContextMenu, handleDragStart, handleDragEnd,
   touchLongPress, touchTargetRef,
+  onLoadMore, hasMore, loadingMore,
 }: {
   files: FileItem[];
   columns: number;
@@ -319,6 +320,9 @@ function VirtualFileGrid({
   handleDragEnd: () => void;
   touchLongPress: { onTouchStart: (e: React.TouchEvent) => void; onTouchMove: (e: React.TouchEvent) => void; onTouchEnd: (e: React.TouchEvent) => void };
   touchTargetRef: React.MutableRefObject<{ path: string; name: string; isDir: boolean } | null>;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
 }) {
   const [preview, setPreview] = useState<{ file: FileItem; rect: DOMRect } | null>(null);
   const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -421,6 +425,22 @@ function VirtualFileGrid({
   useEffect(() => {
     setFocusedIndex(-1);
   }, [visibleFiles.length, columns]);
+
+  // Infinite scroll sentinel — inside scroll container for proper IntersectionObserver behaviour
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!sentinelRef.current || !onLoadMore || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          onLoadMore();
+        }
+      },
+      { rootMargin: '400px' }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [onLoadMore, hasMore]);
 
   return (
     <div
@@ -573,6 +593,17 @@ function VirtualFileGrid({
       {/* Bottom spacer */}
       <div style={{ height: Math.max(0, totalHeight - offsetY - (visibleFiles.length > 0 ? 280 : 0)) }} />
 
+      {/* Infinite scroll sentinel — triggers load-more when scrolled into view */}
+      {hasMore && onLoadMore && (
+        <div ref={sentinelRef} className="flex items-center justify-center py-6">
+          {loadingMore ? (
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500" />
+          ) : (
+            <span className="text-xs text-gray-400">加载更多…</span>
+          )}
+        </div>
+      )}
+
       {/* Hover preview popup — larger image on hover */}
       {preview && (
         <div
@@ -638,21 +669,8 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
     }
   }, [sortBy, sortOrder]);
 
-  // Infinite scroll sentinel
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!sentinelRef.current || !onLoadMore || !hasMore) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          onLoadMore();
-        }
-      },
-      { rootMargin: '400px' }
-    );
-    observer.observe(sentinelRef.current);
-    return () => observer.disconnect();
-  }, [onLoadMore, hasMore]);
+  // FileGrid ref for drag event data (reused in VirtualFileGrid above)
+  // Note: VirtualFileGrid handles its own IntersectionObserver-based infinite scroll sentinel
 
   // Use external selection state when provided, otherwise use internal
   const selected = externalSelected ?? internalSelected;
@@ -923,18 +941,10 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
             handleDragEnd={handleDragEnd}
             touchLongPress={touchLongPress}
             touchTargetRef={touchTargetRef}
+            onLoadMore={onLoadMore}
+            hasMore={hasMore}
+            loadingMore={loadingMore}
           />
-        </div>
-      )}
-
-      {/* Infinite scroll sentinel */}
-      {hasMore && sortedFiles.length > 0 && (
-        <div ref={sentinelRef} className="flex items-center justify-center py-8">
-          {loadingMore ? (
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
-          ) : (
-            <span className="text-sm text-gray-400">滚动加载更多…</span>
-          )}
         </div>
       )}
 
