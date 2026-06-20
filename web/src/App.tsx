@@ -367,6 +367,12 @@ export default function App() {
             handleRename(path, newName);
           }
         }
+      } else if (e.key === 'c' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+        // Ctrl+Shift+C — copy selected file links
+        if (selected.size > 0) {
+          e.preventDefault();
+          handleBatchCopyLinks();
+        }
       } else if (e.key === 'c' && (e.ctrlKey || e.metaKey)) {
         // Ctrl+C — copy selected files
         if (selected.size > 0) {
@@ -704,6 +710,18 @@ export default function App() {
 
   const handleBatchDownload = () => {
     if (selected.size === 0) return;
+    // Check download_mode setting — if 'zip', use ZIP download instead
+    const downloadMode = localStorage.getItem('download_mode') || 'browser';
+    if (downloadMode === 'zip') {
+      const paths = Array.from(selected);
+      toast('info', `正在打包 ${paths.length} 个文件...`);
+      downloadZip(paths).then(() => {
+        toast('success', 'ZIP 下载已开始');
+      }).catch((e) => {
+        toast('error', `ZIP 打包失败: ${(e as Error).message}`);
+      });
+      return;
+    }
     const paths = Array.from(selected);
     toast('info', `正在下载 ${paths.length} 个文件...`);
     paths.forEach((path, i) => {

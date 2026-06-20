@@ -294,9 +294,23 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                   onChange={(e) => setSettings({ ...settings, download_mode: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
                 >
-                  <option value="browser">浏览器下载</option>
+                  <option value="browser">浏览器下载（逐文件）</option>
                   <option value="zip">ZIP 压缩下载</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm mb-1">复制链接分隔符</label>
+                <select
+                  value={localStorage.getItem('copyLinksSeparator') || '\n'}
+                  onChange={(e) => { localStorage.setItem('copyLinksSeparator', e.target.value); setSettings({ ...settings }); }}
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
+                >
+                  <option value={'\n'}>换行符</option>
+                  <option value=",">逗号</option>
+                  <option value=" ">空格</option>
+                  <option value="\t">制表符</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">批量复制链接时使用此分隔符连接多个链接</p>
               </div>
 
               <hr className="dark:border-gray-700" />
