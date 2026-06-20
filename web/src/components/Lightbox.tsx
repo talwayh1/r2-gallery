@@ -23,6 +23,7 @@ interface Props {
   onNavigate: (index: number) => void;
   /** Called when user wants to delete the current file */
   onDelete?: (path: string) => void;
+  onDuplicate?: (path: string) => void;
 }
 
 /** Touch gesture hook for swipe navigation (only when not zoomed) */
@@ -156,7 +157,7 @@ function isTextMime(mime: string): boolean {
          mime === 'application/yaml';
 }
 
-export default function Lightbox({ items, index, onClose, onNavigate, onDelete }: Props) {
+export default function Lightbox({ items, index, onClose, onNavigate, onDelete, onDuplicate }: Props) {
   const current = items[index];
   const hasPrev = index > 0;
   const hasNext = index < items.length - 1;
@@ -166,6 +167,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [nameCopied, setNameCopied] = useState(false);
   const [exifData, setExifData] = useState<ExifData | null>(null);
   const [exifLoading, setExifLoading] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -755,6 +757,9 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
         }
       } else if (e.key === '0') {
         resetZoom();
+      } else if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        handleCopyFileName();
       } else if (e.key === 'd' || e.key === 'D') {
         if (!isZoomed) {
           e.preventDefault();
@@ -791,6 +796,9 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && onDelete) {
         e.preventDefault();
         handleDeleteConfirm();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D') && onDuplicate) {
+        e.preventDefault();
+        onDuplicate(current.path);
       } else if (e.key === ']' || e.key === '[') {
         // Slideshow speed shortcuts — only active when slideshow is playing
         if (!slideshowTimerRef.current) return;
@@ -809,7 +817,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [onClose, goPrev, goNext, url, name, isZoomed, scale, resetZoom, toggleSlideshow, current, onDelete, handleDeleteConfirm]);
+  }, [onClose, goPrev, goNext, url, name, isZoomed, scale, resetZoom, toggleSlideshow, current, onDelete, handleDeleteConfirm, onDuplicate]);
 
   // Reset state on navigation
   useEffect(() => {
@@ -982,6 +990,14 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
       setDirectUrlCopied(true);
       setTimeout(() => setDirectUrlCopied(false), 2000);
     }
+  };
+
+  const handleCopyFileName = async () => {
+    try {
+      await navigator.clipboard.writeText(name);
+      setNameCopied(true);
+      setTimeout(() => setNameCopied(false), 2000);
+    } catch { /* silent */ }
   };
 
   const handleCopyImage = async () => {
@@ -1281,6 +1297,19 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
             )}
           </button>
+          <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
+          {/* Copy file name */}
+          <button
+            onClick={(e) => { e.stopPropagation(); handleCopyFileName(); }}
+            className={`p-2 rounded-lg transition-colors shrink-0 ${nameCopied ? 'text-green-400' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+            title={nameCopied ? '已复制!' : '复制文件名 (N)'}
+          >
+            {nameCopied ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+            )}
+          </button>
           {isImage && (
             <>
               <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
@@ -1322,6 +1351,20 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </>
+          )}
+          {onDuplicate && (
+            <>
+              <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
+              <button
+                onClick={(e) => { e.stopPropagation(); onDuplicate(current.path); }}
+                className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
+                title="复制文件 (Ctrl+D)"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
               </button>
             </>
@@ -1600,6 +1643,22 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
             </svg>
           )}
         </button>
+        {/* Copy file name */}
+        <button
+          onClick={(e) => { e.stopPropagation(); handleCopyFileName(); }}
+          className={`p-2 rounded-lg transition-colors ${nameCopied ? 'text-green-400' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+          title={nameCopied ? '已复制!' : '复制文件名 (N)'}
+        >
+          {nameCopied ? (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          )}
+        </button>
         {isImage && (
           <>
             <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
@@ -1644,6 +1703,20 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </>
+        )}
+        {onDuplicate && (
+          <>
+            <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
+            <button
+              onClick={(e) => { e.stopPropagation(); onDuplicate(current.path); }}
+              className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              title="复制文件 (Ctrl+D)"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
             </button>
           </>

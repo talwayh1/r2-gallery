@@ -626,6 +626,20 @@ export default function App() {
     }
   };
 
+  const handleLightboxDuplicate = async (path: string) => {
+    try {
+      const result = await duplicateFile(path);
+      if (result.success) {
+        toast('success', '已复制文件');
+        loadFiles(dir);
+      } else {
+        toast('error', '复制失败');
+      }
+    } catch (e) {
+      toast('error', `复制失败: ${(e as Error).message}`);
+    }
+  };
+
   const handleDelete = async (paths: string[]) => {
     const names = paths.map(p => p.split('/').pop() || p).join(', ');
     const confirmed = confirm(`确认删除 ${paths.length} 个项目？\n${names}`);
@@ -1037,7 +1051,8 @@ export default function App() {
             index={lightbox.index}
             onClose={handleLightboxClose}
             onNavigate={handleLightboxNavigate}
-            onDelete={handleLightboxDelete}
+            onDelete={user ? handleLightboxDelete : undefined}
+            onDuplicate={user ? handleLightboxDuplicate : undefined}
           />
         </Suspense>
       )}
