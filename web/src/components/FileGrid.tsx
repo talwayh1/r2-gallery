@@ -1036,7 +1036,7 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
                 onDragOver={(e) => handleDragOverFolder(e, item.path)}
                 onDragLeave={handleDragLeaveFolder}
                 onDrop={(e) => handleDropOnFolder(e, item.path)}
-                className={`flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group ${
+                className={`flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group render-optimized ${
                   dragOverFolder === item.path
                     ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/30 scale-[1.02]'
                     : ''

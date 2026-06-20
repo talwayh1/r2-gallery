@@ -326,6 +326,18 @@ html {
   }
 }
 
+/* Render optimization — skip offscreen layout/paint for non-virtualized lists */
+.render-optimized {
+  content-visibility: auto;
+  contain-intrinsic-size: 200px;
+}
+.render-optimized.tight {
+  contain-intrinsic-size: 80px;
+}
+.render-optimized.wide {
+  contain-intrinsic-size: auto 200px;
+}
+
 /* Hide scrollbar utility (keep scrolling functional) */
 .scrollbar-hide {
   -ms-overflow-style: none;

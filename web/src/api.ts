@@ -11,28 +11,53 @@ export function getCdnDomain() {
   return cdnDomain;
 }
 
+/** Retryable status codes — network errors and server-side blips worth re-trying */
+function isRetryable(err: unknown): boolean {
+  if (err instanceof TypeError && err.message === 'Failed to fetch') return true;
+  if (err instanceof DOMException && err.name === 'AbortError') return false;
+  if (err instanceof Error && /^HTTP (429|5\d{2})$/.test(err.message)) return true;
+  return false;
+}
+
 async function request(path: string, options: RequestInit = {}) {
-  const token = localStorage.getItem('token');
-  const headers: Record<string, string> = {
-    ...((options.headers as Record<string, string>) || {}),
-  };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  if (options.body && typeof options.body === 'string') {
-    headers['Content-Type'] = 'application/json';
+  const maxRetries = 2;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const token = localStorage.getItem('token');
+    const headers: Record<string, string> = {
+      ...((options.headers as Record<string, string>) || {}),
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (options.body && typeof options.body === 'string') {
+      headers['Content-Type'] = 'application/json';
+    }
+    // Propagate signal to fetch — allows callers to cancel in-flight requests
+    const { signal, ...fetchOptions } = options;
+    try {
+      const res = await fetch(`${API_BASE}${path}`, { ...fetchOptions, headers, signal });
+      if (res.status === 401) {
+        // Don't reload on public browsing — just clear stale token
+        localStorage.removeItem('token');
+        throw new Error('Unauthorized');
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      return res;
+    } catch (err) {
+      // AbortError — caller cancelled, never retry
+      if (err instanceof DOMException && err.name === 'AbortError') throw err;
+      // Last attempt — surface the error to the caller
+      if (attempt >= maxRetries) throw err;
+      // Not retryable — surface immediately
+      if (!isRetryable(err)) throw err;
+      // Wait with exponential backoff + jitter before retry
+      const delay = Math.min(1000 * 2 ** attempt + Math.random() * 200, 2000);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
   }
-  // Propagate signal to fetch — allows callers to cancel in-flight requests
-  const { signal, ...fetchOptions } = options;
-  const res = await fetch(`${API_BASE}${path}`, { ...fetchOptions, headers, signal });
-  if (res.status === 401) {
-    // Don't reload on public browsing — just clear stale token
-    localStorage.removeItem('token');
-    throw new Error('Unauthorized');
-  }
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || `HTTP ${res.status}`);
-  }
-  return res;
+  // Unreachable — keep TS happy
+  throw new Error('Unexpected retry exhaustion');
 }
 
 export async function login(username: string, password: string) {
