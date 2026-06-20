@@ -32,9 +32,10 @@ function StatusPill({ status }: { status: UploadTaskStatus }) {
   return <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${cls}`}>{label}</span>;
 }
 
-function TaskRow({ task, onCancel }: { task: UploadTask; onCancel: () => void }) {
+function TaskRow({ task, onCancel, onRetry }: { task: UploadTask; onCancel: () => void; onRetry: () => void }) {
   const pct = task.total > 0 ? Math.round((Math.min(task.loaded, task.total) / task.total) * 100) : 0;
   const canCancel = task.status === 'queued' || task.status === 'uploading';
+  const canRetry = task.status === 'failed' || task.status === 'cancelled';
 
   return (
     <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0">
@@ -47,6 +48,13 @@ function TaskRow({ task, onCancel }: { task: UploadTask; onCancel: () => void })
             {canCancel && (
               <button onClick={onCancel} className="shrink-0 p-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            )}
+            {canRetry && (
+              <button onClick={onRetry} className="shrink-0 p-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" title="重新上传">
+                <svg className="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
               </button>
             )}
           </div>
@@ -74,7 +82,7 @@ function TaskRow({ task, onCancel }: { task: UploadTask; onCancel: () => void })
 }
 
 export default function UploadPanel() {
-  const { tasks, isOpen, setOpen, cancel, cancelAll, hasActiveUploads, activeCount, completedCount, failedCount } = useUploadQueue();
+  const { tasks, isOpen, setOpen, cancel, cancelAll, retry, hasActiveUploads, activeCount, completedCount, failedCount } = useUploadQueue();
 
   if (!isOpen && tasks.length === 0) return null;
 
@@ -115,7 +123,7 @@ export default function UploadPanel() {
               <div className="p-6 text-center text-gray-400 text-sm">暂无上传任务</div>
             ) : (
               tasks.map(task => (
-                <TaskRow key={task.id} task={task} onCancel={() => cancel(task.id)} />
+                <TaskRow key={task.id} task={task} onCancel={() => cancel(task.id)} onRetry={() => retry(task.id)} />
               ))
             )}
           </div>

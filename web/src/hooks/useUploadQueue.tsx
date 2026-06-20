@@ -48,6 +48,8 @@ interface UploadQueueValue {
   enqueue: (items: UploadQueueInput[], onBatchComplete?: (hadSuccess: boolean) => void) => void;
   cancel: (id: string) => void;
   cancelAll: () => void;
+  /** Retry a failed or cancelled upload */
+  retry: (id: string) => void;
   hasActiveUploads: boolean;
   activeCount: number;
   completedCount: number;
@@ -203,6 +205,21 @@ export function UploadQueueProvider({ children }: { children: ReactNode }) {
     settleBatches();
   }, [publish, settleBatches]);
 
+  const retry = useCallback((id: string) => {
+    const task = tasksRef.current.find(t => t.id === id);
+    if (!task) return;
+    // Only allow retrying failed or cancelled tasks
+    if (task.status !== 'failed' && task.status !== 'cancelled') return;
+    task.status = 'queued';
+    task.loaded = 0;
+    task.speed = 0;
+    task.etaSeconds = null;
+    task.error = undefined;
+    task.controller = undefined;
+    publish();
+    maybeStartNext();
+  }, [publish, maybeStartNext]);
+
   const hasActiveUploads = tasks.some(t => isActive(t.status));
   const activeCount = tasks.filter(t => isActive(t.status)).length;
   const completedCount = tasks.filter(t => t.status === 'completed').length;
@@ -221,9 +238,9 @@ export function UploadQueueProvider({ children }: { children: ReactNode }) {
   }, [cancelAll, hasActiveUploads]);
 
   const value = useMemo(() => ({
-    tasks, isOpen, setOpen, enqueue, cancel, cancelAll,
+    tasks, isOpen, setOpen, enqueue, cancel, cancelAll, retry,
     hasActiveUploads, activeCount, completedCount, failedCount,
-  }), [tasks, isOpen, enqueue, cancel, cancelAll, hasActiveUploads, activeCount, completedCount, failedCount]);
+  }), [tasks, isOpen, setOpen, enqueue, cancel, cancelAll, retry, hasActiveUploads, activeCount, completedCount, failedCount]);
 
   return <UploadQueueContext.Provider value={value}>{children}</UploadQueueContext.Provider>;
 }

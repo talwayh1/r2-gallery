@@ -1141,7 +1141,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
       {/* File info bar */}
       <div className={`absolute top-4 left-4 text-white/70 text-sm z-10 flex items-center gap-3 transition-opacity duration-200 ${isMobile && !uiVisible ? 'opacity-0 pointer-events-none' : ''} ${isMobile ? 'max-w-[45%]' : ''}`}>
-        <span className={`font-medium text-white/90 ${isMobile ? 'truncate max-w-[120px]' : ''}`}>{name}</span>
+        <span className={`font-medium text-white/90 ${isMobile ? 'truncate max-w-[120px]' : ''}`} title={isMobile ? name : undefined}>{name}</span>
         {ext && <span className={`px-1.5 py-0.5 text-[10px] bg-white/10 rounded ${isMobile ? 'hidden' : ''}`}>{ext}</span>}
         {current.size ? <span className={`text-xs text-white/50 ${isMobile ? 'hidden' : ''}`}>{formatSize(current.size)}</span> : null}
         {imageDimensions && (
