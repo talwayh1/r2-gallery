@@ -225,7 +225,7 @@ function VideoThumbnail({ src, path, onClick }: { src: string; path: string; onC
   const [posterLoaded, setPosterLoaded] = useState(false);
   const [posterFailed, setPosterFailed] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const posterUrl = `/api/thumb?path=${encodeURIComponent(path)}`;
+  const posterUrl = getThumbUrl(path);
 
   useEffect(() => {
     if (hovering && videoRef.current) {
