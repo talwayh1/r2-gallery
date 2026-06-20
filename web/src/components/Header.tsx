@@ -750,6 +750,32 @@ export default function Header({
                 </button>
               )}
             </div>
+            {/* Mobile sort chips */}
+            {onSortChange && (
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                {SORTS.map((s) => (
+                  <button
+                    key={s.key}
+                    onClick={() => {
+                      if (sortBy === s.key) {
+                        onSortChange(s.key, sortOrder === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        onSortChange(s.key, 'asc');
+                      }
+                    }}
+                    className={`shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                      sortBy === s.key
+                        ? 'bg-blue-500 text-white shadow-sm'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <span className="text-[11px]">{s.icon}</span>
+                    <span>{s.label}</span>
+                    {sortBy === s.key && <span className="text-[10px]">{sortOrder === 'asc' ? '↑' : '↓'}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
             {/* Mobile type filter chips */}
             {onTypeFilterChange && (
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
@@ -759,7 +785,7 @@ export default function Header({
                     onClick={() => onTypeFilterChange(t.key)}
                     className={`shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
                       typeFilter === t.key
-                        ? 'bg-blue-500 text-white shadow-sm'
+                        ? 'bg-green-500 text-white shadow-sm'
                         : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                     }`}
                   >

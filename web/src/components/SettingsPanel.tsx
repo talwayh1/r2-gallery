@@ -138,6 +138,7 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                   <option value="size">大小</option>
                   <option value="mtime">日期</option>
                   <option value="kind">类型</option>
+                  <option value="shuffle">随机</option>
                 </select>
               </div>
               <button onClick={handleSaveSettings} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
