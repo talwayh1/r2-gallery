@@ -340,6 +340,12 @@ export default function App() {
           e.preventDefault();
           toggleTheme();
         }
+      } else if (e.key === 'b' || e.key === 'B') {
+        // B — toggle sidebar
+        if (!e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          setSidebarOpen((prev) => !prev);
+        }
       } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
         // Ctrl+A — select all files (prevent browser default)
         e.preventDefault();
@@ -433,7 +439,7 @@ export default function App() {
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [lightbox, dir, layout, loadFiles, toggleTheme, selected.size, files, user, filteredFiles]);
+  }, [lightbox, dir, layout, loadFiles, toggleTheme, selected.size, files, user, filteredFiles, setSidebarOpen]);
 
   // Scroll position restoration
   const scrollPositions = useRef<Map<string, number>>(new Map());
