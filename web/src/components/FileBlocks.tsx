@@ -130,7 +130,7 @@ export default function FileBlocks({ files, dirs, currentDir, onNavigate, onOpen
                   <div className="w-full h-full flex items-center justify-center bg-yellow-50 dark:bg-yellow-900/20 relative">
                     {folderThumbs[item.path] ? (
                       <>
-                        <img src={folderThumbs[item.path]} alt="" className="w-full h-full object-cover opacity-60" loading="lazy" />
+                        <img src={folderThumbs[item.path]} alt="" className="w-full h-full object-cover opacity-60" loading="lazy" decoding="async" fetchPriority="low" />
                         <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                           <FileTypeIcon mime="folder" className="w-8 h-8" isDir={true} />
                         </div>

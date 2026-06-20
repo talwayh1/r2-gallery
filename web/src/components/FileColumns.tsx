@@ -80,7 +80,7 @@ export default function FileColumns({ files, dirs, currentDir, onNavigate, onOpe
                 <div className="relative">
                   {folderThumbs[item.path] ? (
                     <>
-                      <img src={folderThumbs[item.path]} alt="" className="w-full" loading="lazy" />
+                      <img src={folderThumbs[item.path]} alt="" className="w-full" loading="lazy" decoding="async" fetchPriority="low" />
                       <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                         <FileTypeIcon mime="folder" className="w-8 h-8" isDir={true} />
                       </div>

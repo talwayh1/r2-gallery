@@ -213,6 +213,8 @@ function ImageThumbnail({ src, alt, onClick }: { src: string; alt: string; onCli
         src={src}
         alt={alt}
         loading="lazy"
+        decoding="async"
+        fetchPriority="low"
         onClick={onClick}
         className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
         onLoad={() => setLoaded(true)}
@@ -258,6 +260,8 @@ function VideoThumbnail({ src, path, onClick }: { src: string; path: string; onC
           src={posterUrl}
           alt=""
           loading="lazy"
+          decoding="async"
+          fetchPriority="low"
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${hasPoster && !(hovering && videoLoaded) ? 'opacity-100' : 'opacity-0'}`}
           onLoad={() => setPosterLoaded(true)}
           onError={() => setPosterFailed(true)}
@@ -635,6 +639,8 @@ function VirtualFileGrid({
               alt={preview.file.name}
               className="w-full h-full object-contain"
               loading="lazy"
+              decoding="async"
+              fetchPriority="low"
             />
           </div>
           <div className="mt-1 text-center">
@@ -1023,6 +1029,8 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
                         alt=""
                         className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity"
                         loading="lazy"
+                        decoding="async"
+                        fetchPriority="low"
                       />
                       <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                         <FileTypeIcon mime="folder" className="w-8 h-8" isDir={true} />

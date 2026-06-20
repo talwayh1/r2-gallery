@@ -58,6 +58,8 @@ function VideoListThumb({ path }: { path: string }) {
         src={posterUrl}
         alt=""
         loading="lazy"
+        decoding="async"
+        fetchPriority="low"
         className="w-full h-full object-cover"
         onError={() => setPosterFailed(true)}
       />

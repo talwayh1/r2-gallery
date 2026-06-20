@@ -91,9 +91,9 @@ export default function UploadPanel() {
       {/* Backdrop */}
       {isOpen && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />}
 
-      {/* Panel */}
+      {/* Panel — full-width on mobile, floating on desktop */}
       {isOpen && (
-        <div className="fixed bottom-20 right-6 z-50 w-80 max-h-[min(28rem,calc(100vh-6rem))] bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
+        <div className="fixed bottom-0 left-0 right-0 sm:bottom-20 sm:right-6 sm:left-auto z-50 sm:w-80 max-h-[50vh] sm:max-h-[min(28rem,calc(100vh-6rem))] bg-white dark:bg-gray-800 rounded-t-xl sm:rounded-xl shadow-2xl border-t sm:border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
           {/* Header */}
           <div className="px-4 py-3 flex items-center justify-between shrink-0">
             <div>
