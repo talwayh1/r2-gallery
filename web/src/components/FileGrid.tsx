@@ -166,6 +166,25 @@ function getDisplayName(name: string): string {
   return name;
 }
 
+/** Human-readable MIME type label */
+function getMimeLabel(mime: string): string {
+  if (mime.startsWith('image/')) return '图片';
+  if (mime.startsWith('video/')) return '视频';
+  if (mime.startsWith('audio/')) return '音频';
+  if (mime === 'application/pdf') return 'PDF 文档';
+  if (mime.includes('zip') || mime.includes('rar') || mime.includes('7z') || mime.includes('tar') || mime.includes('gzip')) return '压缩包';
+  if (mime.includes('word') || mime.includes('document')) return 'Word 文档';
+  if (mime.includes('sheet') || mime.includes('excel')) return 'Excel 表格';
+  if (mime.includes('presentation') || mime.includes('powerpoint')) return 'PPT 演示';
+  if (mime.includes('epub')) return '电子书';
+  if (mime.includes('json')) return 'JSON';
+  if (mime.includes('javascript')) return 'JavaScript';
+  if (mime.includes('html')) return 'HTML';
+  if (mime.includes('css')) return 'CSS';
+  if (mime.includes('text')) return '文本';
+  return mime.split('/')[1]?.toUpperCase() || '未知';
+}
+
 /**
  * Image thumbnail with loading skeleton, fade-in, and error fallback.
  * Uses native <img> with loading="lazy" for efficient loading.
@@ -313,6 +332,7 @@ function VirtualFileGrid({
   loadingMore?: boolean;
 }) {
   const [preview, setPreview] = useState<{ file: FileItem; rect: DOMRect } | null>(null);
+  const [hoverInfo, setHoverInfo] = useState<{ file: FileItem; rect: DOMRect } | null>(null);
   const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -393,11 +413,16 @@ function VirtualFileGrid({
   }, [focusedIndex, columns, visibleFiles, renaming, onOpen, onSelect, setInternalSelected]);
 
   const handleMouseEnter = useCallback((e: React.MouseEvent, file: FileItem) => {
-    if (!file.mime.startsWith('image/')) return;
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
     previewTimerRef.current = setTimeout(() => {
-      setPreview({ file, rect });
+      if (file.mime.startsWith('image/')) {
+        setPreview({ file, rect });
+        setHoverInfo(null);
+      } else {
+        setHoverInfo({ file, rect });
+        setPreview(null);
+      }
     }, 300);
   }, []);
 
@@ -407,6 +432,7 @@ function VirtualFileGrid({
       previewTimerRef.current = null;
     }
     setPreview(null);
+    setHoverInfo(null);
   }, []);
 
   // Reset focused index when visible files change (e.g. scroll, filter)
@@ -615,6 +641,37 @@ function VirtualFileGrid({
             <span className="text-[10px] text-gray-400 bg-black/60 px-2 py-0.5 rounded-full">
               {preview.file.name} · {formatSize(preview.file.size)}
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* Hover info tooltip — file details for non-image items */}
+      {hoverInfo && (
+        <div
+          className="fixed z-50 pointer-events-none bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-3 min-w-[180px] max-w-[260px]"
+          style={{
+            left: Math.min(hoverInfo.rect.left + hoverInfo.rect.width / 2 - 90, window.innerWidth - 200),
+            top: Math.max(8, hoverInfo.rect.top - 120),
+          }}
+        >
+          <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate mb-1.5">{hoverInfo.file.name}</p>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[10px] text-gray-500 dark:text-gray-400">类型</span>
+              <span className="text-[10px] font-medium text-gray-700 dark:text-gray-300">{getMimeLabel(hoverInfo.file.mime)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[10px] text-gray-500 dark:text-gray-400">大小</span>
+              <span className="text-[10px] font-medium text-gray-700 dark:text-gray-300">{formatSize(hoverInfo.file.size) || '-'}</span>
+            </div>
+            {hoverInfo.file.mtime > 0 && (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[10px] text-gray-500 dark:text-gray-400">日期</span>
+                <span className="text-[10px] font-medium text-gray-700 dark:text-gray-300">
+                  {new Date(hoverInfo.file.mtime * 1000).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}
