@@ -4,6 +4,7 @@ import { getFileUrl, getThumbUrl, duplicateFile, downloadZip, moveItem, copyFile
 import { toast } from '../hooks/useToast';
 import SafeThumb from './SafeThumb';
 import FileTypeIcon from './FileTypeIcon';
+import { formatSize } from '../utils';
 
 const FolderPicker = lazy(() => import('./FolderPicker'));
 const ShareDialog = lazy(() => import('./ShareDialog'));
@@ -24,12 +25,6 @@ interface Props {
   loadingMore?: boolean;
 }
 
-function formatSize(bytes: number) {
-  if (bytes === 0) return '';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
-}
 
 function formatDate(ts: number) {
   if (!ts) return '';

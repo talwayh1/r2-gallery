@@ -7,17 +7,7 @@ interface Props {
   onOpenFile: (path: string, mime: string) => void;
 }
 
-function formatSize(bytes: number) {
-  if (!bytes) return '';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
-}
-
-function formatDate(ts: number) {
-  if (!ts) return '';
-  return new Date(ts * 1000).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
-}
+import { formatSize } from '../utils';
 
 /** Friendly label for "years ago" */
 function yearsAgoLabel(n: number): string {
@@ -25,6 +15,12 @@ function yearsAgoLabel(n: number): string {
   if (n === 1) return '去年';
   if (n === 2) return '前年';
   return `${n} 年前`;
+}
+
+/** Format mtime for Memories display with Chinese locale */
+function formatDate(ts: number) {
+  if (!ts) return '';
+  return new Date(ts * 1000).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 /** Emoji for years ago milestones */

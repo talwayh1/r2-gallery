@@ -3,6 +3,7 @@ import type { FileItem } from '../types';
 import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
 import SafeThumb from './SafeThumb';
 import FileTypeIcon from './FileTypeIcon';
+import { formatSize } from '../utils';
 
 interface Props {
   files: Record<string, FileItem>;
@@ -18,12 +19,6 @@ interface Props {
   loadingMore?: boolean;
 }
 
-function formatSize(bytes: number) {
-  if (bytes === 0) return '';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
-}
 
 export default function FileColumns({ files, dirs, currentDir, onNavigate, onOpen, onDelete, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());

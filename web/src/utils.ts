@@ -23,9 +23,13 @@ export function formatSize(bytes: number, opts?: { emptyForZero?: boolean }): st
 
 /**
  * Format a Unix timestamp (seconds) to a locale date string.
+ * Supports optional locale and formatting options for i18n.
  */
-export function formatDate(ts: number): string {
+export function formatDate(ts: number, locales?: Intl.LocalesArgument, options?: Intl.DateTimeFormatOptions): string {
   if (!ts) return '';
+  if (locales || options) {
+    return new Date(ts * 1000).toLocaleDateString(locales, options);
+  }
   return new Date(ts * 1000).toLocaleDateString();
 }
 

@@ -3,7 +3,8 @@
  * Inspired by ZPan's activity logging.
  */
 
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { formatSize } from '../utils';
 
 interface ActivityItem {
   id: number;
@@ -36,41 +37,47 @@ const ACTION_LABELS: Record<string, { label: string; icon: ReactNode; color: str
   purge: { label: '永久删除', icon: '💥', color: 'text-red-700' },
 };
 
-function formatSize(bytes: number): string {
-  if (!bytes) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
+/** Format an ISO timestamp for display */
+function formatDate(isoStr: string): string {
+  if (!isoStr) return '';
+  return new Date(isoStr).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function formatDate(dateStr: string): string {
-  if (!dateStr) return '';
-  return new Date(dateStr).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
+const PAGE_SIZE = 50;
 
 export default function ActivityPage({ onClose }: Props) {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [traffic, setTraffic] = useState<TrafficStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [tab, setTab] = useState<'activity' | 'traffic'>('activity');
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
+  const loadingRef = useRef(false); // prevent concurrent loads
 
   const loadActivity = useCallback(async (currentOffset: number = 0) => {
-    setLoading(true);
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+
+    const isInitial = currentOffset === 0;
+    if (isInitial) setLoading(true);
+    else setLoadingMore(true);
+
     try {
       const token = localStorage.getItem('token');
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await fetch(`/api/activity?limit=50&offset=${currentOffset}`, { headers });
+      const res = await fetch(`/api/activity?limit=${PAGE_SIZE}&offset=${currentOffset}`, { headers });
       const data = await res.json();
-      if (currentOffset === 0) setActivities(data.items || []);
+      if (isInitial) setActivities(data.items || []);
       else setActivities(prev => [...prev, ...(data.items || [])]);
       setHasMore(data.hasMore);
       setOffset(currentOffset + (data.items?.length || 0));
     } catch (err) {
       console.error('Failed to load activity:', err);
     } finally {
+      loadingRef.current = false;
       setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
 
@@ -96,6 +103,23 @@ export default function ActivityPage({ onClose }: Props) {
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
   }, [onClose]);
+
+  // Infinite scroll sentinel for activity tab
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore || tab !== 'activity') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingRef.current && hasMore) {
+          setTimeout(() => loadActivity(offset), 100);
+        }
+      },
+      { rootMargin: '400px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, offset, loadActivity, tab]);
 
   return (
     <div className="fixed inset-0 z-40 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
@@ -185,9 +209,14 @@ export default function ActivityPage({ onClose }: Props) {
               })}
             </div>
 
+            {/* Infinite scroll sentinel — replaces old "加载更多" button */}
             {hasMore && (
-              <div className="flex justify-center mt-4">
-                <button onClick={() => loadActivity(offset)} className="px-4 py-2 text-sm bg-white dark:bg-gray-800 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-750">加载更多</button>
+              <div ref={sentinelRef} className="flex items-center justify-center py-6">
+                {loadingMore ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500" />
+                ) : (
+                  <span className="text-xs text-gray-400">滚动加载更多…</span>
+                )}
               </div>
             )}
           </>

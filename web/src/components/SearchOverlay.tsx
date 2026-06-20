@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { searchFiles, getFileUrl, getThumbUrl, type SearchResult } from '../api';
+import { formatSize } from '../utils';
 import FileTypeIcon from './FileTypeIcon';
 
 interface Props {
@@ -31,13 +32,6 @@ function addRecentSearch(query: string) {
 
 function clearRecentSearches() {
   localStorage.removeItem(RECENT_SEARCHES_KEY);
-}
-
-function formatSize(bytes: number) {
-  if (!bytes) return '';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
 }
 
 /** Highlight matching text in a string */

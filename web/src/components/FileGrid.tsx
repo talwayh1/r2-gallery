@@ -4,6 +4,7 @@ import { getFileUrl, getThumbUrl, moveItem, copyFile, duplicateFile, downloadZip
 import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
 import { useVirtualGrid } from '../hooks/useVirtualGrid';
 import { toast } from '../hooks/useToast';
+import { formatSize, formatDate, getKindOrder } from '../utils';
 import ShareDialog from './ShareDialog';
 import FileTypeIcon from './FileTypeIcon';
 
@@ -91,17 +92,6 @@ interface Props {
 type SortKey = 'name' | 'size' | 'mtime' | 'kind' | 'shuffle';
 type SortDir = 'asc' | 'desc';
 
-/** Get sort order index for 'kind' sort: image → video → audio → document → other */
-function getKindOrder(mime: string): number {
-  if (mime.startsWith('image/')) return 0;
-  if (mime.startsWith('video/')) return 1;
-  if (mime.startsWith('audio/')) return 2;
-  if (mime === 'application/pdf' || mime.startsWith('text/') ||
-      mime === 'application/json' || mime === 'application/xml' ||
-      mime === 'application/javascript' || mime === 'application/x-yaml') return 3;
-  return 4;
-}
-
 /** Seeded hash for deterministic shuffle order */
 function seededHash(str: string): number {
   let hash = 0;
@@ -136,21 +126,6 @@ function getBadgeColor(mime: string): string {
   if (mime.includes('sheet') || mime.includes('excel')) return 'bg-green-600/90 text-white';
   if (mime.includes('presentation') || mime.includes('powerpoint')) return 'bg-orange-500/90 text-white';
   return 'bg-gray-500/90 text-white';
-}
-
-function formatSize(bytes: number) {
-  if (bytes === 0) return '';
-  const standard = localStorage.getItem('filesizeStandard') || 'jedec';
-  const units = standard === 'iec'
-    ? ['B', 'KiB', 'MiB', 'GiB', 'TiB']
-    : ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
-}
-
-function formatDate(ts: number) {
-  if (!ts) return '';
-  return new Date(ts * 1000).toLocaleDateString();
 }
 
 /** Get file extension for badge display */

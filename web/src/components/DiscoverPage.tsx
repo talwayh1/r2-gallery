@@ -1,22 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { discoverMedia, getThumbUrl, type DiscoverFile } from '../api';
+import { formatSize, formatDate } from '../utils';
 
 interface Props {
   onClose: () => void;
   onNavigate: (dir: string) => void;
   onOpenFile: (path: string, mime: string) => void;
-}
-
-function formatSize(bytes: number) {
-  if (!bytes) return '';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
-}
-
-function formatDate(ts: number) {
-  if (!ts) return '';
-  return new Date(ts * 1000).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 export default function DiscoverPage({ onClose, onNavigate, onOpenFile }: Props) {

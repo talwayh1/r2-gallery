@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from '../hooks/useToast';
 import FileTypeIcon from './FileTypeIcon';
+import { formatSize } from '../utils';
 
 interface TrashItem {
   id: number;
@@ -23,12 +24,6 @@ interface Props {
   onRestore: () => void;
 }
 
-function formatSize(bytes: number): string {
-  if (!bytes) return '';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
-}
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return '';
