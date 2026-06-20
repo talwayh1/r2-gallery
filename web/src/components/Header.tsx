@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useClickOutside } from '../hooks/useClickOutside';
 import type { LayoutMode, ThemeMode } from '../types';
+import FileTypeIcon from './FileTypeIcon';
 
 interface Props {
   dir: string;
@@ -37,11 +38,11 @@ interface Props {
   onDelete?: (paths: string[]) => void;
 }
 
-const LAYOUTS: { key: LayoutMode; label: string; icon: string }[] = [
+const LAYOUTS: { key: LayoutMode; label: string; icon: React.ReactNode }[] = [
   { key: 'grid', label: '网格', icon: '▦' },
   { key: 'rows', label: '行', icon: '☰' },
   { key: 'list', label: '列表', icon: '≡' },
-  { key: 'imagelist', label: '图片列表', icon: '🖼' },
+  { key: 'imagelist', label: '图片列表', icon: <FileTypeIcon mime="image/jpeg" className="w-4 h-4" /> },
   { key: 'blocks', label: '块', icon: '▣' },
   { key: 'columns', label: '列', icon: '⫼' },
 ];
@@ -54,12 +55,12 @@ const SORTS: { key: string; label: string; icon: string }[] = [
   { key: 'shuffle', label: '随机', icon: '🔀' },
 ];
 
-const TYPE_FILTERS: { key: string; label: string; icon: string }[] = [
-  { key: 'all', label: '全部', icon: '📁' },
-  { key: 'image', label: '图片', icon: '🖼️' },
-  { key: 'video', label: '视频', icon: '🎬' },
-  { key: 'audio', label: '音频', icon: '🎵' },
-  { key: 'document', label: '文档', icon: '📄' },
+const TYPE_FILTERS: { key: string; label: string; icon: React.ReactNode }[] = [
+  { key: 'all', label: '全部', icon: <FileTypeIcon mime='application/pdf' className='w-4 h-4' /> },
+  { key: 'image', label: '图片', icon: <FileTypeIcon mime='image/jpeg' className='w-4 h-4' /> },
+  { key: 'video', label: '视频', icon: <FileTypeIcon mime='video/mp4' className='w-4 h-4' /> },
+  { key: 'audio', label: '音频', icon: <FileTypeIcon mime='audio/mp3' className='w-4 h-4' /> },
+  { key: 'document', label: '文档', icon: <FileTypeIcon mime='application/pdf' className='w-4 h-4' /> },
 ];
 
 const LANGUAGES = [
@@ -129,7 +130,7 @@ export default function Header({
       {/* Breadcrumb nav — hidden on very small screens, shown on sm+ */}
       <nav className="hidden sm:flex items-center gap-1 text-sm overflow-x-auto min-w-0">
         <button onClick={() => onNavigate('')} className="hover:text-blue-500 font-medium whitespace-nowrap">
-          🖼️ R2 Gallery
+          <svg className="w-4 h-4 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg> R2 Gallery
         </button>
         {/* Parent directory button */}
         {dir && (
@@ -187,7 +188,7 @@ export default function Header({
                         className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                         onClick={() => { onCreateFolder?.(); setDirMenuOpen(false); }}
                       >
-                        <span>📁</span><span>新建文件夹</span>
+                        <span className="flex items-center"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg></span><span>新建文件夹</span>
                       </button>
                       <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
                       <button
@@ -199,7 +200,7 @@ export default function Header({
                           setDirMenuOpen(false);
                         }}
                       >
-                        <span>🗑️</span><span>删除此文件夹</span>
+                        <span className="flex items-center"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></span><span>删除此文件夹</span>
                       </button>
                     </>
                   )}
@@ -212,7 +213,7 @@ export default function Header({
 
       {/* Mobile-only title */}
       <span className="sm:hidden text-sm font-medium truncate min-w-0 flex-shrink">
-        🖼️ {breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1] : 'R2 Gallery'}
+        <svg className="w-4 h-4 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg> {breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1] : 'R2 Gallery'}
       </span>
 
       <div className="flex-1" />
@@ -665,7 +666,7 @@ export default function Header({
                 )}
                 {user && onCreateFolder && (
                   <button onClick={() => { onCreateFolder(); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <span>📁</span><span>新建文件夹</span>
+                    <span className="flex items-center"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg></span><span>新建文件夹</span>
                   </button>
                 )}
                 {user && onStatsClick && (
@@ -675,7 +676,7 @@ export default function Header({
                 )}
                 {user && onTrashClick && (
                   <button onClick={() => { onTrashClick(); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <span>🗑️</span><span>回收站</span>
+                    <span className="flex items-center"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></span><span>回收站</span>
                   </button>
                 )}
                 {user && onActivityClick && (
@@ -687,7 +688,7 @@ export default function Header({
                   <span>🔄</span><span>刷新</span>
                 </button>
                 <button onClick={() => { onThemeToggle(); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-                  <span>{theme === 'dark' ? '☀️' : '🌙'}</span><span>切换主题</span>
+                  <span>{theme === 'dark' ? <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>}</span><span>切换主题</span>
                 </button>
                 <button onClick={() => { onShortcutsClick?.(); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
                   <span>⚡</span><span>快捷键</span>

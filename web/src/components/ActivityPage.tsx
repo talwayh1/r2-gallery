@@ -3,7 +3,7 @@
  * Inspired by ZPan's activity logging.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 
 interface ActivityItem {
   id: number;
@@ -26,12 +26,12 @@ interface Props {
   onClose: () => void;
 }
 
-const ACTION_LABELS: Record<string, { label: string; icon: string; color: string }> = {
+const ACTION_LABELS: Record<string, { label: string; icon: ReactNode; color: string }> = {
   upload: { label: '上传', icon: '📤', color: 'text-blue-500' },
-  delete: { label: '删除', icon: '🗑️', color: 'text-red-500' },
+  delete: { label: '删除', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>, color: 'text-red-500' },
   rename: { label: '重命名', icon: '✏️', color: 'text-yellow-500' },
   move: { label: '移动', icon: '📦', color: 'text-purple-500' },
-  mkdir: { label: '创建文件夹', icon: '📁', color: 'text-green-500' },
+  mkdir: { label: '创建文件夹', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>, color: 'text-green-500' },
   restore: { label: '恢复', icon: '♻️', color: 'text-emerald-500' },
   purge: { label: '永久删除', icon: '💥', color: 'text-red-700' },
 };

@@ -180,7 +180,7 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
         <div className="bg-gray-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 p-3 flex items-center gap-3 min-w-[280px]">
           <audio ref={audioRef} src={trackUrl} preload="metadata" />
           <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-700 flex-shrink-0">
-            {coverUrl ? <img src={coverUrl} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center">🎵</div>}
+            {coverUrl ? <img src={coverUrl} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><svg className="w-5 h-5 text-white/50" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" /></svg></div>}
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-white text-xs font-medium truncate">{track.name}</div>
@@ -235,7 +235,7 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
             {coverUrl ? (
               <img src={coverUrl} alt="" className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-2xl">🎵</div>
+              <div className="w-full h-full flex items-center justify-center"><svg className="w-8 h-8 text-white/50" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" /></svg></div>
             )}
           </div>
 

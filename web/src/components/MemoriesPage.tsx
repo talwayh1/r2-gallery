@@ -28,13 +28,13 @@ function yearsAgoLabel(n: number): string {
 }
 
 /** Emoji for years ago milestones */
-function yearsAgoEmoji(n: number): string {
+function yearsAgoEmoji(n: number) {
   if (n === 0) return '🆕';
   if (n === 1) return '📅';
   if (n === 2) return '🌟';
   if (n <= 5) return '💎';
   if (n <= 10) return '🏆';
-  return '🕰️';
+  return <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 }
 
 export default function MemoriesPage({ onClose, onNavigate, onOpenFile }: Props) {
@@ -172,7 +172,7 @@ export default function MemoriesPage({ onClose, onNavigate, onOpenFile }: Props)
                       <div className="absolute bottom-0 left-0 right-0 p-3">
                         <p className="text-white text-xs font-medium truncate">{file.name}</p>
                         <div className="flex items-center gap-2 mt-1 text-white/60 text-[10px]">
-                          {file.dir && <span>📂 {file.dir}</span>}
+                          {file.dir && <span className="inline-flex items-center gap-1"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>{file.dir}</span>}
                           {file.size > 0 && <span>{formatSize(file.size)}</span>}
                           {file.mtime > 0 && <span>{formatDate(file.mtime)}</span>}
                         </div>

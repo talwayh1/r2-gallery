@@ -1,4 +1,5 @@
 import type { FileItem } from '../types';
+import FileTypeIcon from './FileTypeIcon';
 
 export type TypeFilter = 'all' | 'image' | 'video' | 'audio' | 'document';
 
@@ -8,12 +9,20 @@ interface Props {
   onChange: (f: TypeFilter) => void;
 }
 
-const FILTERS: { key: TypeFilter; label: string; icon: string }[] = [
-  { key: 'all', label: '全部', icon: '📁' },
-  { key: 'image', label: '图片', icon: '🖼️' },
-  { key: 'video', label: '视频', icon: '🎬' },
-  { key: 'audio', label: '音频', icon: '🎵' },
-  { key: 'document', label: '文档', icon: '📄' },
+const FILTERS: { key: TypeFilter; label: string; icon: (active: boolean) => React.ReactNode }[] = [
+  {
+    key: 'all',
+    label: '全部',
+    icon: (active: boolean) => (
+      <svg className={`w-4 h-4 ${active ? 'opacity-100' : 'opacity-60'}`} fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+        <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z' />
+      </svg>
+    ),
+  },
+  { key: 'image', label: '图片', icon: (active: boolean) => <FileTypeIcon mime='image/jpeg' className={`w-4 h-4 ${active ? '' : 'opacity-60'}`} /> },
+  { key: 'video', label: '视频', icon: (active: boolean) => <FileTypeIcon mime='video/mp4' className={`w-4 h-4 ${active ? '' : 'opacity-60'}`} /> },
+  { key: 'audio', label: '音频', icon: (active: boolean) => <FileTypeIcon mime='audio/mpeg' className={`w-4 h-4 ${active ? '' : 'opacity-60'}`} /> },
+  { key: 'document', label: '文档', icon: (active: boolean) => <FileTypeIcon mime='application/pdf' className={`w-4 h-4 ${active ? '' : 'opacity-60'}`} /> },
 ];
 
 function getCount(files: Record<string, FileItem>, filter: TypeFilter): number {
@@ -67,7 +76,7 @@ export default function TypeFilter({ files, active, onChange }: Props) {
                 : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
-            <span>{f.icon}</span>
+            <span>{f.icon(active === f.key)}</span>
             <span>{f.label}</span>
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
               active === f.key

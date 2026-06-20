@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { FileItem } from '../types';
 import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
 import SafeThumb from './SafeThumb';
+import FileTypeIcon from './FileTypeIcon';
 
 interface Props {
   files: Record<string, FileItem>;
@@ -81,12 +82,12 @@ export default function FileColumns({ files, dirs, currentDir, onNavigate, onOpe
                     <>
                       <img src={folderThumbs[item.path]} alt="" className="w-full" loading="lazy" />
                       <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                        <span className="text-3xl drop-shadow-lg">📁</span>
+                        <FileTypeIcon mime="folder" className="w-8 h-8" isDir={true} />
                       </div>
                     </>
                   ) : (
                     <div className="aspect-square flex items-center justify-center bg-yellow-50 dark:bg-yellow-900/20">
-                      <span className="text-4xl">📁</span>
+                      <FileTypeIcon mime="folder" className="w-8 h-8" isDir={true} />
                     </div>
                   )}
                 </div>
@@ -99,7 +100,7 @@ export default function FileColumns({ files, dirs, currentDir, onNavigate, onOpe
                   <svg className="w-10 h-10 text-white/60" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
                 </div>
               ) : (
-                <div className="aspect-square flex items-center justify-center text-4xl">📄</div>
+                <FileTypeIcon mime="application/octet-stream" className="w-8 h-8" />
               )}
               <div className="p-2">
                 <div className="text-sm font-medium truncate">{item.name.endsWith('.url') ? item.name.slice(0, -4) : item.name}</div>

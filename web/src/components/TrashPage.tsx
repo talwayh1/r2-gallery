@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from '../hooks/useToast';
+import FileTypeIcon from './FileTypeIcon';
 
 interface TrashItem {
   id: number;
@@ -32,15 +33,6 @@ function formatSize(bytes: number): string {
 function formatDate(dateStr: string): string {
   if (!dateStr) return '';
   return new Date(dateStr).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
-function getIcon(mime: string, isDir: boolean): string {
-  if (isDir) return '📁';
-  if (mime.startsWith('image/')) return '🖼️';
-  if (mime.startsWith('video/')) return '🎬';
-  if (mime.startsWith('audio/')) return '🎵';
-  if (mime === 'application/pdf') return '📄';
-  return '📎';
 }
 
 export default function TrashPage({ onClose, onRestore }: Props) {
@@ -147,7 +139,7 @@ export default function TrashPage({ onClose, onRestore }: Props) {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
           </button>
           <div className="flex-1">
-            <h1 className="text-lg font-semibold">🗑️ 回收站</h1>
+            <h1 className="text-lg font-semibold flex items-center gap-2"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>回收站</h1>
             <p className="text-xs text-gray-400">{items.length} 个项目</p>
           </div>
           {selected.size > 0 && (
@@ -196,7 +188,7 @@ export default function TrashPage({ onClose, onRestore }: Props) {
                     <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                   )}
                 </div>
-                <span className="text-xl">{getIcon(item.mime, !!item.is_dir)}</span>
+                <span className="flex items-center justify-center w-9 h-9 shrink-0"><FileTypeIcon mime={item.mime} className="w-7 h-7" isDir={!!item.is_dir} /></span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{item.name}</p>
                   <p className="text-xs text-gray-400">{item.original_path}</p>

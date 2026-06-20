@@ -4,6 +4,7 @@ import { getFileUrl, duplicateFile, downloadZip, moveItem, copyFile } from '../a
 import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
 import { toast } from '../hooks/useToast';
 import SafeThumb from './SafeThumb';
+import FileTypeIcon from './FileTypeIcon';
 
 const FolderPicker = lazy(() => import('./FolderPicker'));
 const ShareDialog = lazy(() => import('./ShareDialog'));
@@ -131,11 +132,11 @@ export default function FileBlocks({ files, dirs, currentDir, onNavigate, onOpen
                       <>
                         <img src={folderThumbs[item.path]} alt="" className="w-full h-full object-cover opacity-60" loading="lazy" />
                         <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                          <span className="text-3xl drop-shadow-lg">📁</span>
+                          <FileTypeIcon mime="folder" className="w-8 h-8" isDir={true} />
                         </div>
                       </>
                     ) : (
-                      <span className="text-4xl">📁</span>
+                      <FileTypeIcon mime="folder" className="w-8 h-8" isDir={true} />
                     )}
                   </div>
                 ) : isImage ? (
@@ -145,7 +146,7 @@ export default function FileBlocks({ files, dirs, currentDir, onNavigate, onOpen
                     <svg className="w-12 h-12 text-white/60" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
                   </div>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-4xl">📄</div>
+                  <FileTypeIcon mime="application/octet-stream" className="w-8 h-8" />
                 )}
               </div>
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 pt-6">

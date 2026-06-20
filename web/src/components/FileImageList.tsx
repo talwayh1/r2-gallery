@@ -3,6 +3,7 @@ import type { FileItem } from '../types';
 import { getFileUrl, getThumbUrl, duplicateFile, downloadZip, moveItem, copyFile } from '../api';
 import { toast } from '../hooks/useToast';
 import SafeThumb from './SafeThumb';
+import FileTypeIcon from './FileTypeIcon';
 
 const FolderPicker = lazy(() => import('./FolderPicker'));
 const ShareDialog = lazy(() => import('./ShareDialog'));
@@ -185,13 +186,13 @@ export default function FileImageList({ files, dirs, currentDir, onNavigate, onO
               </div>
               <div className="w-16 h-16 flex-shrink-0 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
                 {isDir ? (
-                  <div className="w-full h-full flex items-center justify-center text-2xl">📁</div>
+                  <FileTypeIcon mime="folder" className="w-8 h-8" isDir={true} />
                 ) : isImage ? (
                   <SafeThumb path={item.path} />
                 ) : isVideo ? (
                   <VideoListThumb path={item.path} />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-2xl">📄</div>
+                  <FileTypeIcon mime="application/octet-stream" className="w-8 h-8" />
                 )}
               </div>
               <div className="flex-1 min-w-0">

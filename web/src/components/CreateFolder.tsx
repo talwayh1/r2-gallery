@@ -34,15 +34,15 @@ export default function CreateFolder({ currentDir, onConfirm, onCreateFile, onCr
         {/* Mode tabs */}
         <div className="flex gap-1 mb-4 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
           {([
-            { key: 'folder' as const, label: '文件夹', icon: '📁' },
-            { key: 'file' as const, label: '文件', icon: '📄' },
-            { key: 'url' as const, label: '链接', icon: '🔗' },
+            { key: 'folder' as const, label: '文件夹', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg> },
+            { key: 'file' as const, label: '文件', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg> },
+            { key: 'url' as const, label: '链接', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg> },
           ]).map((m) => (
             <button key={m.key} onClick={() => setMode(m.key)}
               className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded-md transition-colors ${
                 mode === m.key ? 'bg-white dark:bg-gray-600 shadow text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-500 hover:text-gray-700'
               }`}>
-              <span>{m.icon}</span><span>{m.label}</span>
+              <span className="flex items-center">{m.icon}</span><span>{m.label}</span>
             </button>
           ))}
         </div>

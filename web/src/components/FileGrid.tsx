@@ -5,6 +5,7 @@ import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
 import { useVirtualGrid } from '../hooks/useVirtualGrid';
 import { toast } from '../hooks/useToast';
 import ShareDialog from './ShareDialog';
+import FileTypeIcon from './FileTypeIcon';
 
 /** Long-press threshold (ms) for mobile context menu */
 const LONG_PRESS_MS = 500;
@@ -112,21 +113,8 @@ function seededHash(str: string): number {
   return Math.abs(hash);
 }
 
-function getIcon(mime: string) {
-  if (mime.startsWith('image/')) return '🖼️';
-  if (mime.startsWith('video/')) return '🎬';
-  if (mime.startsWith('audio/')) return '🎵';
-  if (mime === 'application/pdf') return '📄';
-  if (mime.startsWith('text/')) return '📝';
-  if (mime.includes('zip') || mime.includes('rar') || mime.includes('7z')) return '📦';
-  if (mime.includes('word') || mime.includes('document')) return '📄';
-  if (mime.includes('sheet') || mime.includes('excel')) return '📊';
-  if (mime.includes('presentation') || mime.includes('powerpoint')) return '📽️';
-  if (mime.includes('epub')) return '📚';
-  return '📎';
-}
-
-/** Badge label for media types */
+/**
+ * Badge label for media types */
 function getTypeBadge(mime: string): string | null {
   if (mime.startsWith('video/')) return 'VIDEO';
   if (mime.startsWith('audio/')) return 'AUDIO';
@@ -507,7 +495,7 @@ function VirtualFileGrid({
                     onClick={() => handleCardClick(new MouseEvent('click') as any, file.path, file.mime)}
                   />
                 ) : (
-                  <span className="text-4xl">{getIcon(file.mime)}</span>
+                  <FileTypeIcon mime={file.mime} className="w-12 h-12" />
                 )}
 
                 {/* Type badge */}
@@ -895,11 +883,11 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
                         loading="lazy"
                       />
                       <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                        <span className="text-2xl drop-shadow-lg">📁</span>
+                        <FileTypeIcon mime="folder" className="w-8 h-8" isDir={true} />
                       </div>
                     </>
                   ) : (
-                    <span className="text-3xl">📁</span>
+                    <FileTypeIcon mime="folder" className="w-8 h-8" isDir={true} />
                   )}
                   {dirCounts && dirCounts[item.name] !== undefined && (
                     <span className="absolute top-1 right-1 text-[10px] leading-none font-medium bg-blue-500/90 text-white px-1.5 py-1 rounded-full shadow-sm backdrop-blur-sm">

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { searchFiles, getFileUrl, getThumbUrl, type SearchResult } from '../api';
+import FileTypeIcon from './FileTypeIcon';
 
 interface Props {
   onClose: () => void;
@@ -37,15 +38,6 @@ function formatSize(bytes: number) {
   const units = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
-}
-
-function getIcon(mime: string) {
-  if (mime.startsWith('image/')) return '🖼️';
-  if (mime.startsWith('video/')) return '🎬';
-  if (mime.startsWith('audio/')) return '🎵';
-  if (mime === 'application/pdf') return '📄';
-  if (mime.startsWith('text/')) return '📝';
-  return '📎';
 }
 
 /** Highlight matching text in a string */
@@ -247,11 +239,11 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
         {results.length > 0 && (
           <div className="flex items-center gap-1.5 px-4 py-2 border-b border-gray-100 dark:border-gray-700/50 overflow-x-auto scrollbar-hide">
             {[
-              { key: null, label: '全部', icon: '🔍' },
-              { key: 'image', label: '图片', icon: '🖼️', count: typeCounts.image },
-              { key: 'video', label: '视频', icon: '🎬', count: typeCounts.video },
-              { key: 'audio', label: '音频', icon: '🎵', count: typeCounts.audio },
-              { key: 'document', label: '文档', icon: '📄', count: typeCounts.document },
+              { key: null, label: '全部', icon: (active: boolean) => <svg className={`w-3.5 h-3.5 ${active ? 'text-blue-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg> },
+              { key: 'image', label: '图片', icon: (active: boolean) => <FileTypeIcon mime="image/jpeg" className={`w-4 h-4 ${active ? '' : 'opacity-60'}`} />, count: typeCounts.image },
+              { key: 'video', label: '视频', icon: (active: boolean) => <FileTypeIcon mime="video/mp4" className={`w-4 h-4 ${active ? '' : 'opacity-60'}`} />, count: typeCounts.video },
+              { key: 'audio', label: '音频', icon: (active: boolean) => <FileTypeIcon mime="audio/mp3" className={`w-4 h-4 ${active ? '' : 'opacity-60'}`} />, count: typeCounts.audio },
+              { key: 'document', label: '文档', icon: (active: boolean) => <FileTypeIcon mime="application/pdf" className={`w-4 h-4 ${active ? '' : 'opacity-60'}`} />, count: typeCounts.document },
             ].filter(item => item.key === null || (item.count > 0)).map(item => (
               <button
                 key={item.key ?? 'all'}
@@ -262,7 +254,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
                     : 'bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600/50'
                 }`}
               >
-                <span>{item.icon}</span>
+                {item.icon(typeFilter === item.key)}
                 <span>{item.label}</span>
                 {item.key !== null && (
                   <span className={`text-[10px] ml-0.5 ${typeFilter === item.key ? 'text-blue-400' : 'text-gray-400'}`}>
@@ -316,7 +308,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
                       loading="lazy"
                     />
                   ) : (
-                    <span className="text-xl w-10 h-10 flex items-center justify-center shrink-0">{getIcon(r.mime)}</span>
+                    <span className="w-10 h-10 flex items-center justify-center shrink-0"><FileTypeIcon mime={r.mime} className="w-8 h-8" /></span>
                   )}
 
                   <div className="flex-1 min-w-0">
@@ -324,7 +316,9 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
                       <HighlightText text={r.name} query={query} />
                     </div>
                     <div className="text-xs text-gray-400 dark:text-gray-500 truncate">
-                      {r.dir ? `📂 ${r.dir}` : '根目录'}
+                      {r.dir ? (
+                        <span className="inline-flex items-center gap-1"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>{r.dir}</span>
+                      ) : '根目录'}
                       {r.size > 0 && <span className="ml-2">{formatSize(r.size)}</span>}
                     </div>
                   </div>
