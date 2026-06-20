@@ -629,28 +629,6 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     };
   }, [current, zoomAtPoint, resetZoom]);
 
-  // === Preload adjacent images for instant navigation ===
-  useEffect(() => {
-    if (!current) return;
-    const adjacentIndices = [index - 1, index + 1].filter(
-      (i) => i >= 0 && i < items.length
-    );
-    const pendingImgs: HTMLImageElement[] = [];
-    for (const i of adjacentIndices) {
-      const item = items[i];
-      if (item.mime.startsWith('image/')) {
-        const img = new Image();
-        img.src = getFileUrl(item.path);
-        pendingImgs.push(img);
-      }
-    }
-    return () => {
-      for (const img of pendingImgs) {
-        img.src = '';
-      }
-    };
-  }, [index, items, current]);
-
   // === Mouse drag when zoomed ===
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!isZoomed) return;
@@ -788,6 +766,9 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
           a.download = name;
           a.click();
         }
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'o' || e.key === 'O')) {
+        e.preventDefault();
+        window.open(url, '_blank');
       } else if (e.key === ' ' || e.key === 's' || e.key === 'S') {
         e.preventDefault();
         if (current?.mime.startsWith('video/')) {
@@ -1375,6 +1356,15 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 )}
                 <span>{directUrlCopied ? '已复制' : '直链'}</span>
               </button>
+              {/* Open in new tab */}
+              <button
+                onClick={(e) => { e.stopPropagation(); window.open(url, '_blank'); }}
+                className="flex items-center gap-1.5 px-3 py-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors text-xs shrink-0"
+                title="在新标签页打开"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                <span>打开</span>
+              </button>
               <button
                 onClick={(e) => { e.stopPropagation(); handleCopyFileName(); }}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors text-xs shrink-0 ${nameCopied ? 'text-green-400' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
@@ -1683,6 +1673,19 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
             </svg>
           )}
         </button>
+        {/* Open in new tab */}
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+          title="在新标签页打开 (Ctrl+O)"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+        </a>
         {/* Copy file name */}
         <button
           onClick={(e) => { e.stopPropagation(); handleCopyFileName(); }}
