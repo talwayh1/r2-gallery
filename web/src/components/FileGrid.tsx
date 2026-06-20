@@ -690,6 +690,8 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
   const [draggingFile, setDraggingFile] = useState<string | null>(null);
   const [shareDialog, setShareDialog] = useState<{ path: string; name: string } | null>(null);
   const [folderPicker, setFolderPicker] = useState<{ mode: 'move' | 'copy'; path: string } | null>(null);
+  // Anchor for Shift+click range selection — stores the path of the last manually-selected item
+  const selectionAnchorRef = useRef<string | null>(null);
 
   // Folder thumbnail images
   const folderThumbs = useFolderThumbnails(dirs, currentDir);
@@ -772,6 +774,38 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
     });
   }, [files, sortKey, sortDir]);
 
+  // Ctrl+A — select all items; Escape — clear selection
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Ctrl+A / Cmd+A — select all
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        // Don't intercept when user is typing in an input
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+        e.preventDefault();
+        const allPaths = [...sortedDirs.map(d => d.path), ...sortedFiles.map(f => f.path)];
+        if (onSelect) {
+          allPaths.forEach(p => onSelect(p));
+        } else {
+          setInternalSelected(new Set(allPaths));
+        }
+        return;
+      }
+      // Escape — clear selection
+      if (e.key === 'Escape' && selected.size > 0) {
+        // Don't clear if context menu is open — that's handled separately
+        if (contextMenu) return;
+        if (onSelect) {
+          selected.forEach(p => onSelect(p)); // Let parent clear
+        } else {
+          setInternalSelected(new Set());
+        }
+        selectionAnchorRef.current = null;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [sortedDirs, sortedFiles, selected, onSelect, contextMenu]);
+
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else { setSortKey(key); setSortDir('asc'); }
@@ -842,9 +876,31 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
   }, []);
 
   const handleCardClick = (e: React.MouseEvent, path: string, mime: string) => {
-    // If selection mode is active or Shift key, toggle selection
-    if (isSelectionMode || e.shiftKey) {
+    // Shift+click — range selection: select all items between anchor and clicked item
+    if (e.shiftKey) {
       e.preventDefault();
+      const anchor = selectionAnchorRef.current;
+      if (anchor && anchor !== path) {
+        // Find indices in sortedFiles + sortedDirs combined order
+        const allItems = [...sortedDirs.map(d => ({ name: d.name, path: d.path })), ...sortedFiles.map(f => ({ name: f.name, path: f.path }))];
+        const anchorIdx = allItems.findIndex(i => i.path === anchor);
+        const clickIdx = allItems.findIndex(i => i.path === path);
+        if (anchorIdx >= 0 && clickIdx >= 0) {
+          const [start, end] = anchorIdx < clickIdx ? [anchorIdx, clickIdx] : [clickIdx, anchorIdx];
+          const rangePaths = allItems.slice(start, end + 1).map(i => i.path);
+          if (onSelect) {
+            rangePaths.forEach(p => onSelect(p));
+          } else {
+            setInternalSelected((prev) => {
+              const next = new Set(prev);
+              rangePaths.forEach(p => next.add(p));
+              return next;
+            });
+          }
+          return;
+        }
+      }
+      // Fallback: if no anchor or anchor not found, toggle single item
       if (onSelect) {
         onSelect(path);
       } else {
@@ -857,9 +913,26 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
       }
       return;
     }
-    // Ctrl/Meta + click to enter selection mode
+    // If selection mode is active, toggle individual item and update anchor
+    if (isSelectionMode) {
+      e.preventDefault();
+      selectionAnchorRef.current = path;
+      if (onSelect) {
+        onSelect(path);
+      } else {
+        setInternalSelected((prev) => {
+          const next = new Set(prev);
+          if (next.has(path)) next.delete(path);
+          else next.add(path);
+          return next;
+        });
+      }
+      return;
+    }
+    // Ctrl/Meta + click — add to selection and set anchor
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
+      selectionAnchorRef.current = path;
       if (onSelect) {
         onSelect(path);
       } else {
