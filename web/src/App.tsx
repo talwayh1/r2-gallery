@@ -41,6 +41,7 @@ const DiscoverPage = lazy(() => import('./components/DiscoverPage'));
 const MemoriesPage = lazy(() => import('./components/MemoriesPage'));
 const BatchRename = lazy(() => import('./components/BatchRename'));
 const StatsPanel = lazy(() => import('./components/StatsPanel'));
+const SettingsPanel = lazy(() => import('./components/SettingsPanel'));
 const TrashPage = lazy(() => import('./components/TrashPage'));
 const ActivityPage = lazy(() => import('./components/ActivityPage'));
 
@@ -87,6 +88,7 @@ export default function App() {
   const [showBatchRename, setShowBatchRename] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -928,6 +930,7 @@ export default function App() {
         onDiscoverClick={() => setShowDiscover(true)}
         onMemoriesClick={() => setShowMemories(true)}
         onStatsClick={user ? () => setShowStats(true) : undefined}
+        onSettingsClick={user ? () => setShowSettings(true) : undefined}
         onTrashClick={user ? () => setShowTrash(true) : undefined}
         onActivityClick={user ? () => setShowActivity(true) : undefined}
         onSortChange={(sort: string, order: 'asc' | 'desc') => {
@@ -1163,6 +1166,11 @@ export default function App() {
       {showStats && user && (
         <Suspense fallback={<LazyLoading />}>
           <StatsPanel onClose={() => setShowStats(false)} />
+        </Suspense>
+      )}
+      {showSettings && user && (
+        <Suspense fallback={<LazyLoading />}>
+          <SettingsPanel onClose={() => setShowSettings(false)} />
         </Suspense>
       )}
       {showTrash && user && (

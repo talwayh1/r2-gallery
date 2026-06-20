@@ -315,6 +315,27 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
 
               <hr className="dark:border-gray-700" />
 
+              {/* Auto-refresh Interval */}
+              <h4 className="text-sm font-medium mt-4">自动刷新</h4>
+              <div>
+                <label className="block text-sm mb-1">自动刷新间隔</label>
+                <select
+                  value={localStorage.getItem('refreshInterval') || '0'}
+                  onChange={(e) => { localStorage.setItem('refreshInterval', e.target.value); setSettings({ ...settings }); }}
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
+                >
+                  <option value="0">从不自动刷新</option>
+                  <option value="30000">30 秒</option>
+                  <option value="60000">1 分钟</option>
+                  <option value="300000">5 分钟</option>
+                  <option value="900000">15 分钟</option>
+                  <option value="1800000">30 分钟</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">页面在后台时自动刷新文件列表数据</p>
+              </div>
+
+              <hr className="dark:border-gray-700" />
+
               {/* Drag Behavior */}
               <h4 className="text-sm font-medium mt-4">拖拽行为</h4>
               <div className="flex items-center justify-between">
