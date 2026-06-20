@@ -88,6 +88,16 @@ export default function Header({
   const dirMenuRef = useClickOutside<HTMLDivElement>(() => setDirMenuOpen(false), dirMenuOpen);
   const langRef = useClickOutside<HTMLDivElement>(() => setLangOpen(false), langOpen);
 
+  // Close mobile filter bar on Escape key
+  useEffect(() => {
+    if (!mobileFilterOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileFilterOpen(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [mobileFilterOpen]);
+
   // Listen for PWA install prompt availability
   useEffect(() => {
     const handler = (e: Event) => {
@@ -131,7 +141,7 @@ export default function Header({
                 parts.pop();
                 onNavigate(parts.join('/'));
               }}
-              className="hover:text-blue-500 whitespace-nowrap text-gray-400 hover:text-blue-500"
+              className="hover:text-blue-500 whitespace-nowrap text-gray-400"
               title="上级目录"
             >
               ..
