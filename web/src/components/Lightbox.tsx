@@ -1,7 +1,8 @@
-import { useEffect, useCallback, useState, useRef, lazy, Suspense } from 'react';
+import { useEffect, useCallback, useState, useRef, useMemo, lazy, Suspense } from 'react';
 import { getFileUrl, getThumbUrl, getExif, saveFile, uploadCustomThumb, type ExifData } from '../api';
 import VideoPlayer from './VideoPlayer';
 import MarkdownEditor from './MarkdownEditor';
+import AudioPlayer from './AudioPlayer';
 import { toast } from '../hooks/useToast';
 
 // Lazy-load heavy components (hls.js is ~400KB)
@@ -202,12 +203,6 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
   const offsetRef = useRef(offset);
   scaleRef.current = scale;
   offsetRef.current = offset;
-
-  // Audio player state
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [audioPlaying, setAudioPlaying] = useState(false);
-  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
-  const [audioDuration, setAudioDuration] = useState(0);
 
   // Text content state
   const [textContent, setTextContent] = useState<string | null>(null);
@@ -830,9 +825,6 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
     setImageDimensions(null);
     resetZoom();
     setSlideshowProgress(0);
-    setAudioPlaying(false);
-    setAudioCurrentTime(0);
-    setAudioDuration(0);
     setTextContent(null);
     setTextLoading(false);
   }, [index, resetZoom]);
@@ -1028,22 +1020,6 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
     setImageLoaded(false);
   };
 
-  const handleAudioSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    const audio = audioRef.current;
-    if (!audio || !audioDuration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const ratio = Math.max(0, Math.min(1, x / rect.width));
-    audio.currentTime = ratio * audioDuration;
-  };
-
-  const toggleAudioPlay = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (audio.paused) audio.play();
-    else audio.pause();
-  };
-
   const isImage = current.mime.startsWith('image/');
   const isVideo = current.mime.startsWith('video/');
   const isAudio = current.mime.startsWith('audio/');
@@ -1056,6 +1032,15 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
     current.mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
     current.mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
     current.mime === 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+
+  // Audio playlist — collect all audio items for the AudioPlayer
+  const audioTracks = useMemo(() => {
+    return items.filter(it => it.mime.startsWith('audio/')).map(it => ({
+      name: it.path.split('/').pop() || it.path,
+      path: it.path,
+    }));
+  }, [items]);
+  const audioIndex = items.filter(it => it.mime.startsWith('audio/')).findIndex(it => it.path === current.path);
 
   return (
     <div
@@ -2092,87 +2077,16 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
             />
           </div>
         ) : isAudio ? (
-          <div
-            className="flex flex-col items-center gap-5 p-8 bg-gray-900/80 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl min-w-[340px] max-w-[460px]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Music icon */}
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500/30 to-blue-500/30 flex items-center justify-center border border-white/10">
-              <svg className="w-10 h-10 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-              </svg>
-            </div>
-
-            {/* File name */}
-            <p className="text-white/80 text-sm font-medium text-center truncate max-w-full px-4">{name}</p>
-
-            {/* Progress bar */}
-            <div className="w-full px-2">
-              <div
-                className="w-full h-1.5 bg-white/10 rounded-full cursor-pointer group relative"
-                onClick={handleAudioSeek}
-              >
-                <div
-                  className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full relative group-hover:from-purple-400 group-hover:to-blue-400 transition-colors"
-                  style={{ width: `${audioDuration ? (audioCurrentTime / audioDuration) * 100 : 0}%` }}
-                >
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-              </div>
-              <div className="flex justify-between mt-2 text-[11px] text-white/40 font-mono">
-                <span>{formatTime(audioCurrentTime)}</span>
-                <span>{formatTime(audioDuration)}</span>
-              </div>
-            </div>
-
-            {/* Playback controls */}
-            <div className="flex items-center gap-6">
-              <button
-                onClick={(e) => { e.stopPropagation(); if (hasPrev) goPrev(); }}
-                className={`p-2 transition-colors ${hasPrev ? 'text-white/40 hover:text-white' : 'text-white/10 cursor-default'}`}
-                title="上一个"
-              >
-                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
-                </svg>
-              </button>
-
-              <button
-                onClick={(e) => { e.stopPropagation(); toggleAudioPlay(); }}
-                className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-              >
-                {audioPlaying ? (
-                  <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                  </svg>
-                ) : (
-                  <svg className="w-7 h-7 ml-1" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                )}
-              </button>
-
-              <button
-                onClick={(e) => { e.stopPropagation(); if (hasNext) goNext(); }}
-                className={`p-2 transition-colors ${hasNext ? 'text-white/40 hover:text-white' : 'text-white/10 cursor-default'}`}
-                title="下一个"
-              >
-                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Hidden audio element */}
-            <audio
-              ref={audioRef}
-              src={url}
-              autoPlay
-              onTimeUpdate={(e) => setAudioCurrentTime(e.currentTarget.currentTime)}
-              onLoadedMetadata={(e) => setAudioDuration(e.currentTarget.duration)}
-              onPlay={() => setAudioPlaying(true)}
-              onPause={() => setAudioPlaying(false)}
-              onEnded={() => setAudioPlaying(false)}
+          <div className="flex items-center justify-center w-full h-full" onClick={(e) => e.stopPropagation()}>
+            <AudioPlayer
+              tracks={audioTracks}
+              currentIndex={audioIndex >= 0 ? audioIndex : 0}
+              onTrackChange={(i) => {
+                const audioItem = items.filter(it => it.mime.startsWith('audio/'))[i];
+                const absoluteIdx = items.findIndex(it => it.path === audioItem?.path);
+                if (absoluteIdx >= 0) onNavigate(absoluteIdx);
+              }}
+              onClose={handleClose}
             />
           </div>
         ) : isPdf ? (
