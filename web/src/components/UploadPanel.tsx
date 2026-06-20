@@ -2,8 +2,14 @@
  * UploadPanel — shows upload progress for all active/completed uploads.
  * Floating panel triggered by the upload button badge.
  * Inspired by ZPan's upload-queue UI.
+ *
+ * Features:
+ * - Auto-scroll to latest active upload
+ * - Striped animation on active progress bars
+ * - "Clear completed" to dismiss done/failed/cancelled tasks
  */
 
+import { useRef, useEffect } from 'react';
 import { useUploadQueue, formatEta, formatSpeed, type UploadTask, type UploadTaskStatus } from '../hooks/useUploadQueue';
 import { formatSize } from '../utils';
 
@@ -57,11 +63,11 @@ function TaskRow({ task, onCancel, onRetry }: { task: UploadTask; onCancel: () =
             {task.speed > 0 && ` · ${formatSpeed(task.speed)}`}
             {task.status === 'uploading' && task.etaSeconds != null && ` · ${formatEta(task.etaSeconds)}`}
           </p>
-          {/* Progress bar */}
+          {/* Progress bar with animated stripes for active uploads */}
           <div className="mt-1.5 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-200 ${
-                task.status === 'completed' ? 'bg-emerald-500' : task.status === 'failed' ? 'bg-red-500' : 'bg-blue-500'
+                task.status === 'completed' ? 'bg-emerald-500' : task.status === 'failed' ? 'bg-red-500' : 'bg-blue-500 progress-stripes'
               }`}
               style={{ width: `${pct}%` }}
             />
@@ -76,7 +82,20 @@ function TaskRow({ task, onCancel, onRetry }: { task: UploadTask; onCancel: () =
 }
 
 export default function UploadPanel() {
-  const { tasks, isOpen, setOpen, cancel, cancelAll, retry, hasActiveUploads, activeCount, completedCount, failedCount } = useUploadQueue();
+  const { tasks, isOpen, setOpen, cancel, cancelAll, retry, dismissCompleted, hasActiveUploads, activeCount, completedCount, failedCount } = useUploadQueue();
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to top when new tasks arrive (newest tasks are prepended)
+  useEffect(() => {
+    if (isOpen && tasks.length > 0 && listRef.current) {
+      listRef.current.scrollTop = 0;
+    }
+  }, [isOpen, tasks.length]);
+
+  // Determine if we have any terminal tasks that could be cleared
+  const terminalCount = tasks.filter(t =>
+    t.status === 'completed' || t.status === 'failed' || t.status === 'cancelled'
+  ).length;
 
   if (!isOpen && tasks.length === 0) return null;
 
@@ -112,14 +131,28 @@ export default function UploadPanel() {
           </div>
 
           {/* Task list */}
-          <div className="flex-1 overflow-y-auto min-h-0">
+          <div ref={listRef} className="flex-1 overflow-y-auto min-h-0">
             {tasks.length === 0 ? (
               <div className="p-6 text-center text-gray-400 text-sm">暂无上传任务</div>
             ) : (
-              tasks.map(task => (
-                <TaskRow key={task.id} task={task} onCancel={() => cancel(task.id)} onRetry={() => retry(task.id)} />
-              ))
+              <>
+                {/* Clear completed button at top of list when there are done items */}
+                {terminalCount > 0 && (
+                  <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
+                    <button
+                      onClick={dismissCompleted}
+                      className="w-full py-1 text-[11px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 bg-gray-50 dark:bg-gray-750 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      清空已完成 ({terminalCount})
+                    </button>
+                  </div>
+                )}
+              </>
             )}
+            {/* This ensures tasks always render below the clear button */}
+            {tasks.map(task => (
+              <TaskRow key={task.id} task={task} onCancel={() => cancel(task.id)} onRetry={() => retry(task.id)} />
+            ))}
           </div>
         </div>
       )}

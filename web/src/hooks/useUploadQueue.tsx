@@ -50,6 +50,8 @@ interface UploadQueueValue {
   cancelAll: () => void;
   /** Retry a failed or cancelled upload */
   retry: (id: string) => void;
+  /** Remove all completed/failed/cancelled tasks from the list */
+  dismissCompleted: () => void;
   hasActiveUploads: boolean;
   activeCount: number;
   completedCount: number;
@@ -220,6 +222,20 @@ export function UploadQueueProvider({ children }: { children: ReactNode }) {
     maybeStartNext();
   }, [publish, maybeStartNext]);
 
+  const dismissCompleted = useCallback(() => {
+    tasksRef.current = tasksRef.current.filter(t =>
+      t.status === 'queued' || t.status === 'uploading'
+    );
+    // Clean up orphaned batch references
+    for (const [bid, batch] of batchRef.current) {
+      const remaining = tasksRef.current.filter(t => batch.ids.has(t.id));
+      if (remaining.length === 0) {
+        batchRef.current.delete(bid);
+      }
+    }
+    publish();
+  }, [publish]);
+
   const hasActiveUploads = tasks.some(t => isActive(t.status));
   const activeCount = tasks.filter(t => isActive(t.status)).length;
   const completedCount = tasks.filter(t => t.status === 'completed').length;
@@ -238,9 +254,9 @@ export function UploadQueueProvider({ children }: { children: ReactNode }) {
   }, [cancelAll, hasActiveUploads]);
 
   const value = useMemo(() => ({
-    tasks, isOpen, setOpen, enqueue, cancel, cancelAll, retry,
+    tasks, isOpen, setOpen, enqueue, cancel, cancelAll, retry, dismissCompleted,
     hasActiveUploads, activeCount, completedCount, failedCount,
-  }), [tasks, isOpen, setOpen, enqueue, cancel, cancelAll, retry, hasActiveUploads, activeCount, completedCount, failedCount]);
+  }), [tasks, isOpen, setOpen, enqueue, cancel, cancelAll, retry, dismissCompleted, hasActiveUploads, activeCount, completedCount, failedCount]);
 
   return <UploadQueueContext.Provider value={value}>{children}</UploadQueueContext.Provider>;
 }
