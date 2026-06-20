@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { FileItem } from '../types';
-import { getThumbUrl } from '../api';
 import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
+import SafeThumb from './SafeThumb';
 
 interface Props {
   files: Record<string, FileItem>;
@@ -70,7 +70,7 @@ export default function FileColumns({ files, dirs, currentDir, onNavigate, onOpe
           return (
             <div
               key={item.path}
-              className={`break-inside-avoid rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 cursor-pointer transition-all ${
+              className={`break-inside-avoid rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 cursor-pointer transition-all relative ${
                 isSelected ? 'ring-2 ring-blue-500' : 'hover:shadow-lg'
               }`}
               onClick={() => isDir ? onNavigate(item.path) : onOpen(item.path, item.mime)}
@@ -91,7 +91,9 @@ export default function FileColumns({ files, dirs, currentDir, onNavigate, onOpe
                   )}
                 </div>
               ) : isImage ? (
-                <img src={getThumbUrl(item.path)} alt="" className="w-full" loading="lazy" />
+                <div className="w-full aspect-auto">
+                  <SafeThumb path={item.path} />
+                </div>
               ) : isVideo ? (
                 <div className="aspect-video flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                   <svg className="w-10 h-10 text-white/60" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
