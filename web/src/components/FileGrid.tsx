@@ -165,7 +165,7 @@ function getMimeLabel(mime: string): string {
  * Image thumbnail with loading skeleton, fade-in, and error fallback.
  * Uses native <img> with loading="lazy" for efficient loading.
  */
-function ImageThumbnail({ src, alt, onClick }: { src: string; alt: string; onClick: () => void }) {
+function ImageThumbnail({ src, alt, onClick, priority }: { src: string; alt: string; onClick: () => void; priority?: boolean }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
@@ -188,9 +188,9 @@ function ImageThumbnail({ src, alt, onClick }: { src: string; alt: string; onCli
       <img
         src={src}
         alt={alt}
-        loading="lazy"
+        loading={priority ? 'eager' : 'lazy'}
         decoding="async"
-        fetchPriority="low"
+        fetchPriority={priority ? 'high' : 'low'}
         onClick={onClick}
         className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
         onLoad={() => setLoaded(true)}
@@ -204,23 +204,42 @@ function ImageThumbnail({ src, alt, onClick }: { src: string; alt: string; onCli
  * Video thumbnail with hover-to-preview.
  * Shows a poster image (from /thumb) if available; on hover, loads and plays the video muted.
  */
-function VideoThumbnail({ src, path, onClick }: { src: string; path: string; onClick: () => void }) {
+function VideoThumbnail({ src, path, onClick, isFirstRow }: { src: string; path: string; onClick: () => void; isFirstRow?: boolean }) {
   const [hovering, setHovering] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [posterLoaded, setPosterLoaded] = useState(false);
   const [posterFailed, setPosterFailed] = useState(false);
+  const [touchPreview, setTouchPreview] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const posterUrl = getThumbUrl(path);
 
   useEffect(() => {
-    if (hovering && videoRef.current) {
+    if ((hovering || touchPreview) && videoRef.current) {
       videoRef.current.currentTime = 0;
       videoRef.current.play().catch(() => { /* ignore autoplay block */ });
-    } else if (!hovering && videoRef.current) {
+    } else if (!hovering && !touchPreview && videoRef.current) {
       videoRef.current.pause();
       videoRef.current.currentTime = 0;
     }
-  }, [hovering]);
+  }, [hovering, touchPreview]);
+
+  // On mobile, auto-stop preview after 2.5s to save bandwidth
+  useEffect(() => {
+    if (!touchPreview) return;
+    touchTimerRef.current = setTimeout(() => {
+      setTouchPreview(false);
+    }, 2500);
+    return () => {
+      if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+    };
+  }, [touchPreview]);
+
+  const handleTouchClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setTouchPreview((v) => !v);
+  };
 
   const hasPoster = posterLoaded && !posterFailed;
 
@@ -235,24 +254,24 @@ function VideoThumbnail({ src, path, onClick }: { src: string; path: string; onC
         <img
           src={posterUrl}
           alt=""
-          loading="lazy"
+          loading={isFirstRow ? 'eager' : 'lazy'}
           decoding="async"
-          fetchPriority="low"
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${hasPoster && !(hovering && videoLoaded) ? 'opacity-100' : 'opacity-0'}`}
+          fetchPriority={isFirstRow ? 'high' : 'low'}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${hasPoster && !(hovering && videoLoaded) && !touchPreview ? 'opacity-100' : 'opacity-0'}`}
           onLoad={() => setPosterLoaded(true)}
           onError={() => setPosterFailed(true)}
         />
       )}
 
       {/* Default play icon background (shown when no poster or video is playing) */}
-      <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 text-white transition-opacity duration-300 ${hasPoster ? 'opacity-0' : hovering && videoLoaded ? 'opacity-0' : 'opacity-100'}`}>
+      <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 text-white transition-opacity duration-300 ${hasPoster ? 'opacity-0' : hovering && videoLoaded ? 'opacity-0' : touchPreview ? 'opacity-0' : 'opacity-100'}`}>
         <svg className="w-12 h-12 text-white/60" fill="currentColor" viewBox="0 0 24 24">
           <path d="M8 5v14l11-7z" />
         </svg>
       </div>
 
-      {/* Video preview (loaded on hover) */}
-      {hovering && (
+      {/* Video preview (loaded on hover/touch) */}
+      {(hovering || touchPreview) && (
         <video
           ref={videoRef}
           src={src}
@@ -265,8 +284,32 @@ function VideoThumbnail({ src, path, onClick }: { src: string; path: string; onC
         />
       )}
 
+      {/* Mobile touch preview toggle button */}
+      <button
+        onClick={handleTouchClick}
+        className="absolute inset-0 z-10 sm:hidden flex items-center justify-center"
+        aria-label={touchPreview ? '停止预览' : '预览视频'}
+      >
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
+          touchPreview
+            ? 'bg-black/50 scale-90'
+            : 'bg-black/40 hover:bg-black/50'
+        }`}>
+          {touchPreview ? (
+            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+              <rect x="6" y="4" width="4" height="16" rx="1" />
+              <rect x="14" y="4" width="4" height="16" rx="1" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          )}
+        </div>
+      </button>
+
       {/* VIDEO badge */}
-      <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-medium bg-black/70 text-white rounded z-10">
+      <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-medium bg-black/70 text-white rounded z-20">
         VIDEO
       </span>
     </div>
@@ -492,12 +535,14 @@ function VirtualFileGrid({
                   <ImageThumbnail
                     src={getThumbUrl(file.path)}
                     alt={file.name}
+                    priority={idx < columns}
                     onClick={() => handleCardClick(new MouseEvent('click') as any, file.path, file.mime)}
                   />
                 ) : isVideo ? (
                   <VideoThumbnail
                     src={getFileUrl(file.path)}
                     path={file.path}
+                    isFirstRow={idx < columns}
                     onClick={() => handleCardClick(new MouseEvent('click') as any, file.path, file.mime)}
                   />
                 ) : (
