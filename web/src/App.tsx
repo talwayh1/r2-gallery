@@ -997,7 +997,7 @@ export default function App() {
           <Sidebar currentDir={dir} onNavigate={navigate} onClose={isMobile ? () => setSidebarOpen(false) : undefined} />
         </div>
         {/* Main content */}
-        <main className={`flex-1 overflow-auto transition-opacity duration-200 ${isMobile ? 'p-2' : 'p-4'}`} style={{ opacity: loading ? 0.6 : 1 }}>
+        <main className={`flex-1 overflow-auto ${isMobile ? 'p-2' : 'p-4'}`}>
           {/* Type filter bar - mobile: horizontal scroll, desktop: normal */}
           <div className={`mb-3 ${isMobile ? 'overflow-x-auto scrollbar-none -mx-2 px-2' : 'hidden sm:block'}`}>
             <TypeFilter
@@ -1007,7 +1007,7 @@ export default function App() {
             />
           </div>
 
-          {loading ? (
+          {loading && !loadingMore ? (
             <div className="py-4">
               <SkeletonGrid layoutMode={layout} />
             </div>

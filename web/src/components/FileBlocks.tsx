@@ -5,6 +5,7 @@ import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
 import { toast } from '../hooks/useToast';
 import SafeThumb from './SafeThumb';
 import FileTypeIcon from './FileTypeIcon';
+import EmptyState from './EmptyState';
 import { formatSize } from '../utils';
 
 const FolderPicker = lazy(() => import('./FolderPicker'));
@@ -188,9 +189,7 @@ export default function FileBlocks({ files, dirs, currentDir, onNavigate, onOpen
       )}
 
       {allItems.length === 0 && (
-        <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-          <p className="text-lg font-medium">暂无文件</p>
-        </div>
+        <EmptyState type="directory" />
       )}
 
       {/* Context Menu */}

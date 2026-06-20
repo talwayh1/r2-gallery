@@ -3,6 +3,7 @@ import type { FileItem } from '../types';
 import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
 import SafeThumb from './SafeThumb';
 import FileTypeIcon from './FileTypeIcon';
+import EmptyState from './EmptyState';
 import { formatSize } from '../utils';
 
 interface Props {
@@ -127,9 +128,7 @@ export default function FileColumns({ files, dirs, currentDir, onNavigate, onOpe
       )}
 
       {allItems.length === 0 && (
-        <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-          <p className="text-lg font-medium">暂无文件</p>
-        </div>
+        <EmptyState type="directory" />
       )}
     </>
   );
