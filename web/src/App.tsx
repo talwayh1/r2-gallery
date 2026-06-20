@@ -148,6 +148,9 @@ export default function App() {
       // AbortError is expected on navigation — don't log
       if (e instanceof DOMException && e.name === 'AbortError') return;
       console.error('Failed to load files:', e);
+      const msg = (e as Error).message || '加载文件失败';
+      // Only show toast for non-Abort errors — AbortError is handled above
+      toast('error', `加载文件失败: ${msg}`);
     } finally {
       if (controller === abortRef.current) {
         setLoading(false);
@@ -765,15 +768,26 @@ export default function App() {
     const paths = Array.from(selected);
     toast('info', `正在复制 ${paths.length} 个项目...`);
     let success = 0;
+    let firstError = '';
     for (const path of paths) {
       try {
         const result = await duplicateFile(path);
         if (result.success) success++;
       } catch (err) {
         console.error('Duplicate failed:', path, err);
+        if (!firstError) {
+          const msg = (err as Error).message || '未知错误';
+          firstError = msg;
+          toast('error', `复制失败: ${msg}`, 4000);
+        }
       }
     }
-    toast('success', `已复制 ${success}/${paths.length} 个项目`);
+    const failed = paths.length - success;
+    if (failed > 0) {
+      toast('warning', `已复制 ${success}/${paths.length} 个项目，${failed} 个失败`);
+    } else {
+      toast('success', `已复制 ${success}/${paths.length} 个项目`);
+    }
     setSelected(new Set());
     loadFiles(dir);
   }, [selected, user, dir, loadFiles]);
