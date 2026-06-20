@@ -221,12 +221,14 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
           </svg>
           <input
             ref={inputRef}
-            type="text"
+            type="search"
             value={query}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="搜索所有文件..."
-            className="flex-1 text-lg bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-500"
+            enterKeyHint="search"
+            autoComplete="off"
+            className="flex-1 text-lg bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-500 [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden"
           />
           {query && (
             <button onClick={() => { setQuery(''); setResults([]); setTotal(0); inputRef.current?.focus(); }} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">

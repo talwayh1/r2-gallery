@@ -30,6 +30,7 @@ import TypeFilter, { matchFilter } from './components/TypeFilter';
 import type { TypeFilter as TypeFilterKind } from './components/TypeFilter';
 import SkeletonGrid from './components/SkeletonGrid';
 import ScrollToTop from './components/ScrollToTop';
+import EmptyState from './components/EmptyState';
 
 // Lazy-loaded components (not needed for first paint)
 const Lightbox = lazy(() => import('./components/Lightbox'));
@@ -1011,6 +1012,14 @@ export default function App() {
             <div className="py-4">
               <SkeletonGrid layoutMode={layout} />
             </div>
+          ) : Object.keys(filteredFiles).length === 0 && dirs.length === 0 ? (
+            <EmptyState
+              type={search ? 'search' : typeFilter !== 'all' ? 'filtered' : user ? 'upload' : 'directory'}
+              user={!!user}
+              onClearSearch={search ? () => setSearch('') : undefined}
+              onClearFilter={typeFilter !== 'all' ? () => setTypeFilter('all') : undefined}
+              onUpload={user ? () => uploadDropzoneRef.current?.openFileDialog() : undefined}
+            />
           ) : (
             <Suspense fallback={<LazyLoading />}>
               {user ? (
