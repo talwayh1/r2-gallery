@@ -19,12 +19,15 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
   const [muted, setMuted] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [buffered, setBuffered] = useState(0);
+  const [pipSupported] = useState(() => typeof document !== 'undefined' && 'pictureInPictureEnabled' in document && document.pictureInPictureEnabled);
+  const [pipActive, setPipActive] = useState(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const url = getFileUrl(path);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+
     const onTimeUpdate = () => {
       setCurrentTime(video.currentTime);
       if (video.buffered.length > 0) {
@@ -35,17 +38,23 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
     const onEndedHandler = () => { setPlaying(false); onEnded?.(); };
+    const onEnterPip = () => setPipActive(true);
+    const onLeavePip = () => setPipActive(false);
     video.addEventListener('timeupdate', onTimeUpdate);
     video.addEventListener('loadedmetadata', onLoadedMetadata);
     video.addEventListener('play', onPlay);
     video.addEventListener('pause', onPause);
     video.addEventListener('ended', onEndedHandler);
+    video.addEventListener('enterpictureinpicture', onEnterPip);
+    video.addEventListener('leavepictureinpicture', onLeavePip);
     return () => {
       video.removeEventListener('timeupdate', onTimeUpdate);
       video.removeEventListener('loadedmetadata', onLoadedMetadata);
       video.removeEventListener('play', onPlay);
       video.removeEventListener('pause', onPause);
       video.removeEventListener('ended', onEndedHandler);
+      video.removeEventListener('enterpictureinpicture', onEnterPip);
+      video.removeEventListener('leavepictureinpicture', onLeavePip);
     };
   }, [onEnded]);
 
@@ -86,6 +95,20 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
     if (!el) return;
     if (document.fullscreenElement) document.exitFullscreen();
     else el.requestFullscreen();
+  };
+
+  const togglePiP = async () => {
+    const video = videoRef.current;
+    if (!video) return;
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else {
+        await video.requestPictureInPicture();
+      }
+    } catch (err) {
+      console.warn('PiP failed:', err);
+    }
   };
 
   const handleMouseMove = () => {
@@ -169,6 +192,15 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
           <span className="text-white/80 text-xs font-mono">{formatTime(currentTime)} / {formatTime(duration)}</span>
 
           <div className="flex-1" />
+
+          {/* PiP button */}
+          {pipSupported && (
+            <button onClick={togglePiP} className={`transition-colors ${pipActive ? 'text-blue-400' : 'text-white/70 hover:text-white'}`} title={pipActive ? '退出画中画' : '画中画'}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM11 9h4v4h-4V9z" />
+              </svg>
+            </button>
+          )}
 
           {/* Volume */}
           <button onClick={toggleMute} className="text-white/70 hover:text-white transition-colors">

@@ -931,14 +931,21 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete }
     return () => { cancelled = true; };
   }, [current, isUrlFile]);
 
-  // Preload ±2 adjacent thumbnails for smoother navigation (not full originals)
+  // Preload adjacent items: full-size originals for ±1, thumbnails for ±2
   useEffect(() => {
     const preloadIndices = [index - 2, index - 1, index + 1, index + 2];
     const preloaded: HTMLImageElement[] = [];
     for (const i of preloadIndices) {
       if (i >= 0 && i < items.length && items[i]?.mime.startsWith('image/')) {
+        const distance = Math.abs(i - index);
         const img = new Image();
-        img.src = getThumbUrl(items[i].path);
+        if (distance <= 1) {
+          // Preload full-size original for immediate neighbors (smooth navigation)
+          img.src = getFileUrl(items[i].path);
+        } else {
+          // Preload thumbnail for farther neighbors (quick preview)
+          img.src = getThumbUrl(items[i].path);
+        }
         preloaded.push(img);
       }
     }
