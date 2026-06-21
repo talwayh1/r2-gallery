@@ -1069,6 +1069,7 @@ export default function App() {
               onClearSearch={search ? () => setSearch('') : undefined}
               onClearFilter={typeFilter !== 'all' ? () => setTypeFilter('all') : undefined}
               onUpload={user ? () => uploadDropzoneRef.current?.openFileDialog() : undefined}
+              onNavigate={navigate}
             />
           ) : (
             <ErrorBoundary><Suspense fallback={<LazyLoading />}>

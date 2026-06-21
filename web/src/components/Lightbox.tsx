@@ -1272,7 +1272,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
       {/* Action buttons - top bar on desktop, bottom bar on mobile */}
       {isMobile ? (
-        <div className={`fixed bottom-0 left-0 right-0 z-10 transition-opacity duration-200 ${!uiVisible ? 'opacity-0 pointer-events-none' : ''}`}
+        <div className={`fixed bottom-0 left-0 right-0 z-10 mobile-safe-bottom transition-opacity duration-200 ${!uiVisible ? 'opacity-0 pointer-events-none' : ''}`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Primary toolbar: most-used actions always visible */}

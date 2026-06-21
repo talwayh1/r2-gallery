@@ -20,9 +20,11 @@ interface Props {
   onClearSearch?: () => void;
   onClearFilter?: () => void;
   onUpload?: () => void;
+  /** Navigate to a directory (used by "返回首页" button) */
+  onNavigate?: (dir: string) => void;
 }
 
-export default function EmptyState({ type, user, onClearSearch, onClearFilter, onUpload }: Props) {
+export default function EmptyState({ type, user, onClearSearch, onClearFilter, onUpload, onNavigate }: Props) {
   const { t } = useTranslation();
 
   const config = CONFIGS[type];
@@ -81,9 +83,9 @@ export default function EmptyState({ type, user, onClearSearch, onClearFilter, o
           </button>
         )}
 
-        {type === 'directory' && (
+        {type === 'directory' && onNavigate && (
           <button
-            onClick={() => window.history.pushState({}, '', '/')}
+            onClick={() => onNavigate('')}
             className="px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
           >
             {t('nav.home', '返回首页')}
