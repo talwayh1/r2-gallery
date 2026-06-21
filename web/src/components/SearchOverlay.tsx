@@ -218,6 +218,14 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setSelectedIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      if (filteredResults.length > 0) {
+        const r = filteredResults[selectedIndex];
+        if (r) {
+          window.open(getFileUrl(r.path), '_blank');
+        }
+      }
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (filteredResults.length > 0) {
@@ -403,6 +411,13 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
                   )}
                 </div>
               )}
+
+              {/* All results loaded indicator */}
+              {!hasMore && results.length >= 2 && total > 0 && (
+                <div className="px-4 py-3 text-center">
+                  <span className="text-[11px] text-gray-300 dark:text-gray-600">已显示全部 {total} 个结果</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -475,6 +490,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
         <div className="flex items-center gap-4 px-5 py-2.5 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-400">
           <span className="flex items-center gap-1"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">↑↓</kbd> 导航</span>
           <span className="flex items-center gap-1"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">↵</kbd> 打开</span>
+          <span className="flex items-center gap-1 hidden sm:flex"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">^↵</kbd> 新标签页</span>
           <span className="flex items-center gap-1"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">esc</kbd> 关闭</span>
         </div>
       </div>
