@@ -200,6 +200,10 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const [urlContent, setUrlContent] = useState<string | null>(null);
   const [urlLoading, setUrlLoading] = useState(false);
 
+  // Office document iframe loading state
+  const [officeLoaded, setOfficeLoaded] = useState(false);
+  const officeLoadTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
   // Panorama state
   const [showPanorama, setShowPanorama] = useState(false);
 
@@ -837,6 +841,11 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     setSlideshowProgress(0);
     setTextContent(null);
     setTextLoading(false);
+    setOfficeLoaded(false);
+    if (officeLoadTimerRef.current) {
+      clearTimeout(officeLoadTimerRef.current);
+      officeLoadTimerRef.current = undefined;
+    }
   }, [index, resetZoom]);
 
   // Crossfade transition — smoothly fades the previous image out as the new one loads
@@ -2276,11 +2285,28 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
             className="flex flex-col items-center gap-4 w-[85vw] max-w-[900px] h-[85vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            <iframe
-              src={`https://docs.google.com/gview?url=${encodeURIComponent(directUrl)}&embedded=true`}
-              className="w-full flex-1 rounded-lg border border-white/10 bg-white"
-              title={name}
-            />
+            <div className="relative w-full flex-1 rounded-lg overflow-hidden">
+              {!officeLoaded && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gray-800/80 backdrop-blur-sm rounded-lg">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white/50 mb-4" />
+                  <p className="text-white/50 text-sm">正在加载文档预览...</p>
+                  <p className="text-white/30 text-xs mt-2">由 Google Docs Viewer 提供</p>
+                </div>
+              )}
+              <iframe
+                src={`https://docs.google.com/gview?url=${encodeURIComponent(directUrl)}&embedded=true`}
+                className="w-full h-full rounded-lg border border-white/10 bg-white"
+                title={name}
+                onLoad={() => {
+                  setOfficeLoaded(true);
+                  if (officeLoadTimerRef.current) clearTimeout(officeLoadTimerRef.current);
+                }}
+                onError={() => {
+                  // Iframe load failed — still hide the skeleton after a timeout
+                  setTimeout(() => setOfficeLoaded(true), 2000);
+                }}
+              />
+            </div>
             <div className="flex items-center gap-3">
               <a
                 href={url}
@@ -2308,6 +2334,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
               <MarkdownEditor
                 content={textContent}
                 fileName={name}
+                saving={textSaving}
                 onSave={async (newContent: string) => {
                   if (!current) return;
                   setTextSaving(true);

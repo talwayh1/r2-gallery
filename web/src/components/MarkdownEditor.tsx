@@ -6,6 +6,7 @@ interface Props {
   onSave?: (content: string) => void;
   onClose?: () => void;
   readOnly?: boolean;
+  saving?: boolean;
 }
 
 type ViewMode = 'edit' | 'preview' | 'split';
@@ -115,7 +116,7 @@ function scrollToMatch(container: HTMLElement | null, matchIndex: number) {
   }
 }
 
-export default function MarkdownEditor({ content, fileName, onSave, readOnly = false }: Props) {
+export default function MarkdownEditor({ content, fileName, onSave, onClose, readOnly = false, saving = false }: Props) {
   const [mode, setMode] = useState<ViewMode>('split');
   const [editContent, setEditContent] = useState(content);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -252,8 +253,11 @@ export default function MarkdownEditor({ content, fileName, onSave, readOnly = f
             </svg>
           </button>
           {!readOnly && onSave && (
-            <button onClick={handleSave} className="px-3 py-1 text-xs bg-green-500/20 text-green-400 rounded-md hover:bg-green-500/30 transition-colors">
-              保存
+            <button onClick={handleSave} disabled={saving} className={`px-3 py-1 text-xs rounded-md transition-colors flex items-center gap-1.5 ${
+              saving ? 'bg-green-500/30 text-green-300 cursor-wait' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+            }`}>
+              {saving && <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
+              {saving ? '保存中...' : '保存'}
             </button>
           )}
         </div>
@@ -387,8 +391,11 @@ export default function MarkdownEditor({ content, fileName, onSave, readOnly = f
           复制
         </button>
         {isEditable && codeViewMode === 'edit' && (
-          <button onClick={handleSave} className="px-2 py-1 text-xs bg-green-500/20 text-green-400 rounded-md hover:bg-green-500/30 transition-colors">
-            保存
+          <button onClick={handleSave} disabled={saving} className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1.5 ${
+            saving ? 'bg-green-500/30 text-green-300 cursor-wait' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+          }`}>
+            {saving && <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
+            {saving ? '保存中...' : '保存'}
           </button>
         )}
       </div>
