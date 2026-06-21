@@ -212,7 +212,9 @@ files.get('/files', async (c) => {
 files.get('/dirs', async (c) => {
   const database = c.env.DB;
   const tree = await db.getDirTree(database);
-  return c.json(tree);
+  const resp = c.json(tree);
+  resp.headers.set('Cache-Control', 'no-cache, must-revalidate');
+  return resp;
 });
 
 // GET /api/file?path=photos/image.jpg — supports Range requests for video seeking

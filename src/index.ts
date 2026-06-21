@@ -206,7 +206,9 @@ app.get('/api/config', async (c) => {
     cdnDomain: c.env.CDN_DOMAIN || null,
   };
   configCache = { data, ts: Date.now() };
-  return c.json(data);
+  const resp = c.json(data);
+  resp.headers.set('Cache-Control', 'no-cache, must-revalidate');
+  return resp;
 });
 
 // Ping — check auth status

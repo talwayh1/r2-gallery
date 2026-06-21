@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from 'react';
+import ErrorBoundary from './components/ErrorBoundary';
 import type { FileItem, LayoutMode, SortMode } from './types';
 import type { UploadDropzoneHandle } from './components/UploadDropzone';
 import { useAuth } from './hooks/useAuth';
@@ -1038,7 +1039,7 @@ export default function App() {
               onUpload={user ? () => uploadDropzoneRef.current?.openFileDialog() : undefined}
             />
           ) : (
-            <Suspense fallback={<LazyLoading />}>
+            <ErrorBoundary><Suspense fallback={<LazyLoading />}>
               {user ? (
                 <UploadDropzone ref={uploadDropzoneRef} dir={dir} onUpload={() => loadFiles(dir)}>
                   {renderLayout(filteredFiles, dirs, selected)}
@@ -1046,7 +1047,7 @@ export default function App() {
               ) : (
                 renderLayout(filteredFiles, dirs, selected)
               )}
-            </Suspense>
+            </Suspense></ErrorBoundary>
           )}
 
           {/* Summary bar */}
@@ -1082,7 +1083,7 @@ export default function App() {
       )}
 
       {lightbox && mediaItems.length > 0 && (
-        <Suspense fallback={<LazyLoading />}>
+        <ErrorBoundary><Suspense fallback={<LazyLoading />}>
           <Lightbox
             items={mediaItems}
             index={lightbox.index}
@@ -1091,7 +1092,7 @@ export default function App() {
             onDelete={user ? handleLightboxDelete : undefined}
             onDuplicate={user ? handleLightboxDuplicate : undefined}
           />
-        </Suspense>
+        </Suspense></ErrorBoundary>
       )}
       {showLogin && !user && (
         <Login
@@ -1112,9 +1113,9 @@ export default function App() {
         />
       )}
       {showShortcuts && (
-        <Suspense fallback={<LazyLoading />}>
+        <ErrorBoundary><Suspense fallback={<LazyLoading />}>
           <KeyboardShortcuts onClose={() => setShowShortcuts(false)} />
-        </Suspense>
+        </Suspense></ErrorBoundary>
       )}
       {showCreateFolder && (
         <CreateFolder
@@ -1126,78 +1127,78 @@ export default function App() {
         />
       )}
       {showMoveDialog && user && (
-        <Suspense fallback={<LazyLoading />}>
+        <ErrorBoundary><Suspense fallback={<LazyLoading />}>
           <MoveToFolder
             currentDir={dir}
             onMove={handleMoveConfirm}
             onClose={() => setShowMoveDialog(false)}
           />
-        </Suspense>
+        </Suspense></ErrorBoundary>
       )}
       {showSearch && (
-        <Suspense fallback={<LazyLoading />}>
+        <ErrorBoundary><Suspense fallback={<LazyLoading />}>
           <SearchOverlay
             onClose={() => setShowSearch(false)}
             onNavigate={(d) => { navigate(d); setShowSearch(false); }}
             onOpenFile={(path, mime) => { openLightbox(path, mime); setShowSearch(false); }}
           />
-        </Suspense>
+        </Suspense></ErrorBoundary>
       )}
       {showDiscover && (
-        <Suspense fallback={<LazyLoading />}>
+        <ErrorBoundary><Suspense fallback={<LazyLoading />}>
           <DiscoverPage
             onClose={() => setShowDiscover(false)}
             onNavigate={(d) => { navigate(d); setShowDiscover(false); }}
             onOpenFile={(path, mime) => { openLightbox(path, mime); setShowDiscover(false); }}
           />
-        </Suspense>
+        </Suspense></ErrorBoundary>
       )}
       {showMemories && (
-        <Suspense fallback={<LazyLoading />}>
+        <ErrorBoundary><Suspense fallback={<LazyLoading />}>
           <MemoriesPage
             onClose={() => setShowMemories(false)}
             onNavigate={(d) => { navigate(d); setShowMemories(false); }}
             onOpenFile={(path, mime) => { openLightbox(path, mime); setShowMemories(false); }}
           />
-        </Suspense>
+        </Suspense></ErrorBoundary>
       )}
       {showBatchRename && user && (
-        <Suspense fallback={<LazyLoading />}>
+        <ErrorBoundary><Suspense fallback={<LazyLoading />}>
           <BatchRename
             selectedFiles={Array.from(selected)}
             onDone={() => { setShowBatchRename(false); setSelected(new Set()); loadFiles(dir); }}
             onClose={() => setShowBatchRename(false)}
           />
-        </Suspense>
+        </Suspense></ErrorBoundary>
       )}
       {showStats && user && (
-        <Suspense fallback={<LazyLoading />}>
+        <ErrorBoundary><Suspense fallback={<LazyLoading />}>
           <StatsPanel onClose={() => setShowStats(false)} />
-        </Suspense>
+        </Suspense></ErrorBoundary>
       )}
       {showSettings && user && (
-        <Suspense fallback={<LazyLoading />}>
+        <ErrorBoundary><Suspense fallback={<LazyLoading />}>
           <SettingsPanel onClose={() => setShowSettings(false)} />
-        </Suspense>
+        </Suspense></ErrorBoundary>
       )}
       {showTrash && user && (
-        <Suspense fallback={<LazyLoading />}>
+        <ErrorBoundary><Suspense fallback={<LazyLoading />}>
           <TrashPage onClose={() => setShowTrash(false)} onRestore={() => loadFiles(dir)} />
-        </Suspense>
+        </Suspense></ErrorBoundary>
       )}
       {showActivity && user && (
-        <Suspense fallback={<LazyLoading />}>
+        <ErrorBoundary><Suspense fallback={<LazyLoading />}>
           <ActivityPage onClose={() => setShowActivity(false)} />
-        </Suspense>
+        </Suspense></ErrorBoundary>
       )}
 
       {/* Upload floating button + progress panel */}
       {user && (
         <>
           <UploadFab uploadRef={uploadDropzoneRef} />
-          <Suspense fallback={null}>
+          <ErrorBoundary><Suspense fallback={null}>
             <UploadPanel />
-          </Suspense>
+          </Suspense></ErrorBoundary>
         </>
       )}
 
