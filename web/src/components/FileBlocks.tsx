@@ -32,6 +32,8 @@ export default function FileBlocks({ files, dirs, currentDir, onNavigate, onOpen
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+  const menuFocusIndex = useRef<number>(0);
   const [shareDialog, setShareDialog] = useState<{ path: string; name: string } | null>(null);
   const [folderPicker, setFolderPicker] = useState<{ mode: 'move' | 'copy'; path: string } | null>(null);
   const folderThumbs = useFolderThumbnails(dirs, currentDir);
@@ -99,6 +101,69 @@ export default function FileBlocks({ files, dirs, currentDir, onNavigate, onOpen
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, path, name, isDir });
   };
+
+  // Context menu: keyboard navigation and viewport-safe positioning
+  useEffect(() => {
+    if (!contextMenu) {
+      menuFocusIndex.current = 0;
+      return;
+    }
+
+    const buttons = () => contextMenuRef.current?.querySelectorAll('button:not([disabled])') ?? [];
+    let justOpened = true;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      const items = buttons();
+      if (items.length === 0) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = Math.min(menuFocusIndex.current + 1, items.length - 1);
+        menuFocusIndex.current = next;
+        (items[next] as HTMLElement)?.focus();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prev = Math.max(menuFocusIndex.current - 1, 0);
+        menuFocusIndex.current = prev;
+        (items[prev] as HTMLElement)?.focus();
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          const prev = Math.max(menuFocusIndex.current - 1, 0);
+          menuFocusIndex.current = prev;
+          (items[prev] as HTMLElement)?.focus();
+        } else {
+          const next = Math.min(menuFocusIndex.current + 1, items.length - 1);
+          menuFocusIndex.current = next;
+          (items[next] as HTMLElement)?.focus();
+        }
+      }
+    };
+
+    requestAnimationFrame(() => {
+      menuFocusIndex.current = 0;
+      const first = buttons()[0];
+      if (first && justOpened) {
+        justOpened = false;
+        (first as HTMLElement).focus();
+      }
+      // Adjust position to stay within viewport
+      const menu = contextMenuRef.current;
+      if (!menu) return;
+      const rect = menu.getBoundingClientRect();
+      let left = contextMenu.x;
+      let top = contextMenu.y;
+      if (left + rect.width > window.innerWidth - 8) left = window.innerWidth - rect.width - 8;
+      if (left < 8) left = 8;
+      if (top + rect.height > window.innerHeight - 8) top = window.innerHeight - rect.height - 8;
+      if (top < 8) top = 8;
+      menu.style.left = `${left}px`;
+      menu.style.top = `${top}px`;
+    });
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [contextMenu]);
 
   return (
     <>
@@ -197,8 +262,10 @@ export default function FileBlocks({ files, dirs, currentDir, onNavigate, onOpen
         <>
           <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} />
           <div
+            ref={contextMenuRef}
             className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 min-w-[180px]"
-            style={{ left: Math.min(contextMenu.x, window.innerWidth - 200), top: Math.min(contextMenu.y, window.innerHeight - 300) }}
+            role="menu"
+            aria-label="右键菜单"
           >
             {!contextMenu.isDir && (
               <button
