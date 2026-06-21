@@ -1,10 +1,40 @@
 import { useState, useEffect, useRef } from 'react';
 import type { FileItem } from '../types';
 import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
-import SafeThumb from './SafeThumb';
+import SafeThumb, { SafeThumbUrl } from './SafeThumb';
 import FileTypeIcon from './FileTypeIcon';
 import EmptyState from './EmptyState';
 import { formatSize } from '../utils';
+import { getThumbUrl, getFileUrl } from '../api';
+
+/* Badge label for media types — matching FileGrid */
+function getTypeBadge(mime: string): string | null {
+  if (mime.startsWith('video/')) return 'VIDEO';
+  if (mime.startsWith('audio/')) return 'AUDIO';
+  if (mime === 'application/pdf') return 'PDF';
+  if (mime.includes('zip') || mime.includes('rar') || mime.includes('7z')) return 'ZIP';
+  if (mime.includes('word') || mime.includes('document')) return 'DOC';
+  if (mime.includes('sheet') || mime.includes('excel')) return 'XLS';
+  if (mime.includes('presentation') || mime.includes('powerpoint')) return 'PPT';
+  if (mime.includes('epub')) return 'EPUB';
+  return null;
+}
+
+function getBadgeColor(mime: string): string {
+  if (mime.startsWith('video/')) return 'bg-purple-500/90 text-white';
+  if (mime.startsWith('audio/')) return 'bg-green-500/90 text-white';
+  if (mime === 'application/pdf') return 'bg-red-500/90 text-white';
+  if (mime.includes('word') || mime.includes('document')) return 'bg-blue-600/90 text-white';
+  if (mime.includes('sheet') || mime.includes('excel')) return 'bg-green-600/90 text-white';
+  if (mime.includes('presentation') || mime.includes('powerpoint')) return 'bg-orange-500/90 text-white';
+  return 'bg-gray-500/90 text-white';
+}
+
+function getExtBadge(name: string): string | null {
+  const ext = name.split('.').pop()?.toUpperCase();
+  if (!ext || ext.length > 5) return null;
+  return ext;
+}
 
 interface Props {
   files: Record<string, FileItem>;
@@ -63,6 +93,8 @@ export default function FileColumns({ files, dirs, currentDir, onNavigate, onOpe
           const isImage = item.mime.startsWith('image/');
           const isVideo = item.mime.startsWith('video/');
           const isSelected = selected.has(item.path);
+          const badge = getTypeBadge(item.mime);
+          const extBadge = !isImage ? getExtBadge(item.name) : null;
 
           return (
             <div
@@ -92,11 +124,34 @@ export default function FileColumns({ files, dirs, currentDir, onNavigate, onOpe
                   <SafeThumb path={item.path} />
                 </div>
               ) : isVideo ? (
-                <div className="aspect-video flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                  <svg className="w-10 h-10 text-white/60" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                <div className="w-full aspect-video relative bg-black">
+                  <SafeThumbUrl
+                    url={getThumbUrl(item.path)}
+                    className="w-full h-full object-cover"
+                    containerSize="md"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/10 transition-colors">
+                    <div className="w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                      <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                    </div>
+                  </div>
                 </div>
               ) : (
-                <FileTypeIcon mime="application/octet-stream" className="w-8 h-8" />
+                <div className="aspect-square flex items-center justify-center bg-gray-50 dark:bg-gray-700">
+                  <FileTypeIcon mime={item.mime} className="w-10 h-10" />
+                </div>
+              )}
+              {/* Type badge */}
+              {!isImage && !isVideo && !isDir && badge && (
+                <span className={`absolute top-2 right-2 px-1.5 py-0.5 text-[9px] font-bold rounded ${getBadgeColor(item.mime)} z-10`}>
+                  {badge}
+                </span>
+              )}
+              {/* Ext badge fallback */}
+              {!isImage && !isVideo && !isDir && !badge && extBadge && (
+                <span className="absolute top-2 right-2 px-1.5 py-0.5 text-[9px] font-bold rounded bg-gray-600/80 text-white z-10">
+                  {extBadge}
+                </span>
               )}
               <div className="p-2">
                 <div className="text-sm font-medium truncate">{item.name.endsWith('.url') ? item.name.slice(0, -4) : item.name}</div>

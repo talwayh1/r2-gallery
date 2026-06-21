@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { getFileUrl } from '../api';
+import { getFileUrl, getThumbUrl } from '../api';
 
 interface Props {
   path: string;
@@ -161,6 +161,7 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
       <video
         ref={videoRef}
         src={url}
+        poster={getThumbUrl(path)}
         className="w-full max-h-[85vh] cursor-pointer"
         autoPlay={autoplay}
         loop={loop}
