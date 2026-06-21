@@ -6,7 +6,7 @@
  * Inspired by ZPan's upload-dropzone architecture.
  */
 
-import { useCallback, useRef, useEffect, type ReactNode, forwardRef, useImperativeHandle } from 'react';
+import { useCallback, useRef, useState, useEffect, type ReactNode, forwardRef, useImperativeHandle } from 'react';
 import { useUploadQueue, type UploadRunnerContext } from '../hooks/useUploadQueue';
 import { uploadFileWithProgress } from '../api';
 import { toast } from '../hooks/useToast';
@@ -83,6 +83,7 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
   const overlayRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const [dragFileCount, setDragFileCount] = useState(0);
 
   const handleUpload = useCallback((files: { file: File; relativePath?: string }[]) => {
     if (files.length === 0) return;
@@ -110,6 +111,7 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
     e.stopPropagation();
     dragCounter.current = 0;
     if (overlayRef.current) overlayRef.current.style.display = 'none';
+    setDragFileCount(0);
 
     const items = Array.from(e.dataTransfer.items);
     if (items.length === 0) return;
@@ -137,6 +139,8 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
     e.stopPropagation();
     dragCounter.current++;
     if (overlayRef.current) overlayRef.current.style.display = 'flex';
+    const items = e.dataTransfer.items;
+    if (items) setDragFileCount(items.length);
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
@@ -229,6 +233,14 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
           </svg>
           <p className="text-lg font-medium text-gray-700 dark:text-gray-200">松开以上传文件</p>
           <p className="text-sm text-gray-400">支持文件和文件夹拖拽</p>
+          {dragFileCount > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-sm font-medium">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              {dragFileCount} 个项目
+            </span>
+          )}
         </div>
       </div>
 

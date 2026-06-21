@@ -34,6 +34,13 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
   const [showPlaylist, setShowPlaylist] = useState(false);
   const [playedIndices, setPlayedIndices] = useState<Set<number>>(new Set([currentIndex]));
   const lastScrollY = useRef(0);
+  // Refs to avoid stale closures in event handlers attached to <audio>
+  const goNextRef = useRef<() => void>(() => {});
+  const goPrevRef = useRef<() => void>(() => {});
+
+  // ──────────────────────────────────────────────
+  // State (declared AFTER refs to avoid TDZ issues)
+  // ──────────────────────────────────────────────
 
   const track = tracks[currentIndex];
 
@@ -67,7 +74,7 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
         audio.currentTime = 0;
         audio.play();
       } else {
-        goNext();
+        goNextRef.current();
       }
     };
 
@@ -149,6 +156,10 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
     onTrackChange(prevIdx);
   }, [getPrevIndex, onTrackChange]);
 
+  // Keep refs current so event handlers in useEffect always see latest callbacks
+  goNextRef.current = goNext;
+  goPrevRef.current = goPrev;
+
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const time = parseFloat(e.target.value);
     if (audioRef.current) audioRef.current.currentTime = time;
@@ -167,6 +178,45 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
     const idx = modes.indexOf(loop);
     setLoop(modes[(idx + 1) % modes.length]);
   };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      switch (e.key) {
+        case ' ':
+          e.preventDefault();
+          togglePlay();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (audioRef.current) {
+            const t = Math.max(0, audioRef.current.currentTime - 5);
+            audioRef.current.currentTime = t;
+            setCurrentTime(t);
+          }
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (audioRef.current) {
+            const t = Math.min(audioRef.current.duration || 0, audioRef.current.currentTime + 5);
+            audioRef.current.currentTime = t;
+            setCurrentTime(t);
+          }
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setVolume(v => Math.min(1, v + 0.1));
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          setVolume(v => Math.max(0, v - 0.1));
+          break;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [togglePlay]);
 
   if (!track) return null;
 

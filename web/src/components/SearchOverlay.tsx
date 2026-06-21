@@ -336,8 +336,20 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
                     </div>
                     <div className="text-xs text-gray-400 dark:text-gray-500 truncate">
                       {r.dir ? (
-                        <span className="inline-flex items-center gap-1"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>{r.dir}</span>
-                      ) : '根目录'}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); addRecentSearch(query); setRecentSearches(getRecentSearches()); onNavigate(r.dir); onClose(); }}
+                          className="inline-flex items-center gap-1 hover:text-blue-400 dark:hover:text-blue-400 transition-colors"
+                          title="跳转到此文件夹"
+                        >
+                          <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                          <span className="truncate">{r.dir}</span>
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center gap-1">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                          根目录
+                        </span>
+                      )}
                       {r.size > 0 && <span className="ml-2">{formatSize(r.size)}</span>}
                     </div>
                   </div>
