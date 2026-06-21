@@ -921,6 +921,8 @@ export default function App() {
         sortOrder={sortOrder}
         typeFilter={typeFilter}
         isMobile={isMobile}
+        fileCount={Object.keys(files).length}
+        dirCount={dirs.length}
         onNavigate={navigate}
         onLayoutChange={(l) => { setLayout(l); localStorage.setItem('layout', l); }}
         onThemeToggle={toggleTheme}

@@ -139,7 +139,7 @@ export function uploadFileWithProgress(
   relativePath: string | undefined,
   onProgress: (loaded: number, total: number) => void,
   signal?: AbortSignal,
-): Promise<any> {
+): Promise<UploadResult> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const form = new FormData();
@@ -153,7 +153,7 @@ export function uploadFileWithProgress(
 
     xhr.addEventListener('load', () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        try { resolve(JSON.parse(xhr.responseText)); } catch { resolve(xhr.responseText); }
+        try { resolve(JSON.parse(xhr.responseText) as UploadResult); } catch { reject(new Error('Invalid response')); }
       } else {
         try {
           const data = JSON.parse(xhr.responseText);
@@ -421,7 +421,7 @@ export async function cleanCache(): Promise<{ success: boolean; deleted: number 
   return res.json();
 }
 
-export async function getDiagnostics(): Promise<any> {
+export async function getDiagnostics(): Promise<DiagnosticsResult> {
   const res = await request('/admin/diagnostics');
   return res.json();
 }
@@ -468,7 +468,7 @@ export async function saveFile(path: string, content: string): Promise<{ success
 }
 
 // --- Trash ---
-export async function listTrash(): Promise<{ items: any[]; total: number }> {
+export async function listTrash(): Promise<{ items: TrashItem[]; total: number }> {
   const res = await request('/trash');
   return res.json();
 }
@@ -489,7 +489,7 @@ export async function emptyTrash(): Promise<{ success: boolean; purged: number }
 }
 
 // --- Activity Log ---
-export async function getActivity(limit?: number, offset?: number): Promise<{ items: any[]; total: number; hasMore: boolean }> {
+export async function getActivity(limit?: number, offset?: number): Promise<{ items: ActivityItem[]; total: number; hasMore: boolean }> {
   const params = new URLSearchParams();
   if (limit) params.set('limit', String(limit));
   if (offset) params.set('offset', String(offset));
@@ -497,7 +497,64 @@ export async function getActivity(limit?: number, offset?: number): Promise<{ it
   return res.json();
 }
 
-export async function getTrafficStats(days?: number): Promise<{ totalBytes: number; requestCount: number; byDay: any[]; days: number }> {
+export interface TrafficDay {
+  date: string;
+  bytes: number;
+  count: number;
+}
+
+export interface TrashItem {
+  original_path: string;
+  name: string;
+  mime: string;
+  size: number;
+  is_dir: number;
+  deleted_by?: string;
+  deleted_at: string;
+}
+
+export interface ActivityItem {
+  id: number;
+  action: string;
+  path: string;
+  new_path?: string;
+  user?: string;
+  details?: string;
+  created_at: string;
+}
+
+export interface DiagnosticsResult {
+  database: {
+    users: number;
+    files: number;
+    settings: number;
+  };
+  r2: {
+    objects: number;
+    totalSize: number;
+  };
+  settings: Record<string, string>;
+  environment: {
+    nodeVersion: string;
+    typescript: boolean;
+  };
+}
+
+export interface UploadResult {
+  success: boolean;
+  uploaded: {
+    name: string;
+    path: string;
+    size: number;
+    thumbGenerated?: boolean;
+  }[];
+  errors: {
+    name: string;
+    error: string;
+  }[];
+}
+
+export async function getTrafficStats(days?: number): Promise<{ totalBytes: number; requestCount: number; byDay: TrafficDay[]; days: number }> {
   const params = new URLSearchParams();
   if (days) params.set('days', String(days));
   const res = await request(`/stats/traffic?${params}`);

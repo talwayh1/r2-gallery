@@ -14,6 +14,8 @@ interface Props {
   sortOrder: 'asc' | 'desc';
   typeFilter: string;
   isMobile: boolean;
+  fileCount?: number;
+  dirCount?: number;
   onNavigate: (path: string) => void;
   onLayoutChange: (l: LayoutMode) => void;
   onThemeToggle: () => void;
@@ -72,7 +74,7 @@ const LANGUAGES = [
 ];
 
 export default function Header({
-  dir, layout, theme, search, user, sidebarOpen, sortBy, sortOrder, typeFilter, isMobile,
+  dir, layout, theme, search, user, sidebarOpen, sortBy, sortOrder, typeFilter, isMobile, fileCount, dirCount,
   onNavigate, onLayoutChange, onThemeToggle, onSearchChange,
   onSidebarToggle, onLogout, onRefresh, onLoginClick, onShortcutsClick,
   onCreateFolder, onSearchClick, onDiscoverClick, onMemoriesClick, onStatsClick, onSettingsClick, onTrashClick, onActivityClick, onSortChange, onTypeFilterChange, hideLoginButton, selectMode, onSelectModeToggle, onDelete,
@@ -219,10 +221,16 @@ export default function Header({
           const parent = dir.split('/').slice(0, -1).join('/');
           onNavigate(parent);
         }}
-        className="sm:hidden text-sm font-medium truncate min-w-0 flex-shrink hover:text-blue-500 transition-colors"
+        className="sm:hidden text-sm font-medium min-w-0 flex-shrink hover:text-blue-500 transition-colors"
         title={dir ? '点击前往上级目录' : undefined}
       >
-        <svg className="w-4 h-4 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg> {breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1] : 'R2 Gallery'}
+        <svg className="w-4 h-4 inline-block flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+        <span className="truncate ml-1">{breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1] : 'R2 Gallery'}</span>
+        {(fileCount !== undefined || dirCount !== undefined) && (
+          <span className="ml-1.5 text-[11px] text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700/50 rounded-full px-1.5 py-0.5 leading-none whitespace-nowrap flex-shrink-0">
+            {fileCount !== undefined && fileCount > 0 ? `${fileCount}个文件` : dirCount !== undefined && dirCount > 0 ? `${dirCount}个目录` : ''}
+          </span>
+        )}
       </button>
 
       <div className="flex-1" />
