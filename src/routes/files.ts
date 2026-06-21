@@ -287,24 +287,8 @@ files.get('/thumb', async (c) => {
 
   const bucket = c.env.R2_BUCKET;
   const thumbKey = getThumbKey(path);
-  const customThumbKey = '_thumbs/' + path + '.webp';
 
-  // Try custom thumbnail first
-  try {
-    const customThumb = await r2.getObject(bucket, customThumbKey);
-    if (customThumb) {
-      const etag = `"${customThumb.size}-${(customThumb as any).uploaded?.getTime?.() || 0}"`;
-      if (c.req.header('If-None-Match') === etag) return new Response(null, { status: 304 });
-      const headers = new Headers();
-      headers.set('Content-Type', 'image/webp');
-      headers.set('Content-Length', String(customThumb.size));
-      headers.set('Cache-Control', 'public, max-age=604800');
-      headers.set('ETag', etag);
-      return new Response((customThumb as any).body, { headers });
-    }
-  } catch {}
-
-  // Try cached thumbnail second
+  // Try cached thumbnail
   try {
     const cachedThumb = await r2.getObject(bucket, thumbKey);
     if (cachedThumb) {

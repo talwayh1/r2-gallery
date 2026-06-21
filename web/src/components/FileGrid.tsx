@@ -522,7 +522,7 @@ function VirtualFileGrid({
               draggable={true}
               onDragStart={(e) => handleDragStart(e, file.path)}
               onDragEnd={handleDragEnd}
-              className={`flex flex-col items-center gap-1 sm:gap-2 p-1.5 sm:p-3 rounded-xl transition-colors group relative ${
+              className={`render-optimized flex flex-col items-center gap-1 sm:gap-2 p-1.5 sm:p-3 rounded-xl transition-colors group relative ${
                 isSelected
                   ? 'bg-blue-100 dark:bg-blue-900/30 ring-2 ring-blue-500'
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700'

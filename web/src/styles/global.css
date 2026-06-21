@@ -378,7 +378,7 @@ html {
 /* Render optimization — skip offscreen layout/paint for non-virtualized lists */
 .render-optimized {
   content-visibility: auto;
-  contain-intrinsic-size: 200px;
+  contain-intrinsic-size: 260px;
 }
 .render-optimized.tight {
   contain-intrinsic-size: 80px;
