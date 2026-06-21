@@ -244,6 +244,10 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
       } else if (query.length >= 2) {
         handleSearchSubmit();
       }
+    } else if (e.altKey && (e.key === '1' || e.key === '2' || e.key === '3' || e.key === '4' || e.key === '0')) {
+      e.preventDefault();
+      const map: Record<string, string | null> = { '0': null, '1': 'image', '2': 'video', '3': 'audio', '4': 'document' };
+      setTypeFilter(map[e.key]);
     }
   };
 
@@ -292,15 +296,16 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
         {results.length > 0 && (
           <div className="flex items-center gap-1.5 px-4 py-2 border-b border-gray-100 dark:border-gray-700/50 overflow-x-auto scrollbar-hide">
             {[
-              { key: null, label: '全部', icon: (active: boolean) => <svg className={`w-3.5 h-3.5 ${active ? 'text-blue-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg> },
-              { key: 'image', label: '图片', icon: (active: boolean) => <FileTypeIcon mime="image/jpeg" className={`w-4 h-4 ${active ? '' : 'opacity-60'}`} />, count: typeCounts.image },
-              { key: 'video', label: '视频', icon: (active: boolean) => <FileTypeIcon mime="video/mp4" className={`w-4 h-4 ${active ? '' : 'opacity-60'}`} />, count: typeCounts.video },
-              { key: 'audio', label: '音频', icon: (active: boolean) => <FileTypeIcon mime="audio/mp3" className={`w-4 h-4 ${active ? '' : 'opacity-60'}`} />, count: typeCounts.audio },
-              { key: 'document', label: '文档', icon: (active: boolean) => <FileTypeIcon mime="application/pdf" className={`w-4 h-4 ${active ? '' : 'opacity-60'}`} />, count: typeCounts.document },
+              { key: null as string | null, shortcut: '0', label: '全部', count: 0, icon: (active: boolean) => <svg className={`w-3.5 h-3.5 ${active ? 'text-blue-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg> },
+              { key: 'image', shortcut: '1', label: '图片', icon: (active: boolean) => <FileTypeIcon mime="image/jpeg" className={`w-4 h-4 ${active ? '' : 'opacity-60'}`} />, count: typeCounts.image },
+              { key: 'video', shortcut: '2', label: '视频', icon: (active: boolean) => <FileTypeIcon mime="video/mp4" className={`w-4 h-4 ${active ? '' : 'opacity-60'}`} />, count: typeCounts.video },
+              { key: 'audio', shortcut: '3', label: '音频', icon: (active: boolean) => <FileTypeIcon mime="audio/mp3" className={`w-4 h-4 ${active ? '' : 'opacity-60'}`} />, count: typeCounts.audio },
+              { key: 'document', shortcut: '4', label: '文档', icon: (active: boolean) => <FileTypeIcon mime="application/pdf" className={`w-4 h-4 ${active ? '' : 'opacity-60'}`} />, count: typeCounts.document },
             ].filter(item => item.key === null || (item.count > 0)).map(item => (
               <button
                 key={item.key ?? 'all'}
-                onClick={() => setTypeFilter(item.key)}
+                onClick={() => setTypeFilter(prev => prev === item.key ? null : item.key)}
+                title={`Alt+${item.shortcut} 切换`}
                 className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-full whitespace-nowrap transition-colors shrink-0 ${
                   typeFilter === item.key
                     ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-medium'
@@ -509,6 +514,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
           <span className="flex items-center gap-1"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">↑↓</kbd> 导航</span>
           <span className="flex items-center gap-1"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">↵</kbd> 打开</span>
           <span className="flex items-center gap-1 hidden sm:flex"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">^↵</kbd> 新标签页</span>
+          <span className="flex items-center gap-1 hidden sm:flex"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">Alt+1–4</kbd> 筛选</span>
           <span className="flex items-center gap-1"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">esc</kbd> 关闭</span>
         </div>
       </div>
