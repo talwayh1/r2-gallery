@@ -482,8 +482,7 @@ function VirtualFileGrid({
   return (
     <div
       ref={containerRef}
-      className="overflow-auto"
-      style={{ maxHeight: 'calc(100dvh - 260px)' }}
+      className="overflow-auto min-h-0"
     >
       {/* Top spacer — maintains scroll position */}
       <div style={{ height: offsetY }} />
