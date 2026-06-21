@@ -321,15 +321,22 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
 
         {/* Results / Recent searches */}
         <div ref={resultsContainerRef} className="max-h-[50dvh] sm:max-h-[60vh] overflow-y-auto overscroll-contain">
-          {/* Loading indicator */}
+          {/* Loading indicator — subtle when stale results exist, full when starting fresh */}
           {loading && (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
-            </div>
+            results.length > 0 ? (
+              <div className="flex items-center justify-center py-2 gap-2 border-b border-gray-100 dark:border-gray-700/50 mx-4">
+                <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-blue-400 border-t-transparent" />
+                <span className="text-xs text-gray-400">正在搜索...</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
+              </div>
+            )
           )}
 
-          {/* Results */}
-          {!loading && results.length > 0 && (
+          {/* Results — always visible when available, even during loading */}
+          {results.length > 0 && (
             <div className="py-2 animate-fade-in">
               <div className="px-4 py-1.5 text-xs text-gray-400 dark:text-gray-500 flex items-center justify-between">
                 <span>

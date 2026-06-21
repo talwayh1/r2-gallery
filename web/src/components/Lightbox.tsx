@@ -825,6 +825,9 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && onDelete) {
         e.preventDefault();
         handleDeleteConfirm();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'w' || e.key === 'W')) {
+        e.preventDefault();
+        handleClose();
       } else if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D') && onDuplicate) {
         e.preventDefault();
         onDuplicate(current.path);
