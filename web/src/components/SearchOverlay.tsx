@@ -187,7 +187,14 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     setRecentSearches(updated);
   };
 
-  const handleResultClick = (r: SearchResult) => {
+  const handleResultClick = (r: SearchResult, e?: React.MouseEvent) => {
+    // Ctrl+Click / Cmd+Click / Middle-click opens file in a new tab
+    if (e?.ctrlKey || e?.metaKey || e?.button === 1) {
+      e?.preventDefault();
+      window.open(getFileUrl(r.path), '_blank');
+      return;
+    }
+
     // Save to recent searches
     addRecentSearch(query);
     setRecentSearches(getRecentSearches());
@@ -305,7 +312,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
 
           {/* Results */}
           {!loading && results.length > 0 && (
-            <div className="py-2">
+            <div className="py-2 animate-fade-in">
               <div className="px-4 py-1.5 text-xs text-gray-400 dark:text-gray-500 flex items-center justify-between">
                 <span>
                   {typeFilter
@@ -324,8 +331,9 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
                       ? 'bg-blue-50 dark:bg-blue-900/30'
                       : 'hover:bg-gray-50 dark:hover:bg-gray-750'
                   }`}
-                  onClick={() => handleResultClick(r)}
+                  onClick={(e) => handleResultClick(r, e)}
                   onMouseEnter={() => setSelectedIndex(i)}
+                  title="Ctrl+Click 在新标签页打开"
                 >
                   {/* Thumbnail or icon */}
                   {r.mime.startsWith('image/') ? (
