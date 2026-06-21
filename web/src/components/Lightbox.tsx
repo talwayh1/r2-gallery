@@ -353,6 +353,24 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     }
   }, [hasNext, index, onNavigate, resetZoom, items.length]);
 
+  const goPrev10 = useCallback(() => {
+    if (items.length <= 1) return;
+    const target = Math.max(0, index - 10);
+    resetZoom();
+    onNavigate(target);
+    setSwipeHint('right');
+    setTimeout(() => setSwipeHint(null), 300);
+  }, [index, onNavigate, resetZoom, items.length]);
+
+  const goNext10 = useCallback(() => {
+    if (items.length <= 1) return;
+    const target = Math.min(items.length - 1, index + 10);
+    resetZoom();
+    onNavigate(target);
+    setSwipeHint('left');
+    setTimeout(() => setSwipeHint(null), 300);
+  }, [index, onNavigate, resetZoom, items.length]);
+
   // === Slideshow logic ===
   const getNextSlideshowIndex = useCallback(() => {
     if (slideshowShuffle) {
@@ -764,7 +782,9 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         } else {
           handleClose();
         }
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goPrev(); }
+      } else if (e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowUp')) { e.preventDefault(); goPrev10(); }
+      else if (e.shiftKey && (e.key === 'ArrowRight' || e.key === 'ArrowDown')) { e.preventDefault(); goNext10(); }
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goPrev(); }
       else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); goNext(); }
       else if (e.key === 'i') setShowInfo((s) => !s);
       else if (e.key === '?' || e.key === 'h' || e.key === 'H') {
@@ -862,7 +882,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [onClose, goPrev, goNext, url, name, isZoomed, scale, resetZoom, toggleSlideshow, current, onDelete, handleDeleteConfirm, onDuplicate]);
+  }, [onClose, goPrev, goNext, goPrev10, goNext10, url, name, isZoomed, scale, resetZoom, toggleSlideshow, current, onDelete, handleDeleteConfirm, onDuplicate]);
 
   // Reset state on navigation
   useEffect(() => {
@@ -1268,6 +1288,14 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+            {/* Position counter — always visible in bottom toolbar */}
+            {items.length > 1 && (
+              <span className="text-[11px] text-white/50 font-mono shrink-0 select-none min-w-[2.5rem] text-center px-1" title={`第 ${index + 1} 张，共 ${items.length} 张`}>
+                <span className="text-white/70 font-medium">{index + 1}</span>
+                <span className="text-white/30">/{items.length}</span>
+              </span>
+            )}
+            <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
             {/* Fullscreen toggle */}
             <button
               onClick={toggleFullscreen}
