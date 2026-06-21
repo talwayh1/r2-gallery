@@ -22,6 +22,7 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
   const [pipSupported] = useState(() => typeof document !== 'undefined' && 'pictureInPictureEnabled' in document && document.pictureInPictureEnabled);
   const [pipActive, setPipActive] = useState(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const url = getFileUrl(path);
 
   useEffect(() => {
@@ -112,11 +113,33 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
   };
 
   const handleMouseMove = () => {
+    showControlsWithTimer();
+  };
+
+  const showControlsWithTimer = () => {
     setShowControls(true);
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     hideTimerRef.current = setTimeout(() => {
       if (playing) setShowControls(false);
     }, 3000);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const startPos = touchStartPosRef.current;
+    touchStartPosRef.current = null;
+    if (!startPos) return;
+    const touch = e.changedTouches[0];
+    const dx = Math.abs(touch.clientX - startPos.x);
+    const dy = Math.abs(touch.clientY - startPos.y);
+    // Only treat as a tap if finger moved less than 15px (ignore swipes/scrolling)
+    if (dx < 15 && dy < 15) {
+      showControlsWithTimer();
+    }
   };
 
   const formatTime = (s: number) => {
@@ -132,6 +155,8 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
       className="relative group bg-black rounded-lg overflow-hidden"
       onMouseMove={handleMouseMove}
       onMouseLeave={() => playing && setShowControls(false)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       <video
         ref={videoRef}

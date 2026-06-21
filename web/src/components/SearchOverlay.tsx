@@ -59,6 +59,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   // Client-side type filtering
   const filteredResults = useMemo(() => {
@@ -95,6 +96,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     inputRef.current?.focus();
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (abortRef.current) abortRef.current.abort();
     };
   }, []);
 
@@ -107,13 +109,21 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     };
   }, []);
 
-  // Debounced search
+  // Debounced search with stale request cancellation
   const doSearch = useCallback(async (q: string, appendOffset?: number) => {
     if (q.length < 2) {
       setResults([]);
       setTotal(0);
       return;
     }
+
+    // Cancel any in-flight request to prevent stale results overwriting newer ones
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+    abortRef.current = new AbortController();
+    const signal = abortRef.current.signal;
+
     if (appendOffset != null) {
       setLoadingMore(true);
     } else {
@@ -121,7 +131,9 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     }
     try {
       const limit = 30;
-      const data = await searchFiles(q, limit, appendOffset || 0);
+      const data = await searchFiles(q, limit, appendOffset || 0, signal);
+      // After awaiting, skip if this request was already superseded
+      if (signal.aborted) return;
       if (appendOffset != null) {
         setResults(prev => [...prev, ...(data.results || [])]);
       } else {
@@ -129,7 +141,9 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
       }
       setTotal(data.total || 0);
       setSelectedIndex(0);
-    } catch {
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return; // cancelled by newer search — silent
+      console.error('Search failed:', err);
       if (!appendOffset) setResults([]);
     } finally {
       setLoading(false);
