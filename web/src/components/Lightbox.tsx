@@ -688,14 +688,31 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         zoomAtPoint(e.clientX, e.clientY, 2.5);
       }
       lastClickTime.current = 0;
-    } else {
-      // Single click — toggle UI visibility on mobile
-      if (isMobile) {
-        setUiVisible((v) => !v);
-      }
-      lastClickTime.current = now;
+      return;
     }
-  }, [isZoomed, isMobile, zoomAtPoint, resetZoom]);
+    lastClickTime.current = now;
+
+    // Edge tap navigation: left 30% = prev, right 30% = next
+    if (!isZoomed && e.target instanceof HTMLElement) {
+      const rect = e.target.getBoundingClientRect();
+      const relX = (e.clientX - rect.left) / rect.width;
+      if (relX < 0.3 && hasPrev) {
+        resetZoom();
+        onNavigate(index === 0 ? items.length - 1 : index - 1);
+        return;
+      }
+      if (relX > 0.7 && hasNext) {
+        resetZoom();
+        onNavigate(index === items.length - 1 ? 0 : index + 1);
+        return;
+      }
+    }
+
+    // Single click in center area — toggle UI visibility on mobile
+    if (isMobile) {
+      setUiVisible((v) => !v);
+    }
+  }, [isZoomed, isMobile, zoomAtPoint, resetZoom, hasPrev, hasNext, index, onNavigate, items.length]);
 
   const handleDeleteConfirm = useCallback(() => {
     if (!current || deleting) return;
@@ -1148,7 +1165,9 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         {ext && <span className={`px-1.5 py-0.5 text-[10px] bg-white/10 rounded ${isMobile ? 'hidden' : ''}`}>{ext}</span>}
         {current.size ? <span className={`text-xs text-white/50 ${isMobile ? 'hidden' : ''}`}>{formatSize(current.size)}</span> : null}
         {imageDimensions && (
-          <span className={`text-xs text-white/40 ${isMobile ? 'hidden' : ''}`}>{imageDimensions.w} × {imageDimensions.h}</span>
+          <span className={`text-xs ${isMobile ? 'inline-flex items-center gap-1 px-1.5 py-0.5 bg-black/30 rounded' : 'text-white/40'}`}>
+            {imageDimensions.w} × {imageDimensions.h}
+          </span>
         )}
         <span className="text-white/40 whitespace-nowrap">({index + 1} / {items.length})</span>
       </div>
