@@ -2488,6 +2488,15 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
             </a>
           </div>
         )}
+
+        {/* Always-visible position pill on mobile — even when UI is hidden */}
+        {isImage && isMobile && items.length > 1 && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm text-white/70 text-xs px-2.5 py-1 rounded-full z-10 pointer-events-none select-none whitespace-nowrap">
+            <span className="font-medium">{index + 1}</span>
+            <span className="text-white/40 mx-1">/</span>
+            <span>{items.length}</span>
+          </div>
+        )}
       </div>
       {showPanorama && current?.mime.startsWith('image/') && (
         <Suspense fallback={<div className="fixed inset-0 bg-black z-50 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/50" /></div>}>

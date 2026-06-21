@@ -527,7 +527,7 @@ function VirtualFileGrid({
                 isSelected
                   ? 'bg-blue-100 dark:bg-blue-900/30 ring-2 ring-blue-500'
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-              } ${draggingFile === file.path ? 'opacity-40' : ''}`}
+              } ${focusedIndex === idx ? 'outline-2 outline-blue-400/70 outline-offset-1' : ''} ${draggingFile === file.path ? 'opacity-40' : ''}`}
             >
               <div className={`w-full flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-xl overflow-hidden relative ${localStorage.getItem('previewRatio') || 'aspect-square'}`}>
                 {isImage ? (
