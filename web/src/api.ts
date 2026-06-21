@@ -1,3 +1,5 @@
+import type { SortMode } from './types';
+
 const API_BASE = '/api';
 
 // CDN域名配置（从/api/config获取）
@@ -72,7 +74,7 @@ export async function login(username: string, password: string) {
 
 export interface ListFilesParams {
   dir?: string;
-  sort?: 'name' | 'size' | 'mtime' | 'kind' | 'shuffle';
+  sort?: SortMode;
   order?: 'asc' | 'desc';
   type?: 'image' | 'video' | 'audio' | 'document' | 'all';
   cursor?: string;

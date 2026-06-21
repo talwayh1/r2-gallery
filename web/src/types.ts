@@ -16,5 +16,6 @@ export interface FileListResponse {
   hasMore?: boolean;
 }
 
+export type SortMode = 'name' | 'size' | 'mtime' | 'kind' | 'shuffle';
 export type LayoutMode = 'grid' | 'rows' | 'list' | 'imagelist' | 'blocks' | 'columns';
 export type ThemeMode = 'light' | 'dark' | 'system' | 'contrast';

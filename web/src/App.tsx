@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from 'react';
-import type { FileItem, LayoutMode } from './types';
+import type { FileItem, LayoutMode, SortMode } from './types';
 import type { UploadDropzoneHandle } from './components/UploadDropzone';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
@@ -78,8 +78,8 @@ export default function App() {
   // New features state
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [typeFilter, setTypeFilter] = useState<TypeFilterKind>('all');
-  const [sortBy, setSortBy] = useState<string>(() => {
-    return localStorage.getItem('sortBy') || 'name';
+  const [sortBy, setSortBy] = useState<SortMode>(() => {
+    return (localStorage.getItem('sortBy') as SortMode) || 'name';
   });
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => {
     return (localStorage.getItem('sortOrder') as 'asc' | 'desc') || 'asc';
@@ -123,7 +123,7 @@ export default function App() {
 
     setLoading(true);
     try {
-      const params: ListFilesParams = { sort: sortBy as any, order: sortOrder, type: typeFilter };
+      const params: ListFilesParams = { sort: sortBy, order: sortOrder, type: typeFilter };
       // Use cursorRef to avoid stale closure — ref always has latest value
       const cur = cursorRef.current;
       if (append && cur) {
@@ -940,7 +940,7 @@ export default function App() {
         onSettingsClick={user ? () => setShowSettings(true) : undefined}
         onTrashClick={user ? () => setShowTrash(true) : undefined}
         onActivityClick={user ? () => setShowActivity(true) : undefined}
-        onSortChange={(sort: string, order: 'asc' | 'desc') => {
+        onSortChange={(sort: SortMode, order: 'asc' | 'desc') => {
           setSortBy(sort);
           setSortOrder(order);
           localStorage.setItem('sortBy', sort);

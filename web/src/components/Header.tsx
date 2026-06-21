@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useClickOutside } from '../hooks/useClickOutside';
-import type { LayoutMode, ThemeMode } from '../types';
+import type { LayoutMode, ThemeMode, SortMode } from '../types';
 import FileTypeIcon from './FileTypeIcon';
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
   search: string;
   user: string | null;
   sidebarOpen: boolean;
-  sortBy: string;
+  sortBy: SortMode;
   sortOrder: 'asc' | 'desc';
   typeFilter: string;
   isMobile: boolean;
@@ -33,7 +33,7 @@ interface Props {
   onSettingsClick?: () => void;
   onTrashClick?: () => void;
   onActivityClick?: () => void;
-  onSortChange?: (sort: string, order: 'asc' | 'desc') => void;
+  onSortChange?: (sort: SortMode, order: 'asc' | 'desc') => void;
   onTypeFilterChange?: (type: string) => void;
   hideLoginButton?: boolean;
   selectMode?: boolean;
@@ -50,7 +50,7 @@ const LAYOUTS: { key: LayoutMode; label: string; icon: React.ReactNode }[] = [
   { key: 'columns', label: '列', icon: '⫼' },
 ];
 
-const SORTS: { key: string; label: string; icon: string }[] = [
+const SORTS: { key: SortMode; label: string; icon: string }[] = [
   { key: 'name', label: '名称', icon: '🔤' },
   { key: 'size', label: '大小', icon: '📏' },
   { key: 'mtime', label: '时间', icon: '🕐' },
