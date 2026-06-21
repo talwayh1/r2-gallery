@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { useConfirm } from '../hooks/useConfirm';
 import type { LayoutMode, ThemeMode, SortMode } from '../types';
 import FileTypeIcon from './FileTypeIcon';
 
@@ -80,6 +81,7 @@ export default function Header({
   onCreateFolder, onSearchClick, onDiscoverClick, onMemoriesClick, onStatsClick, onSettingsClick, onTrashClick, onActivityClick, onSortChange, onTypeFilterChange, hideLoginButton, selectMode, onSelectModeToggle, onDelete,
 }: Props) {
   const breadcrumbs = dir ? dir.split('/') : [];
+  const confirm = useConfirm();
   const [canInstall, setCanInstall] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
@@ -196,11 +198,15 @@ export default function Header({
                       <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
                       <button
                         className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-500 flex items-center gap-2"
-                        onClick={() => {
-                          if (confirm(`确认删除文件夹 "${dir}" 及其所有内容？`)) {
-                            onDelete?.([dir]);
-                          }
+                        onClick={async () => {
                           setDirMenuOpen(false);
+                          const confirmed = await confirm({
+                            title: '删除文件夹',
+                            message: `确认删除文件夹 "${dir}" 及其所有内容？`,
+                            confirmLabel: '删除',
+                            variant: 'danger',
+                          });
+                          if (confirmed) onDelete?.([dir]);
                         }}
                       >
                         <span className="flex items-center"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></span><span>删除此文件夹</span>

@@ -5,6 +5,7 @@ import type { UploadDropzoneHandle } from './components/UploadDropzone';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { toast } from './hooks/useToast';
+import { useConfirm } from './hooks/useConfirm';
 import { useDebounce } from './hooks/useDebounce';
 import { listFiles, telegramLogin, getConfig, setCdnDomain, mkdir, getFileUrl, deleteItems, restoreTrash, renameItem, downloadZip, createFile, createUrlShortcut, moveItem, copyFile, duplicateFile, createZip } from './api';
 import type { ListFilesParams } from './api';
@@ -55,6 +56,7 @@ const LazyLoading = () => (
 export default function App() {
   const { user, loading: authLoading, login, logout } = useAuth();
   const { mode: theme, toggle: toggleTheme } = useTheme();
+  const confirm = useConfirm();
   const [dir, setDir] = useState('');
   const [files, setFiles] = useState<Record<string, FileItem>>({});
   const [dirs, setDirs] = useState<string[]>([]);
@@ -361,6 +363,18 @@ export default function App() {
         } else if (search) {
           e.preventDefault();
           setSearch('');
+        } else if (showStats) {
+          e.preventDefault();
+          setShowStats(false);
+        } else if (showSettings) {
+          e.preventDefault();
+          setShowSettings(false);
+        } else if (showTrash) {
+          e.preventDefault();
+          setShowTrash(false);
+        } else if (showActivity) {
+          e.preventDefault();
+          setShowActivity(false);
         }
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         // Delete — delete selected files
@@ -660,7 +674,12 @@ export default function App() {
 
   const handleDelete = async (paths: string[]) => {
     const names = paths.map(p => p.split('/').pop() || p).join(', ');
-    const confirmed = confirm(`确认删除 ${paths.length} 个项目？\n${names}`);
+    const confirmed = await confirm({
+      title: `确认删除 ${paths.length} 个项目？`,
+      message: names,
+      confirmLabel: '删除',
+      variant: 'danger',
+    });
     if (!confirmed) return;
 
     try {

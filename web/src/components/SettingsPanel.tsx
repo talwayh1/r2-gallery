@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getSettings, saveSettings, getUsers, createUser, deleteUser, cleanCache, getDiagnostics } from '../api';
 import { toast } from '../hooks/useToast';
+import { useConfirm } from '../hooks/useConfirm';
 
 interface SettingsPanelProps {
   onClose: () => void;
@@ -14,6 +15,7 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
   const [newPassword, setNewPassword] = useState('');
   const [diagnostics, setDiagnostics] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const confirm = useConfirm();
 
   useEffect(() => {
     loadSettings();
@@ -60,7 +62,13 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
   };
 
   const handleDeleteUser = async (id: number) => {
-    if (!confirm('确定删除此用户？')) return;
+    const confirmed = await confirm({
+      title: '删除用户',
+      message: '确定删除此用户？',
+      confirmLabel: '删除',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await deleteUser(id);
       loadUsers();

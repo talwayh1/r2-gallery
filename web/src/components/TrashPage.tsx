@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from '../hooks/useToast';
+import { useConfirm } from '../hooks/useConfirm';
 import FileTypeIcon from './FileTypeIcon';
 import { formatSize } from '../utils';
 
@@ -33,6 +34,7 @@ function formatDate(dateStr: string): string {
 export default function TrashPage({ onClose, onRestore }: Props) {
   const [items, setItems] = useState<TrashItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const confirm = useConfirm();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const loadTrash = useCallback(async () => {
@@ -80,7 +82,13 @@ export default function TrashPage({ onClose, onRestore }: Props) {
 
   const handlePurge = async (paths: string[]) => {
     if (paths.length === 0) return;
-    if (!confirm(`确认永久删除 ${paths.length} 个项目？此操作不可撤销。`)) return;
+    const confirmed = await confirm({
+      title: `永久删除 ${paths.length} 个项目`,
+      message: '此操作不可撤销。',
+      confirmLabel: '永久删除',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     try {
       const token = localStorage.getItem('token');
       const res = await fetch('/api/trash/purge', {
@@ -100,7 +108,13 @@ export default function TrashPage({ onClose, onRestore }: Props) {
   };
 
   const handleEmpty = async () => {
-    if (!confirm('确认清空回收站？此操作不可撤销。')) return;
+    const confirmed = await confirm({
+      title: '清空回收站',
+      message: '确认清空回收站？此操作不可撤销。',
+      confirmLabel: '清空',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     try {
       const token = localStorage.getItem('token');
       const res = await fetch('/api/trash/empty', {
