@@ -202,6 +202,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const [textContent, setTextContent] = useState<string | null>(null);
   const [textLoading, setTextLoading] = useState(false);
   const [textSaving, setTextSaving] = useState(false);
+  const [textError, setTextError] = useState<'too-large' | 'fetch-error' | null>(null);
 
   // .url file content state
   const [urlContent, setUrlContent] = useState<string | null>(null);
@@ -257,6 +258,8 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
   // Mobile UI visibility — tap image to toggle controls
   const [uiVisible, setUiVisible] = useState(true);
+  const uiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const UI_AUTO_HIDE_DELAY = 3000; // ms — hide controls after inactivity
 
   // Video poster upload state
   const [posterUploading, setPosterUploading] = useState(false);
@@ -496,10 +499,20 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     };
   }, [showSlideshowMenu]);
 
+  // Clean up auto-hide timer on unmount
+  useEffect(() => {
+    return () => {
+      if (uiTimerRef.current) clearTimeout(uiTimerRef.current);
+    };
+  }, []);
+
   // Disable swipe gestures when zoomed
   const handleClose = useCallback(() => {
     setSwipeDragY(0);
     stopSlideshow();
+    // Clean up auto-hide timer and reset UI visibility
+    if (uiTimerRef.current) clearTimeout(uiTimerRef.current);
+    setUiVisible(true);
     onClose();
   }, [stopSlideshow, onClose]);
 
@@ -868,6 +881,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     setSlideshowProgress(0);
     setTextContent(null);
     setTextLoading(false);
+    setTextError(null);
     setOfficeLoaded(false);
     if (officeLoadTimerRef.current) {
       clearTimeout(officeLoadTimerRef.current);
@@ -940,6 +954,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   useEffect(() => {
     if (!current || !isTextMime(current.mime)) {
       setTextContent(null);
+      setTextError(null);
       return;
     }
 
@@ -949,12 +964,14 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     if (current.size && current.size > maxSize) {
       setTextContent(null);
       setTextLoading(false);
+      setTextError('too-large');
       return;
     }
 
     let cancelled = false;
     setTextLoading(true);
     setTextContent(null);
+    setTextError(null);
     const fileUrl = getFileUrl(current.path);
     fetch(fileUrl)
       .then((res) => {
@@ -971,6 +988,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         if (!cancelled) {
           setTextContent(null);
           setTextLoading(false);
+          setTextError('fetch-error');
         }
       });
     return () => { cancelled = true; };
@@ -1164,6 +1182,17 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         if (isVideo) {
           cursorTimerRef.current = setTimeout(() => setCursorVisible(false), 3000);
         }
+        // Desktop: show UI controls on mouse move, auto-hide after delay
+        if (!isMobile) {
+          setUiVisible(true);
+          if (uiTimerRef.current) clearTimeout(uiTimerRef.current);
+          uiTimerRef.current = setTimeout(() => {
+            // Only auto-hide for images/videos (not text/audio)
+            if (isImage || isVideo) {
+              setUiVisible(false);
+            }
+          }, UI_AUTO_HIDE_DELAY);
+        }
       }}
     >
       {/* Immersive blurred background — fills entire screen behind the image */}
@@ -1187,7 +1216,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       {/* Close button */}
       <button
         onClick={() => { handleClose(); }}
-        className={`absolute top-4 right-4 p-2 text-white/70 hover:text-white z-10 transition-opacity duration-200 ${isMobile && !uiVisible ? 'opacity-0 pointer-events-none' : ''}`}
+        className={`absolute top-4 right-4 p-2 text-white/70 hover:text-white z-10 transition-opacity duration-200 ${!uiVisible && (isImage || isVideo) ? 'opacity-0 pointer-events-none' : ''}`}
         title="关闭 (Esc)"
       >
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1203,7 +1232,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       )}
 
       {/* File info bar */}
-      <div className={`absolute top-4 left-4 text-white/70 text-sm z-10 flex items-center gap-3 transition-opacity duration-200 ${isMobile && !uiVisible ? 'opacity-0 pointer-events-none' : ''} ${isMobile ? 'max-w-[45%]' : ''}`}>
+      <div className={`absolute top-4 left-4 text-white/70 text-sm z-10 flex items-center gap-3 transition-opacity duration-200 ${!uiVisible && (isImage || isVideo) ? 'opacity-0 pointer-events-none' : ''} ${isMobile ? 'max-w-[45%]' : ''}`}>
         <span className={`font-medium text-white/90 ${isMobile ? 'truncate max-w-[120px]' : ''}`} title={isMobile ? name : undefined}>{name}</span>
         {ext && <span className={`px-1.5 py-0.5 text-[10px] bg-white/10 rounded ${isMobile ? 'hidden' : ''}`}>{ext}</span>}
         {current.size ? <span className={`text-xs text-white/50 ${isMobile ? 'hidden' : ''}`}>{formatSize(current.size)}</span> : null}
@@ -1507,7 +1536,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
           )}
         </div>
       ) : (
-        <div className="absolute top-4 right-16 flex items-center gap-1 z-10">
+        <div className={`absolute top-4 right-16 flex items-center gap-1 z-10 transition-opacity duration-200 ${!uiVisible && (isImage || isVideo) ? 'opacity-0 pointer-events-none' : ''}`}>
         {/* Zoom controls (images only) */}
         {isImage && (
           <>
@@ -2069,7 +2098,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       {hasPrev && (
         <button
           onClick={(e) => { e.stopPropagation(); goPrev(); }}
-          className={`absolute left-4 top-1/2 -translate-y-1/2 p-3 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all z-10 ${isMobile && !uiVisible ? 'opacity-0 pointer-events-none' : ''}`}
+          className={`absolute left-4 top-1/2 -translate-y-1/2 p-3 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all z-10 ${!uiVisible && (isImage || isVideo) ? 'opacity-0 pointer-events-none' : ''}`}
           title="上一张 (←)"
         >
           <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2082,7 +2111,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       {hasNext && (
         <button
           onClick={(e) => { e.stopPropagation(); goNext(); }}
-          className={`absolute right-4 top-1/2 -translate-y-1/2 p-3 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all z-10 ${isMobile && !uiVisible ? 'opacity-0 pointer-events-none' : ''}`}
+          className={`absolute right-4 top-1/2 -translate-y-1/2 p-3 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all z-10 ${!uiVisible && (isImage || isVideo) ? 'opacity-0 pointer-events-none' : ''}`}
           title="下一张 (→)"
         >
           <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2159,7 +2188,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
       {/* Desktop zoom hint */}
       {isImage && !isZoomed && !slideshowPlaying && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden md:flex items-center gap-2 text-white/20 text-xs pointer-events-none select-none">
+        <div className={`absolute bottom-6 left-1/2 -translate-x-1/2 hidden md:flex items-center gap-2 text-white/20 text-xs pointer-events-none select-none transition-opacity duration-200 ${!uiVisible ? 'opacity-0' : ''}`}>
           <span>滚轮缩放 · 双击放大 · Space 幻灯片 · +/- 键缩放</span>
         </div>
       )}
@@ -2475,9 +2504,32 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                   }
                 }}
               />
+            ) : textError === 'too-large' ? (
+              <div className="flex items-center justify-center h-full text-white/50 px-8">
+                <div className="text-center max-w-md">
+                  <p className="text-base text-white/70 mb-2">文件过大，无法预览</p>
+                  <p className="text-xs text-white/40 mb-4">
+                    当前限制: {(() => {
+                      const maxSizeStr = localStorage.getItem('codeMaxLoad');
+                      const maxSize = maxSizeStr ? parseInt(maxSizeStr, 10) : 2 * 1024 * 1024;
+                      return maxSize >= 1024 * 1024
+                        ? Math.round(maxSize / 1024 / 1024) + 'MB'
+                        : Math.round(maxSize / 1024) + 'KB';
+                    })()} |
+                    文件大小: {current && current.size
+                      ? (current.size >= 1024 * 1024
+                        ? (current.size / 1024 / 1024).toFixed(1) + 'MB'
+                        : (current.size / 1024).toFixed(0) + 'KB')
+                      : '未知'}
+                  </p>
+                  <p className="text-xs text-white/30">
+                    提示: 可通过 localStorage.setItem('codeMaxLoad', 数字) 调整限制（单位字节），如 10MB 设为 10485760
+                  </p>
+                </div>
+              </div>
             ) : (
               <div className="flex items-center justify-center h-full text-white/40">
-                无法加载文本内容
+                {textError === 'fetch-error' ? '加载文本内容失败，请确认文件是否存在' : '无法加载文本内容'}
               </div>
             )}
           </div>
