@@ -1522,6 +1522,16 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
                 <span>幻灯片设置</span>
               </button>
+              <div className="w-px h-5 bg-white/10 mx-1 self-center" />
+              {/* Keyboard shortcuts */}
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowKeyboardHelp(true); setShowMoreTools(false); }}
+                className="flex items-center gap-1.5 px-3 py-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors text-xs shrink-0"
+                title="键盘快捷键 (?)"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                <span>快捷键</span>
+              </button>
               {onDuplicate && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onDuplicate(current.path); setShowMoreTools(false); }}
@@ -1537,6 +1547,12 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         </div>
       ) : (
         <div className={`absolute top-4 right-16 flex items-center gap-1 z-10 transition-opacity duration-200 ${!uiVisible && (isImage || isVideo) ? 'opacity-0 pointer-events-none' : ''}`}>
+        {/* Position indicator */}
+        {items.length > 1 && (
+          <span className="text-white/50 text-xs font-mono mr-1 select-none whitespace-nowrap pointer-events-none" title="文件位置">
+            {index + 1}<span className="text-white/30">/{items.length}</span>
+          </span>
+        )}
         {/* Zoom controls (images only) */}
         {isImage && (
           <>
