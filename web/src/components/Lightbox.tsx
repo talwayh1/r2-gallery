@@ -289,6 +289,14 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
   const isZoomed = scale > 1.05;
 
+  // Reset retry count, error, and loading states when navigating to a new image
+  useEffect(() => {
+    retryCountRef.current = 0;
+    setAutoRetrying(false);
+    setImageError(false);
+    setImageLoaded(false);
+  }, [current?.path]);
+
   // Compute derived values
   const url = current ? getFileUrl(current.path) : '';
   const name = current ? (current.path.split('/').pop() || '') : '';
@@ -926,37 +934,35 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     return () => clearTimeout(timer);
   }, [url]);
 
-  // Prefetch adjacent images for instant navigation
+  // Preload adjacent items: full-size originals for ±1, thumbnails for ±2
+  // Skips preload in huge collections (>200) to avoid burst network requests
   useEffect(() => {
     if (!current?.mime.startsWith('image/')) return;
-    // Don't prefetch in huge collections — user might jump randomly
     if (items.length > 200) return;
 
-    const prefetchUrls: string[] = [];
-    if (hasNext) {
-      const nextIdx = index === items.length - 1 ? 0 : index + 1;
-      const nextItem = items[nextIdx];
-      if (nextItem?.mime.startsWith('image/')) {
-        prefetchUrls.push(getFileUrl(nextItem.path));
+    const preloadIndices = [index - 2, index - 1, index + 1, index + 2];
+    const preloaded: HTMLImageElement[] = [];
+    for (const i of preloadIndices) {
+      if (i >= 0 && i < items.length && items[i]?.mime.startsWith('image/')) {
+        const distance = Math.abs(i - index);
+        const img = new Image();
+        img.referrerPolicy = 'no-referrer';
+        if (distance <= 1) {
+          // Preload full-size original for immediate neighbors (smooth navigation)
+          img.src = getFileUrl(items[i].path);
+        } else {
+          // Preload thumbnail for farther neighbors (quick preview)
+          img.src = getThumbUrl(items[i].path);
+        }
+        preloaded.push(img);
       }
     }
-    if (hasPrev) {
-      const prevIdx = index === 0 ? items.length - 1 : index - 1;
-      const prevItem = items[prevIdx];
-      if (prevItem?.mime.startsWith('image/')) {
-        prefetchUrls.push(getFileUrl(prevItem.path));
+    return () => {
+      for (const img of preloaded) {
+        img.src = '';
       }
-    }
-
-    // Use Image() objects to warm browser cache — cleanest approach for images
-    for (const url of prefetchUrls) {
-      const img = new Image();
-      img.referrerPolicy = 'no-referrer';
-      img.src = url;
-    }
-  }, [index, current?.path, hasNext, hasPrev, items.length, current?.mime]);
-
-  // Fetch EXIF data when info panel is shown for an image
+    };
+  }, [index, items, current?.path, current?.mime, items.length]);
   useEffect(() => {
     if (!showInfo || !current || !current.mime.startsWith('image/')) {
       return;
