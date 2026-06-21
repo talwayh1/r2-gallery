@@ -115,6 +115,8 @@ export default function App() {
   // Refs for mobile sidebar edge swipe gesture (swipe right from left edge to open)
   const edgeSwipeStartXRef = useRef<number | null>(null);
   const edgeSwipeStartTimeRef = useRef<number>(0);
+  // Ref for main scroll container — wired to ScrollToTop so the "back to top" button works on mobile
+  const mainRef = useRef<HTMLElement>(null);
 
   const loadFiles = useCallback(async (d: string, append = false) => {
     // Cancel any pending request — prevents stale response from overwriting
@@ -1016,7 +1018,7 @@ export default function App() {
           <Sidebar currentDir={dir} onNavigate={navigate} onClose={isMobile ? () => setSidebarOpen(false) : undefined} />
         </div>
         {/* Main content */}
-        <main className={`flex-1 overflow-auto ${isMobile ? 'p-2' : 'p-4'}`}>
+        <main ref={mainRef} className={`flex-1 overflow-auto ${isMobile ? 'p-2' : 'p-4'}`}>
           {/* Type filter bar - mobile: horizontal scroll, desktop: normal */}
           <div className={`mb-3 ${isMobile ? 'overflow-x-auto scrollbar-none -mx-2 px-2' : 'hidden sm:block'}`}>
             <TypeFilter
@@ -1203,7 +1205,7 @@ export default function App() {
       )}
 
       {/* Floating scroll-to-top button */}
-      <ScrollToTop />
+      <ScrollToTop scrollRef={mainRef as React.RefObject<HTMLDivElement | null>} />
     </div>
     </UploadQueueProvider>
   );

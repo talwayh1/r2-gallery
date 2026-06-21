@@ -1106,6 +1106,24 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         }
       }}
     >
+      {/* Immersive blurred background — fills entire screen behind the image */}
+      {isImage && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
+          <img
+            src={getThumbUrl(current.path)}
+            alt=""
+            className="w-full h-full object-cover"
+            style={{
+              filter: 'blur(50px)',
+              opacity: imageLoaded ? 0.35 : 0.55,
+              transition: 'opacity 0.3s ease',
+              transform: 'scale(1.1)',
+            }}
+            draggable={false}
+          />
+        </div>
+      )}
+
       {/* Close button */}
       <button
         onClick={() => { handleClose(); }}
