@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * Debounce a value — delays updates until `delay` ms after the last change.
@@ -24,21 +24,31 @@ export function useDebounce<T>(value: T, delay: number): T {
  * of inactivity since the last call. Unlike useDebounce (which delays a value),
  * this delays a function invocation directly.
  *
- * Returns a stable reference via useCallback so it can be passed as a prop.
+ * Uses useRef internally so the returned callback has a stable reference
+ * (only changes when `delay` changes), avoiding unnecessary re-renders
+ * in components that receive it as a prop.
  */
 export function useDebouncedCallback<T extends (...args: any[]) => void>(
   callback: T,
   delay: number
 ): T {
-  const [timer, setTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const callbackRef = useRef(callback);
+  callbackRef.current = callback;
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   const debouncedFn = useCallback(
     (...args: Parameters<T>) => {
-      if (timer) clearTimeout(timer);
-      const newTimer = setTimeout(() => callback(...args), delay);
-      setTimer(newTimer);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => callbackRef.current(...args), delay);
     },
-    [callback, delay, timer]
+    [delay]
   );
 
   return debouncedFn as unknown as T;

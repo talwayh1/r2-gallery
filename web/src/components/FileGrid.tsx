@@ -165,7 +165,7 @@ function getMimeLabel(mime: string): string {
  * Image thumbnail with loading skeleton, fade-in, and error fallback.
  * Uses native <img> with loading="lazy" for efficient loading.
  */
-function ImageThumbnail({ src, alt, onClick, priority }: { src: string; alt: string; onClick: () => void; priority?: boolean }) {
+function ImageThumbnail({ src, alt, priority }: { src: string; alt: string; priority?: boolean }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
@@ -191,7 +191,6 @@ function ImageThumbnail({ src, alt, onClick, priority }: { src: string; alt: str
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
         fetchPriority={priority ? 'high' : 'low'}
-        onClick={onClick}
         className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
         onLoad={() => setLoaded(true)}
         onError={() => setError(true)}
@@ -204,7 +203,7 @@ function ImageThumbnail({ src, alt, onClick, priority }: { src: string; alt: str
  * Video thumbnail with hover-to-preview.
  * Shows a poster image (from /thumb) if available; on hover, loads and plays the video muted.
  */
-function VideoThumbnail({ src, path, onClick, isFirstRow }: { src: string; path: string; onClick: () => void; isFirstRow?: boolean }) {
+function VideoThumbnail({ src, path, isFirstRow }: { src: string; path: string; isFirstRow?: boolean }) {
   const [hovering, setHovering] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [posterLoaded, setPosterLoaded] = useState(false);
@@ -535,14 +534,12 @@ function VirtualFileGrid({
                     src={getThumbUrl(file.path)}
                     alt={file.name}
                     priority={idx < columns}
-                    onClick={() => handleCardClick(new MouseEvent('click') as any, file.path, file.mime)}
                   />
                 ) : isVideo ? (
                   <VideoThumbnail
                     src={getFileUrl(file.path)}
                     path={file.path}
                     isFirstRow={idx < columns}
-                    onClick={() => handleCardClick(new MouseEvent('click') as any, file.path, file.mime)}
                   />
                 ) : (
                   <FileTypeIcon mime={file.mime} className="w-12 h-12" />
