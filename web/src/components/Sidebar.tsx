@@ -5,6 +5,7 @@ interface Props {
   currentDir: string;
   onNavigate: (path: string) => void;
   onClose?: () => void;
+  dirCounts?: Record<string, number>;
 }
 
 interface DirNode {
@@ -49,7 +50,7 @@ let dirTreeCache: DirNode[] | null = null;
 let dirTreeCacheTime = 0;
 const DIR_TREE_CACHE_TTL = 30_000; // 30 seconds
 
-export default function Sidebar({ currentDir, onNavigate, onClose }: Props) {
+export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts }: Props) {
   const [tree, setTree] = useState<DirNode[]>(dirTreeCache || []);
   const [expanded, setExpanded] = useState<Set<string>>(loadExpanded);
   const [sort, setSort] = useState<SortMode>(
@@ -137,6 +138,9 @@ export default function Sidebar({ currentDir, onNavigate, onClose }: Props) {
             <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
           </svg>
           <span className="truncate">{node.name}</span>
+          {dirCounts && dirCounts[node.path] !== undefined && (
+            <span className="ml-auto text-xs text-gray-400 dark:text-gray-500 tabular-nums">{dirCounts[node.path]}</span>
+          )}
         </button>
         {isOpen && hasChildren && node.children!.map((child) => renderNode(child, depth + 1))}
       </div>

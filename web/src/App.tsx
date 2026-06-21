@@ -1045,7 +1045,7 @@ export default function App() {
             : `transition-transform duration-300 ${sidebarOpen ? 'block' : 'hidden'}`
           }`}
         >
-          <Sidebar currentDir={dir} onNavigate={navigate} onClose={isMobile ? () => setSidebarOpen(false) : undefined} />
+          <Sidebar currentDir={dir} onNavigate={navigate} onClose={isMobile ? () => setSidebarOpen(false) : undefined} dirCounts={dirCounts} />
         </div>
         {/* Main content */}
         <main ref={mainRef} className={`flex-1 overflow-auto ${isMobile ? 'p-2' : 'p-4'}`}>

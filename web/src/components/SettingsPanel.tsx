@@ -472,7 +472,10 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                           if (e.target.value) {
                             try {
                               await saveSettings({ [`user_${user.username}_root`]: e.target.value });
-                            } catch {}
+                              toast('success', `已设置 ${user.username} 的根目录`);
+                            } catch (err) {
+                              toast('error', `保存失败: ${(err as Error).message}`);
+                            }
                           }
                         }}
                       />
@@ -484,7 +487,10 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                           if (e.target.value) {
                             try {
                               await saveSettings({ [`user_${user.username}_files_include`]: e.target.value });
-                            } catch {}
+                              toast('success', `已设置 ${user.username} 的文件过滤`);
+                            } catch (err) {
+                              toast('error', `保存失败: ${(err as Error).message}`);
+                            }
                           }
                         }}
                       />
