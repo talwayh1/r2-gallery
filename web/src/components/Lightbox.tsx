@@ -777,6 +777,12 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SELECT' || tag === 'A' || target.isContentEditable) return;
 
       if (e.key === 'Escape') {
+        // Close any open overlay sheets first
+        if (showMoreTools) { setShowMoreTools(false); return; }
+        if (showInfo) { setShowInfo(false); return; }
+        if (showSlideshowMenu) { setShowSlideshowMenu(false); return; }
+        if (showKeyboardHelp) { setShowKeyboardHelp(false); return; }
+        if (confirmDelete) { setConfirmDelete(false); return; }
         if (isZoomed) {
           resetZoom();
         } else {
@@ -787,6 +793,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goPrev(); }
       else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); goNext(); }
       else if (e.key === 'i') setShowInfo((s) => !s);
+      else if (e.key === 'd') setShowMoreTools((s) => !s);
       else if (e.key === '?' || e.key === 'h' || e.key === 'H') {
         e.preventDefault();
         setShowKeyboardHelp((s) => !s);
@@ -1345,7 +1352,12 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                     </svg>
                   </button>
                 )}
-                <span className="min-w-[2rem] text-center text-xs text-white/60 font-mono shrink-0 select-none" title="缩放比例">
+                <span
+                  className="min-w-[2rem] text-center text-xs text-white/60 font-mono shrink-0 select-none"
+                  title={isZoomed ? '点击重置缩放' : '缩放比例'}
+                  onClick={(e) => { if (isZoomed) { e.stopPropagation(); resetZoom(); } }}
+                  style={{ cursor: isZoomed ? 'pointer' : 'default' }}
+                >
                   {Math.round(scale * 100)}%
                 </span>
               </>
@@ -1610,7 +1622,9 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
             {/* Zoom level percentage */}
             <span
               className="min-w-[3rem] text-center text-xs text-white/60 font-mono cursor-default select-none"
-              title={isZoomed ? '点击指示器重置缩放' : ''}
+              title={isZoomed ? '点击重置缩放 (0)' : ''}
+              onClick={(e) => { if (isZoomed) { e.stopPropagation(); resetZoom(); } }}
+              style={{ cursor: isZoomed ? 'pointer' : 'default' }}
             >
               {Math.round(scale * 100)}%
             </span>
