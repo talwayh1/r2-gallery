@@ -91,20 +91,30 @@ export async function renameFileMetadata(db: D1Database, oldPath: string, newPat
 }
 
 /** Global search across all files matching a query (by filename) */
-export async function searchFiles(db: D1Database, query: string, limit: number = 50, offset: number = 0): Promise<FileMetadata[]> {
+export async function searchFiles(db: D1Database, query: string, limit: number = 50, offset: number = 0, mimeFilter?: string): Promise<FileMetadata[]> {
   const pattern = `%${query}%`;
-  const result = await db.prepare(
-    "SELECT * FROM file_metadata WHERE mime != 'directory' AND path LIKE ? ORDER BY mtime DESC LIMIT ? OFFSET ?"
-  ).bind(pattern, limit, offset).all<FileMetadata>();
+  let sql = "SELECT * FROM file_metadata WHERE mime != 'directory' AND path LIKE ?";
+  const params: (string | number)[] = [pattern];
+  if (mimeFilter) {
+    sql += ' AND mime LIKE ?';
+    params.push(mimeFilter);
+  }
+  sql += ' ORDER BY mtime DESC LIMIT ? OFFSET ?';
+  params.push(limit, offset);
+  const result = await db.prepare(sql).bind(...params).all<FileMetadata>();
   return result.results;
 }
 
 /** Count total matching search results */
-export async function searchFilesCount(db: D1Database, query: string): Promise<number> {
+export async function searchFilesCount(db: D1Database, query: string, mimeFilter?: string): Promise<number> {
   const pattern = `%${query}%`;
-  const result = await db.prepare(
-    "SELECT COUNT(*) as cnt FROM file_metadata WHERE mime != 'directory' AND path LIKE ?"
-  ).bind(pattern).first<{ cnt: number }>();
+  let sql = "SELECT COUNT(*) as cnt FROM file_metadata WHERE mime != 'directory' AND path LIKE ?";
+  const params: (string | number)[] = [pattern];
+  if (mimeFilter) {
+    sql += ' AND mime LIKE ?';
+    params.push(mimeFilter);
+  }
+  const result = await db.prepare(sql).bind(...params).first<{ cnt: number }>();
   return result?.cnt || 0;
 }
 

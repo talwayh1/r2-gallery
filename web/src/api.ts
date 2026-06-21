@@ -276,10 +276,11 @@ export interface SearchResult {
   dir: string;
 }
 
-export async function searchFiles(query: string, limit?: number, offset?: number, signal?: AbortSignal): Promise<{ results: SearchResult[]; query: string; total: number }> {
+export async function searchFiles(query: string, limit?: number, offset?: number, signal?: AbortSignal, type?: string): Promise<{ results: SearchResult[]; query: string; total: number }> {
   const params = new URLSearchParams({ q: query });
   if (limit) params.set('limit', String(limit));
   if (offset) params.set('offset', String(offset));
+  if (type) params.set('type', type);
   const res = await fetch(`${API_BASE}/search?${params}`, { signal });
   return res.json();
 }

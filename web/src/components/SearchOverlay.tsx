@@ -62,20 +62,6 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
   const abortRef = useRef<AbortController | null>(null);
   const resultsContainerRef = useRef<HTMLDivElement>(null);
 
-  // Client-side type filtering
-  const filteredResults = useMemo(() => {
-    if (!typeFilter) return results;
-    return results.filter(r => {
-      switch (typeFilter) {
-        case 'image': return r.mime.startsWith('image/');
-        case 'video': return r.mime.startsWith('video/');
-        case 'audio': return r.mime.startsWith('audio/');
-        case 'document': return r.mime.startsWith('application/') || r.mime.startsWith('text/');
-        default: return true;
-      }
-    });
-  }, [results, typeFilter]);
-
   // Per-type counts for the filter chips
   const typeCounts = useMemo(() => ({
     image: results.filter(r => r.mime.startsWith('image/')).length,
@@ -84,8 +70,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     document: results.filter(r => r.mime.startsWith('application/') || r.mime.startsWith('text/')).length,
   }), [results]);
 
-  const filteredTotal = filteredResults.length;
-  const hasMore = typeFilter ? false : total > results.length;
+  const hasMore = total > results.length;
 
   // Reset selection when filter changes
   useEffect(() => {
@@ -111,7 +96,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
   }, []);
 
   // Debounced search with stale request cancellation
-  const doSearch = useCallback(async (q: string, appendOffset?: number) => {
+  const doSearch = useCallback(async (q: string, appendOffset?: number, filterType?: string | null) => {
     if (q.length < 2) {
       setResults([]);
       setTotal(0);
@@ -132,7 +117,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     }
     try {
       const limit = 30;
-      const data = await searchFiles(q, limit, appendOffset || 0, signal);
+      const data = await searchFiles(q, limit, appendOffset || 0, signal, filterType || undefined);
       // After awaiting, skip if this request was already superseded
       if (signal.aborted) return;
       if (appendOffset != null) {
@@ -157,7 +142,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (value.length >= 2) {
       debounceRef.current = setTimeout(() => {
-        doSearch(value);
+        doSearch(value, undefined, typeFilter);
       }, 300);
     } else {
       setResults([]);
@@ -165,18 +150,25 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     }
   };
 
+  // Re-fetch with typeFilter when it changes
+  useEffect(() => {
+    if (query.length >= 2) {
+      doSearch(query, undefined, typeFilter);
+    }
+  }, [typeFilter]);
+
   const handleSearchSubmit = () => {
     if (query.length >= 2) {
       addRecentSearch(query);
       setRecentSearches(getRecentSearches());
-      doSearch(query);
+      doSearch(query, undefined, typeFilter);
     }
   };
 
   const handleRecentClick = (q: string) => {
     setQuery(q);
     inputRef.current?.focus();
-    doSearch(q);
+    doSearch(q, undefined, typeFilter);
   };
 
   const handleRemoveRecent = (e: React.MouseEvent, q: string) => {
@@ -224,22 +216,22 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
       onClose();
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setSelectedIndex((i) => Math.min(i + 1, Math.max(filteredResults.length - 1, 0)));
+      setSelectedIndex((i) => Math.min(i + 1, Math.max(results.length - 1, 0)));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setSelectedIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
-      if (filteredResults.length > 0) {
-        const r = filteredResults[selectedIndex];
+      if (results.length > 0) {
+        const r = results[selectedIndex];
         if (r) {
           window.open(getFileUrl(r.path), '_blank');
         }
       }
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (filteredResults.length > 0) {
-        const r = filteredResults[selectedIndex];
+      if (results.length > 0) {
+        const r = results[selectedIndex];
         if (r) handleResultClick(r);
       } else if (query.length >= 2) {
         handleSearchSubmit();
@@ -346,14 +338,14 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
               <div className="px-4 py-1.5 text-xs text-gray-400 dark:text-gray-500 flex items-center justify-between">
                 <span>
                   {typeFilter
-                    ? `${filteredTotal} / ${total} 个结果`
+                    ? `${results.length} / ${total} 个结果`
                     : `找到 ${total} 个结果`}
                 </span>
                 {hasMore && (
                   <span className="text-[10px] opacity-60">显示前 {results.length} 个</span>
                 )}
               </div>
-              {filteredResults.map((r, i) => (
+              {results.map((r, i) => (
                 <button
                   key={r.path}
                   data-result-index={i}
@@ -426,7 +418,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
                     </div>
                   ) : (
                     <button
-                      onClick={() => doSearch(query, results.length)}
+                      onClick={() => doSearch(query, results.length, typeFilter)}
                       className="w-full py-2 text-sm text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                     >
                       加载更多 ({total - results.length} 个结果未显示)

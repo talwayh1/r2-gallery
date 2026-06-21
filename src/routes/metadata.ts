@@ -172,7 +172,7 @@ metadata.get('/exif', async (c) => {
   }
 });
 
-// GET /api/search?q=term
+// GET /api/search?q=term&type=image|video|audio|document
 // Global search across all directories
 metadata.get('/search', async (c) => {
   const query = c.req.query('q');
@@ -183,12 +183,25 @@ metadata.get('/search', async (c) => {
   const database = c.env.DB;
   const limit = parseInt(c.req.query('limit') || '50');
   const offset = Math.max(parseInt(c.req.query('offset') || '0'), 0);
+  const type = c.req.query('type');
+
+  // Map type filter to mime LIKE pattern
+  let mimeFilter: string | undefined;
+  if (type) {
+    switch (type) {
+      case 'image': mimeFilter = 'image/%'; break;
+      case 'video': mimeFilter = 'video/%'; break;
+      case 'audio': mimeFilter = 'audio/%'; break;
+      case 'document': mimeFilter = 'application/%'; break;
+      default: break;
+    }
+  }
 
   try {
     const { searchFiles, searchFilesCount } = await import('../services/db');
     const [results, total] = await Promise.all([
-      searchFiles(database, query, Math.min(limit, 100), offset),
-      searchFilesCount(database, query),
+      searchFiles(database, query, Math.min(limit, 100), offset, mimeFilter),
+      searchFilesCount(database, query, mimeFilter),
     ]);
 
     // Map to client-friendly format

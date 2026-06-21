@@ -2263,7 +2263,15 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                   )}
                   <span className="text-white/60 text-sm">加载失败，正在重试...</span>
                 </div>
-                <p className="text-white/25 text-xs mt-2 font-mono">3s 后自动重试</p>
+                <div className="flex items-center gap-3 mt-2">
+                  <p className="text-white/25 text-xs font-mono">3s 后自动重试</p>
+                  <button
+                    onClick={retryImage}
+                    className="px-3 py-1 text-xs font-medium text-blue-300 hover:text-blue-200 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    立即重试
+                  </button>
+                </div>
               </div>
             )}
             {imageError && (

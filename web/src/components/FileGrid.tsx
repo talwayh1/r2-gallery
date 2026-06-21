@@ -489,7 +489,7 @@ function VirtualFileGrid({
 
       <div
         ref={gridRef}
-        className="grid gap-3"
+        className="grid gap-1 sm:gap-2"
         style={{
           gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
         }}
@@ -523,7 +523,7 @@ function VirtualFileGrid({
               draggable={true}
               onDragStart={(e) => handleDragStart(e, file.path)}
               onDragEnd={handleDragEnd}
-              className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-colors group relative ${
+              className={`flex flex-col items-center gap-1 sm:gap-2 p-1.5 sm:p-3 rounded-xl transition-colors group relative ${
                 isSelected
                   ? 'bg-blue-100 dark:bg-blue-900/30 ring-2 ring-blue-500'
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -1020,7 +1020,7 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
       {sortedDirs.length > 0 && (
         <div className="mb-6">
           <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">文件夹</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-1.5 sm:gap-3">
             {sortedDirs.map((item) => (
               <button
                 key={item.path}
@@ -1035,7 +1035,7 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
                 onDragOver={(e) => handleDragOverFolder(e, item.path)}
                 onDragLeave={handleDragLeaveFolder}
                 onDrop={(e) => handleDropOnFolder(e, item.path)}
-                className={`flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group render-optimized ${
+                className={`flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group render-optimized ${
                   dragOverFolder === item.path
                     ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/30 scale-[1.02]'
                     : ''
