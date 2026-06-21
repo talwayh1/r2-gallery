@@ -147,6 +147,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const [exifLoading, setExifLoading] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [autoRetrying, setAutoRetrying] = useState(false);
   const retryKeyRef = useRef(0);
   const retryCountRef = useRef(0);
   const MAX_RETRIES = 3;
@@ -1084,16 +1085,19 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
     console.error('Lightbox image load error:', current?.path, img.src);
-    setImageError(true);
-    setImageLoaded(false);
     retryCountRef.current += 1;
     // Auto-retry once on first error (catches transient blips)
     if (retryCountRef.current === 1) {
+      setAutoRetrying(true);
+      setImageLoaded(false);
       setTimeout(() => {
         retryKeyRef.current += 1;
-        setImageError(false);
+        setAutoRetrying(false);
         setImageLoaded(false);
       }, 3000);
+    } else {
+      setImageError(true);
+      setImageLoaded(false);
     }
   };
 
@@ -1196,7 +1200,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         {current.size ? <span className={`text-xs text-white/50 ${isMobile ? 'hidden' : ''}`}>{formatSize(current.size)}</span> : null}
         {/* Position indicator: "3 / 15" */}
         {items.length > 1 && (
-          <span className="text-xs text-white/40 border-l border-white/10 pl-3 ml-0.5">
+          <span className="text-xs text-white/40 border-l border-white/10 pl-3 ml-0.5 whitespace-nowrap">
             <span className="font-medium text-white/60">{index + 1}</span>
             <span className="text-white/30"> / {items.length}</span>
           </span>
@@ -1206,7 +1210,6 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
             {imageDimensions.w} × {imageDimensions.h}
           </span>
         )}
-        <span className="text-white/40 whitespace-nowrap">({index + 1} / {items.length})</span>
       </div>
 
       {/* Action buttons - top bar on desktop, bottom bar on mobile */}
@@ -2223,6 +2226,19 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
               />
             )}
             {/* Image error state — shows when load fails */}
+            {/* Auto-retrying indicator — subtle, non-alarming banner */}
+            {autoRetrying && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-black/50 backdrop-blur-[2px] z-10 select-none">
+                <div className="flex items-center gap-3 px-4 py-2.5 bg-white/5 rounded-full">
+                  <svg className="w-4 h-4 text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <span className="text-white/60 text-sm">加载失败，正在重试...</span>
+                </div>
+                <p className="text-white/25 text-xs mt-2 font-mono">3s 后自动重试</p>
+              </div>
+            )}
             {imageError && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 rounded-lg bg-black/60 backdrop-blur-sm z-10 p-6">
                 <svg className="w-12 h-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
