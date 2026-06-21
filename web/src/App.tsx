@@ -273,6 +273,17 @@ export default function App() {
     return () => clearInterval(timer);
   }, [dir, loadFiles]);
 
+  // Auto-refresh when page becomes visible again (e.g. user returns from another tab)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadFiles(dir);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [dir, loadFiles]);
+
   // Load custom CSS from settings
   useEffect(() => {
     const customCss = localStorage.getItem('customCss');

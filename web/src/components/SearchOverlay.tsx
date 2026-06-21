@@ -60,6 +60,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const resultsContainerRef = useRef<HTMLDivElement>(null);
 
   // Client-side type filtering
   const filteredResults = useMemo(() => {
@@ -207,6 +208,15 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     onClose();
   };
 
+  // Auto-scroll selected result into view on keyboard navigation
+  useEffect(() => {
+    if (!resultsContainerRef.current || selectedIndex < 0) return;
+    const el = resultsContainerRef.current.querySelector(`[data-result-index="${selectedIndex}"]`);
+    if (el) {
+      el.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+    }
+  }, [selectedIndex]);
+
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -310,7 +320,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
         )}
 
         {/* Results / Recent searches */}
-        <div className="max-h-[50dvh] sm:max-h-[60vh] overflow-y-auto overscroll-contain">
+        <div ref={resultsContainerRef} className="max-h-[50dvh] sm:max-h-[60vh] overflow-y-auto overscroll-contain">
           {/* Loading indicator */}
           {loading && (
             <div className="flex items-center justify-center py-8">
@@ -334,6 +344,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
               {filteredResults.map((r, i) => (
                 <button
                   key={r.path}
+                  data-result-index={i}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
                     i === selectedIndex
                       ? 'bg-blue-50 dark:bg-blue-900/30'
