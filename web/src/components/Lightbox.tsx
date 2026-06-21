@@ -176,6 +176,12 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const slideshowSpeedRef = useRef(slideshowSpeed);
   slideshowSpeedRef.current = slideshowSpeed;
 
+  // === Reduced motion support — respects system accessibility preference ===
+  const [prefersReducedMotion] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  });
+
   // === Zoom state ===
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -2169,13 +2175,17 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       >
         {/* Skeleton gradient background — animated placeholder while image loads */}
         {isImage && !imageLoaded && (
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-800/70 via-gray-900/80 to-gray-800/70 animate-pulse rounded-lg" />
+          <div className={`absolute inset-0 bg-gradient-to-br from-gray-800/70 via-gray-900/80 to-gray-800/70 ${prefersReducedMotion ? '' : 'animate-pulse'} rounded-lg`} />
         )}
 
         {/* Loading spinner */}
         {isImage && !imageLoaded && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white/50" />
+            {prefersReducedMotion ? (
+              <div className="w-6 h-6 rounded-full border-2 border-white/30" />
+            ) : (
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white/50" />
+            )}
           </div>
         )}
 
@@ -2211,7 +2221,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
               onError={handleImageError}
             />
             {/* Crossfade out: previous image fades away as new one loads */}
-            {crossfadeUrl && (
+            {crossfadeUrl && !prefersReducedMotion && (
               <img
                 key={crossfadeUrl}
                 src={crossfadeUrl}
@@ -2225,15 +2235,29 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 draggable={false}
               />
             )}
+            {/* When reduced motion is preferred, hide the previous image instantly */}
+            {crossfadeUrl && prefersReducedMotion && (
+              <div
+                className="absolute inset-0 max-w-full max-h-[90vh] object-contain rounded-lg pointer-events-none"
+                style={{ zIndex: 2, backgroundColor: 'rgba(0,0,0,0.4)' }}
+              />
+            )}
             {/* Image error state — shows when load fails */}
             {/* Auto-retrying indicator — subtle, non-alarming banner */}
             {autoRetrying && (
               <div className="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-black/50 backdrop-blur-[2px] z-10 select-none">
                 <div className="flex items-center gap-3 px-4 py-2.5 bg-white/5 rounded-full">
-                  <svg className="w-4 h-4 text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
+                  {prefersReducedMotion ? (
+                    <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4 text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  )}
                   <span className="text-white/60 text-sm">加载失败，正在重试...</span>
                 </div>
                 <p className="text-white/25 text-xs mt-2 font-mono">3s 后自动重试</p>
@@ -2525,7 +2549,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
           </div>
         </div>
       )}
-      <style>{`@keyframes crossfade-out{from{opacity:1}to{opacity:0}}`}</style>
+      <style>{`@keyframes crossfade-out{from{opacity:1}to{opacity:0}}@media (prefers-reduced-motion:reduce){@keyframes crossfade-out{from{opacity:1}to{opacity:1}}}`}</style>
     </div>
   );
 }

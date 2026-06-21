@@ -70,6 +70,27 @@ export default function Sidebar({ currentDir, onNavigate, onClose }: Props) {
     }).catch(console.error);
   }, []);
 
+  // Auto-expand ancestor paths when navigating to a directory
+  useEffect(() => {
+    if (!currentDir) return;
+    const parts = currentDir.split('/');
+    const ancestors: string[] = [];
+    for (let i = 1; i <= parts.length; i++) {
+      ancestors.push(parts.slice(0, i).join('/'));
+    }
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const path of ancestors) {
+        if (!next.has(path)) {
+          next.add(path);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [currentDir]);
+
   useEffect(() => {
     saveExpanded(expanded);
   }, [expanded]);
