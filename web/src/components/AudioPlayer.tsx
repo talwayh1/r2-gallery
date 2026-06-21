@@ -265,17 +265,53 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
     <div className={`fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ${hidden ? 'translate-y-full' : 'translate-y-0'}`}>
       <audio ref={audioRef} src={trackUrl} preload="metadata" />
 
-      {/* Progress bar */}
-      <div className="h-1 bg-gray-700">
-        <input
-          type="range"
-          min={0}
-          max={duration || 0}
-          value={currentTime}
-          onChange={handleSeek}
-          className="w-full h-1 appearance-none bg-blue-500 cursor-pointer"
-          style={{ background: `linear-gradient(to right, #3b82f6 ${(currentTime / (duration || 1)) * 100}%, #374151 ${(currentTime / (duration || 1)) * 100}%)` }}
-        />
+      {/* Progress bar — custom visual track with invisible range input overlay for seeking */}
+      <div className="relative h-5 flex items-center cursor-pointer group"
+        onMouseDown={(e) => {
+          if (!audioRef.current || !duration) return;
+          const rect = e.currentTarget.getBoundingClientRect();
+          const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+          const time = ratio * duration;
+          audioRef.current.currentTime = time;
+          setCurrentTime(time);
+        }}
+        onTouchMove={(e) => {
+          if (!audioRef.current || !duration) return;
+          const rect = e.currentTarget.getBoundingClientRect();
+          const touch = e.touches[0];
+          const ratio = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
+          audioRef.current.currentTime = ratio * duration;
+          setCurrentTime(ratio * duration);
+        }}
+      >
+        {/* Track background */}
+        <div className="absolute left-0 right-0 h-1 rounded-full bg-gray-600 overflow-hidden">
+          {/* Filled portion */}
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400 transition-[width] duration-75"
+            style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
+          />
+        </div>
+        {/* Buffer / seek preview */}
+        <div className="absolute left-0 right-0 h-5 -top-2 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Hidden range input for keyboard/accessibility */}
+          <input
+            type="range"
+            min={0}
+            max={duration || 0}
+            value={currentTime}
+            onChange={handleSeek}
+            className="w-full h-5 appearance-none bg-transparent cursor-pointer opacity-0"
+            aria-label="进度"
+          />
+        </div>
+        {/* Thumb indicator */}
+        {duration > 0 && (
+          <div
+            className="absolute w-3 h-3 bg-white rounded-full shadow-md -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+            style={{ left: `${(currentTime / duration) * 100}%` }}
+          />
+        )}
       </div>
 
       <div className="bg-gray-900/95 backdrop-blur-xl border-t border-white/10 px-4 py-3">

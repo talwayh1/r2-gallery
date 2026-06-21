@@ -6,19 +6,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
+import { listTrash, restoreTrash, purgeTrash, emptyTrash, type TrashItem as ApiTrashItem } from '../api';
 import FileTypeIcon from './FileTypeIcon';
 import { formatSize } from '../utils';
-
-interface TrashItem {
-  id: number;
-  original_path: string;
-  name: string;
-  mime: string;
-  size: number;
-  is_dir: number;
-  deleted_at: string;
-  deleted_by: string | null;
-}
 
 interface Props {
   onClose: () => void;
@@ -32,7 +22,7 @@ function formatDate(dateStr: string): string {
 }
 
 export default function TrashPage({ onClose, onRestore }: Props) {
-  const [items, setItems] = useState<TrashItem[]>([]);
+  const [items, setItems] = useState<ApiTrashItem[]>([]);
   const [loading, setLoading] = useState(true);
   const confirm = useConfirm();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -40,12 +30,11 @@ export default function TrashPage({ onClose, onRestore }: Props) {
   const loadTrash = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/trash', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-      const data = await res.json();
+      const data = await listTrash();
       setItems(data.items || []);
     } catch (err) {
       console.error('Failed to load trash:', err);
+      toast('error', `加载回收站失败: ${(err as Error).message}`);
     } finally {
       setLoading(false);
     }
@@ -62,13 +51,7 @@ export default function TrashPage({ onClose, onRestore }: Props) {
   const handleRestore = async (paths: string[]) => {
     if (paths.length === 0) return;
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/trash/restore', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ paths }),
-      });
-      const data = await res.json();
+      const data = await restoreTrash(paths);
       if (data.success) {
         toast('success', `已恢复 ${paths.length} 个项目`);
         setSelected(new Set());
@@ -76,7 +59,7 @@ export default function TrashPage({ onClose, onRestore }: Props) {
         onRestore();
       }
     } catch (err) {
-      toast('error', '恢复失败');
+      toast('error', `恢复失败: ${(err as Error).message}`);
     }
   };
 
@@ -90,20 +73,14 @@ export default function TrashPage({ onClose, onRestore }: Props) {
     });
     if (!confirmed) return;
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/trash/purge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ paths }),
-      });
-      const data = await res.json();
+      const data = await purgeTrash(paths);
       if (data.success) {
         toast('success', `已永久删除 ${paths.length} 个项目`);
         setSelected(new Set());
         loadTrash();
       }
     } catch (err) {
-      toast('error', '删除失败');
+      toast('error', `删除失败: ${(err as Error).message}`);
     }
   };
 
@@ -116,19 +93,12 @@ export default function TrashPage({ onClose, onRestore }: Props) {
     });
     if (!confirmed) return;
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/trash/empty', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast('success', `已清空回收站 (${data.purged} 个项目)`);
-        setSelected(new Set());
-        loadTrash();
-      }
+      const data = await emptyTrash();
+      toast('success', `已清空回收站 (${data.purged} 个项目)`);
+      setSelected(new Set());
+      loadTrash();
     } catch (err) {
-      toast('error', '清空失败');
+      toast('error', `清空失败: ${(err as Error).message}`);
     }
   };
 
