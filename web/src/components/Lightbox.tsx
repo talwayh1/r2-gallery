@@ -875,6 +875,36 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     return () => clearTimeout(timer);
   }, [url]);
 
+  // Prefetch adjacent images for instant navigation
+  useEffect(() => {
+    if (!current?.mime.startsWith('image/')) return;
+    // Don't prefetch in huge collections — user might jump randomly
+    if (items.length > 200) return;
+
+    const prefetchUrls: string[] = [];
+    if (hasNext) {
+      const nextIdx = index === items.length - 1 ? 0 : index + 1;
+      const nextItem = items[nextIdx];
+      if (nextItem?.mime.startsWith('image/')) {
+        prefetchUrls.push(getFileUrl(nextItem.path));
+      }
+    }
+    if (hasPrev) {
+      const prevIdx = index === 0 ? items.length - 1 : index - 1;
+      const prevItem = items[prevIdx];
+      if (prevItem?.mime.startsWith('image/')) {
+        prefetchUrls.push(getFileUrl(prevItem.path));
+      }
+    }
+
+    // Use Image() objects to warm browser cache — cleanest approach for images
+    for (const url of prefetchUrls) {
+      const img = new Image();
+      img.referrerPolicy = 'no-referrer';
+      img.src = url;
+    }
+  }, [index, current?.path, hasNext, hasPrev, items.length, current?.mime]);
+
   // Fetch EXIF data when info panel is shown for an image
   useEffect(() => {
     if (!showInfo || !current || !current.mime.startsWith('image/')) {
@@ -1164,6 +1194,13 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         <span className={`font-medium text-white/90 ${isMobile ? 'truncate max-w-[120px]' : ''}`} title={isMobile ? name : undefined}>{name}</span>
         {ext && <span className={`px-1.5 py-0.5 text-[10px] bg-white/10 rounded ${isMobile ? 'hidden' : ''}`}>{ext}</span>}
         {current.size ? <span className={`text-xs text-white/50 ${isMobile ? 'hidden' : ''}`}>{formatSize(current.size)}</span> : null}
+        {/* Position indicator: "3 / 15" */}
+        {items.length > 1 && (
+          <span className="text-xs text-white/40 border-l border-white/10 pl-3 ml-0.5">
+            <span className="font-medium text-white/60">{index + 1}</span>
+            <span className="text-white/30"> / {items.length}</span>
+          </span>
+        )}
         {imageDimensions && (
           <span className={`text-xs ${isMobile ? 'inline-flex items-center gap-1 px-1.5 py-0.5 bg-black/30 rounded' : 'text-white/40'}`}>
             {imageDimensions.w} × {imageDimensions.h}
