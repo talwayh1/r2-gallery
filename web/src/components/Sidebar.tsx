@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { listDirs } from '../api';
 
 interface Props {
@@ -57,6 +57,7 @@ export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts }: 
     () => (localStorage.getItem(STORAGE_KEY_SORT) as SortMode) || 'name_asc'
   );
   const [maxDepth] = useState(MAX_DEPTH);
+  const [filterText, setFilterText] = useState('');
 
   useEffect(() => {
     // Use cache if fresh
@@ -109,12 +110,27 @@ export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts }: 
     });
   }, []);
 
+  function filterNodes(nodes: DirNode[], query: string): DirNode[] {
+    if (!query.trim()) return nodes;
+    const lower = query.toLowerCase();
+    const matches = (n: DirNode) =>
+      n.name.toLowerCase().includes(lower) ||
+      n.path.toLowerCase().includes(lower);
+    return nodes.reduce<DirNode[]>((acc, node) => {
+      const filteredChildren = node.children ? filterNodes(node.children, query) : undefined;
+      if (matches(node) || (filteredChildren && filteredChildren.length > 0)) {
+        acc.push({ ...node, children: filteredChildren });
+      }
+      return acc;
+    }, []);
+  }
+
   const renderNode = (node: DirNode, depth: number = 0) => {
     if (depth >= maxDepth) return null;
     
-    const isOpen = expanded.has(node.path);
-    const isActive = currentDir === node.path;
     const hasChildren = node.children && node.children.length > 0;
+    const isOpen = (showFiltered || expanded.has(node.path)) && hasChildren;
+    const isActive = currentDir === node.path;
 
     return (
       <div key={node.path}>
@@ -148,6 +164,8 @@ export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts }: 
   };
 
   const sortedTree = sortNodes(tree, sort);
+  const filteredTree = useMemo(() => filterNodes(sortedTree, filterText), [sortedTree, filterText]);
+  const showFiltered = filterText.trim().length > 0;
 
   return (
     <aside className="w-60 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto shrink-0">
@@ -186,9 +204,32 @@ export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts }: 
           <option value="name_asc">名称 A→Z</option>
           <option value="name_desc">名称 Z→A</option>
         </select>
+        {/* Folder filter */}
+        <div className="relative">
+          <svg className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+            placeholder="搜索文件夹..."
+            className="w-full text-xs pl-7 pr-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 outline-none focus:border-blue-500 dark:focus:border-blue-400 transition-colors"
+          />
+          {filterText && (
+            <button
+              onClick={() => setFilterText('')}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
       <div className="px-2 pb-3 space-y-0.5">
-        {sortedTree.map((node) => renderNode(node))}
+        {(showFiltered ? filteredTree : sortedTree).map((node) => renderNode(node))}
       </div>
     </aside>
   );

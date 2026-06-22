@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense, useMemo } from 'react';
 import type { FileItem } from '../types';
-import { getFileUrl, getThumbUrl, moveItem, copyFile, duplicateFile, downloadZip } from '../api';
+import { getFileUrl, getThumbUrl, moveItem, copyFile, duplicateFile, downloadZip, getUrlContent } from '../api';
 import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
 import { useVirtualGrid } from '../hooks/useVirtualGrid';
 import { toast } from '../hooks/useToast';
@@ -1212,6 +1212,34 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                 下载
+              </button>
+            )}
+            {!contextMenu.isDir && (
+              <button
+                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                onClick={() => {
+                  window.open(getFileUrl(contextMenu.path), '_blank');
+                  setContextMenu(null);
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                在新标签页中打开
+              </button>
+            )}
+            {!contextMenu.isDir && contextMenu.name.toLowerCase().endsWith('.url') && (
+              <button
+                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-blue-600 dark:text-blue-400"
+                onClick={async () => {
+                  try {
+                    const { url } = await getUrlContent(contextMenu.path);
+                    if (url) window.open(url, '_blank');
+                    toast('success', '链接已打开');
+                  } catch (e) { toast('error', '打开链接失败'); }
+                  setContextMenu(null);
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                打开链接
               </button>
             )}
             <button
