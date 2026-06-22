@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { searchFiles, getFileUrl, getThumbUrl, type SearchResult } from '../api';
 import { formatSize } from '../utils';
 import FileTypeIcon from './FileTypeIcon';
+import SafeThumb from './SafeThumb';
 
 interface Props {
   onClose: () => void;
@@ -381,12 +382,9 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
                 >
                   {/* Thumbnail or icon */}
                   {r.mime.startsWith('image/') ? (
-                    <img
-                      src={getThumbUrl(r.path)}
-                      alt=""
-                      className="w-10 h-10 rounded-lg object-cover shrink-0 bg-gray-100 dark:bg-gray-700"
-                      loading="lazy"
-                    />
+                    <div className="w-10 h-10 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
+                      <SafeThumb path={r.path} containerSize="sm" />
+                    </div>
                   ) : (
                     <span className="w-10 h-10 flex items-center justify-center shrink-0"><FileTypeIcon mime={r.mime} className="w-8 h-8" /></span>
                   )}
