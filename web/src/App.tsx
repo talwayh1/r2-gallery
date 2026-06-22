@@ -1345,7 +1345,7 @@ function UploadFab({ uploadRef }: { uploadRef: React.RefObject<UploadDropzoneHan
   const showRing = hasActiveUploads || completedCount > 0;
 
   return (
-    <div className="fixed bottom-6 right-6 z-30">
+    <div className="fixed right-6 z-30" style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}>
       <button
         onClick={handleClick}
         className="relative w-16 h-16 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"

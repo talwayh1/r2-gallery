@@ -1106,6 +1106,17 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     }
   };
 
+  const handleNativeShare = () => {
+    if (typeof navigator === 'undefined' || !navigator.share) return;
+    navigator.share({
+      title: name,
+      text: name,
+      url: viewUrl,
+    }).catch(() => {
+      // User cancelled — no action needed
+    });
+  };
+
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
     setImageDimensions({ w: img.naturalWidth, h: img.naturalHeight });
@@ -1370,6 +1381,18 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
+            {/* Native share via system share sheet */}
+            {'share' in navigator && (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleNativeShare(); }}
+                className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
+                title="分享"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+              </button>
+            )}
             {/* Download */}
             <a
               href={url}
