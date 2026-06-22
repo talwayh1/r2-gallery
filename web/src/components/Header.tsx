@@ -356,7 +356,7 @@ export default function Header({
           {!isMobile && (
             <>
               <span className="truncate">搜索...</span>
-              <kbd className="ml-auto text-[10px] bg-gray-200 dark:bg-gray-600 px-1 py-0.5 rounded">/</kbd>
+              <kbd className="ml-auto text-[10px] bg-gray-200 dark:bg-gray-600 px-1 py-0.5 rounded whitespace-nowrap">Ctrl+K</kbd>
             </>
           )}
         </button>

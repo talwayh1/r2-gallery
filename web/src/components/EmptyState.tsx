@@ -101,7 +101,10 @@ export default function EmptyState({ type, user, onClearSearch, onClearFilter, o
             <span className="mx-1">查看快捷键</span>
             <span className="mx-1.5 text-gray-300 dark:text-gray-600">·</span>
             <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-[10px] font-mono border border-gray-200 dark:border-gray-700">/</kbd>
-            <span className="mx-1">搜索文件</span>
+            <span className="mx-1">过滤文件</span>
+            <span className="mx-1.5 text-gray-300 dark:text-gray-600">·</span>
+            <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-[10px] font-mono border border-gray-200 dark:border-gray-700">Ctrl+K</kbd>
+            <span className="mx-1">全文搜索</span>
           </p>
         </div>
       )}
