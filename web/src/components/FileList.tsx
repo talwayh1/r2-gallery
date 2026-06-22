@@ -13,6 +13,7 @@ const FolderPicker = lazy(() => import('./FolderPicker'));
 interface Props {
   files: Record<string, FileItem>;
   dirs: string[];
+  dirMtimes?: Record<string, number>;
   currentDir: string;
   onNavigate: (path: string) => void;
   onOpen: (path: string, mime: string) => void;
@@ -48,7 +49,7 @@ function formatDate(ts: number) {
   return new Date(ts * 1000).toLocaleDateString();
 }
 
-export default function FileList({ files, dirs, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, sortBy: sortByProp, sortOrder: sortOrderProp }: Props) {
+export default function FileList({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, sortBy: sortByProp, sortOrder: sortOrderProp }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
@@ -108,7 +109,8 @@ export default function FileList({ files, dirs, currentDir, onNavigate, onOpen, 
   const handleTouchEnd = () => { longPressCancelled.current = true; clearLongPress(); };
 
   const dirItems = dirs.map((name) => ({
-    name, type: 'directory' as const, size: 0, mime: 'directory', mtime: 0,
+    name, type: 'directory' as const, size: 0, mime: 'directory',
+    mtime: dirMtimes?.[name] ?? 0,
     path: currentDir ? `${currentDir}/${name}` : name,
   }));
   const fileItems = Object.values(files);

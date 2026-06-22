@@ -61,6 +61,7 @@ export default function App() {
   const [files, setFiles] = useState<Record<string, FileItem>>({});
   const [dirs, setDirs] = useState<string[]>([]);
   const [dirCounts, setDirCounts] = useState<Record<string, number>>({});
+  const [dirMtimes, setDirMtimes] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [layout, setLayout] = useState<LayoutMode>(() => {
     return (localStorage.getItem('layout') as LayoutMode) || 'blocks';
@@ -144,6 +145,7 @@ export default function App() {
       }
       setDirs(data.dirs || []);
       setDirCounts(data.dirCounts || {});
+      setDirMtimes(data.dirMtimes || {});
       setHasMore(data.hasMore || false);
       setCursor(data.cursor);
       cursorRef.current = data.cursor;
@@ -543,6 +545,7 @@ export default function App() {
       files,
       dirs,
       dirCounts,
+      dirMtimes,
       currentDir: dir,
       sortBy,
       sortOrder,

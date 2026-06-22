@@ -39,6 +39,7 @@ function getExtBadge(name: string): string | null {
 interface Props {
   files: Record<string, FileItem>;
   dirs: string[];
+  dirMtimes?: Record<string, number>;
   currentDir: string;
   onNavigate: (path: string) => void;
   onOpen: (path: string, mime: string) => void;
@@ -51,7 +52,7 @@ interface Props {
 }
 
 
-export default function FileColumns({ files, dirs, currentDir, onNavigate, onOpen, onDelete, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore }: Props) {
+export default function FileColumns({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const folderThumbs = useFolderThumbnails(dirs, currentDir);
 
@@ -70,7 +71,8 @@ export default function FileColumns({ files, dirs, currentDir, onNavigate, onOpe
   }, [onLoadMore, hasMore]);
 
   const dirItems = dirs.map((name) => ({
-    name, type: 'directory' as const, size: 0, mime: 'directory', mtime: 0,
+    name, type: 'directory' as const, size: 0, mime: 'directory',
+    mtime: dirMtimes?.[name] ?? 0,
     path: currentDir ? `${currentDir}/${name}` : name,
   }));
   const fileItems = Object.values(files);

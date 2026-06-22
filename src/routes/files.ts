@@ -122,21 +122,26 @@ files.get('/files', async (c) => {
       return true;
     });
 
-  // Query file counts per directory from D1 (fast, single query)
+  // Query file counts and mtime per directory from D1 (fast, single query)
   let dirCounts: Record<string, number> = {};
+  let dirMtimes: Record<string, number> = {};
   if (dirs.length > 0 && database) {
     try {
-      // Get all files at exactly one level deep under prefix: prefix/dir/filename
+      // Get all files/subs at exactly one level deep under prefix
       const countResult = await database.prepare(
-        "SELECT path FROM file_metadata WHERE path LIKE ? || '%' AND path != ? AND path NOT LIKE ? || '%/%/%' AND path LIKE ? || '%/%' AND mime != 'directory'"
-      ).bind(prefix, prefix, prefix, prefix).all<{path: string}>();
-      for (const d of dirs) dirCounts[d] = 0;
+        "SELECT path, mtime FROM file_metadata WHERE path LIKE ? || '%' AND path != ? AND path NOT LIKE ? || '%/%/%' AND path LIKE ? || '%/%'"
+      ).bind(prefix, prefix, prefix, prefix).all<{path: string; mtime: number}>();
+      for (const d of dirs) { dirCounts[d] = 0; dirMtimes[d] = 0; }
       for (const row of countResult.results) {
         const rel = row.path.slice(prefix.length);
         const slashIdx = rel.indexOf('/');
         if (slashIdx > 0) {
           const dirName = rel.slice(0, slashIdx);
-          if (dirCounts[dirName] !== undefined) dirCounts[dirName]++;
+          if (dirCounts[dirName] !== undefined) {
+            dirCounts[dirName]++;
+            // Track max mtime for each directory (from its children metadata)
+            if (row.mtime > dirMtimes[dirName]) dirMtimes[dirName] = row.mtime;
+          }
         }
       }
     } catch (err) {
@@ -196,6 +201,7 @@ files.get('/files', async (c) => {
     files: sortedFiles,
     dirs,
     dirCounts: Object.keys(dirCounts).length > 0 ? dirCounts : undefined,
+    dirMtimes: Object.keys(dirMtimes).length > 0 ? dirMtimes : undefined,
     cursor: result.cursor,
     hasMore: result.truncated,
   } as FileListResponse;

@@ -14,6 +14,7 @@ const ShareDialog = lazy(() => import('./ShareDialog'));
 interface Props {
   files: Record<string, FileItem>;
   dirs: string[];
+  dirMtimes?: Record<string, number>;
   currentDir: string;
   onNavigate: (path: string) => void;
   onOpen: (path: string, mime: string) => void;
@@ -28,7 +29,7 @@ interface Props {
 }
 
 
-export default function FileBlocks({ files, dirs, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore }: Props) {
+export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
@@ -82,7 +83,8 @@ export default function FileBlocks({ files, dirs, currentDir, onNavigate, onOpen
   }, [onLoadMore, hasMore]);
 
   const dirItems = dirs.map((name) => ({
-    name, type: 'directory' as const, size: 0, mime: 'directory', mtime: 0,
+    name, type: 'directory' as const, size: 0, mime: 'directory',
+    mtime: dirMtimes?.[name] ?? 0,
     path: currentDir ? `${currentDir}/${name}` : name,
   }));
   const fileItems = Object.values(files);

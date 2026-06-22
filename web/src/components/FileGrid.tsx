@@ -74,6 +74,7 @@ interface Props {
   files: Record<string, FileItem>;
   dirs: string[];
   dirCounts?: Record<string, number>;
+  dirMtimes?: Record<string, number>;
   currentDir: string;
   onNavigate: (path: string) => void;
   onOpen: (path: string, mime: string) => void;
@@ -703,7 +704,7 @@ function VirtualFileGrid({
   );
 }
 
-export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, sortBy, sortOrder }: Props) {
+export default function FileGrid({ files, dirs, dirCounts, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, sortBy, sortOrder }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
@@ -854,14 +855,17 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
       type: 'directory' as const,
       size: 0,
       mime: 'directory',
-      mtime: 0,
+      mtime: dirMtimes?.[name] ?? 0,
       path: currentDir ? `${currentDir}/${name}` : name,
     }));
     return [...dirItems].sort((a, b) => {
-      const cmp = a.name.localeCompare(b.name);
+      let cmp = 0;
+      if (sortKey === 'mtime') cmp = a.mtime - b.mtime;
+      else if (sortKey === 'size') cmp = a.name.localeCompare(b.name); // dirs have size=0, fall back to name
+      else cmp = a.name.localeCompare(b.name);
       return sortDir === 'asc' ? cmp : -cmp;
     });
-  }, [dirs, currentDir, sortDir]);
+  }, [dirs, currentDir, sortKey, sortDir, dirMtimes]);
 
   const sortedFiles = useMemo(() => {
     const fileItems = Object.values(files);
