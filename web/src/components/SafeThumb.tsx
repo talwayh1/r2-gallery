@@ -1,3 +1,4 @@
+import { getThumbUrl } from '../api';
 import { useSafeImage } from '../hooks/useSafeImage';
 
 interface Props {
@@ -49,7 +50,7 @@ export default function SafeThumb({ path, className = 'w-full h-full object-cove
       {!loaded && <ShimmerSkeleton />}
       <img
         key={path}
-        src={`/api/thumb?path=${encodeURIComponent(path)}`}
+        src={getThumbUrl(path)}
         alt=""
         className={`${className} ${imgClasses}`}
         loading={priority ? undefined : 'lazy'}

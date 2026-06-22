@@ -245,6 +245,15 @@ export default function App() {
     localStorage.setItem('sidebarOpen', String(sidebarOpen));
   }, [sidebarOpen]);
 
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (isMobile && sidebarOpen) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = prevOverflow; };
+    }
+  }, [isMobile, sidebarOpen]);
+
   // Update page title based on current directory
   useEffect(() => {
     const dirName = dir ? dir.split('/').pop() || dir : '';
