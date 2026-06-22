@@ -156,7 +156,7 @@ export default function TrashPage({ onClose, onRestore }: Props) {
                 className={`flex items-center gap-3 p-3 rounded-xl border transition-colors cursor-pointer ${
                   selected.has(item.original_path)
                     ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700'
-                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
+                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
                 }`}
                 onClick={() => toggleSelect(item.original_path)}
               >

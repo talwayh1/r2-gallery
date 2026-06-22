@@ -352,7 +352,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
                   className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
                     i === selectedIndex
                       ? 'bg-blue-50 dark:bg-blue-900/30'
-                      : 'hover:bg-gray-50 dark:hover:bg-gray-750'
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-800'
                   }`}
                   onClick={(e) => handleResultClick(r, e)}
                   onMouseEnter={() => setSelectedIndex(i)}
@@ -473,7 +473,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
                 <button
                   key={q}
                   onClick={() => handleRecentClick(q)}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors text-left"
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
                 >
                   <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />

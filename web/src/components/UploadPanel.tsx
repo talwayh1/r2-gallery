@@ -141,7 +141,7 @@ export default function UploadPanel() {
                   <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
                     <button
                       onClick={dismissCompleted}
-                      className="w-full py-1 text-[11px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 bg-gray-50 dark:bg-gray-750 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      className="w-full py-1 text-[11px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 bg-gray-50 dark:bg-gray-800 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                     >
                       清空已完成 ({terminalCount})
                     </button>
