@@ -506,9 +506,123 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
               {loading ? (
                 <div className="text-center py-8 text-gray-400">加载中...</div>
               ) : diagnostics ? (
-                <pre className="text-sm bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-auto max-h-[60vh]">
-                  {JSON.stringify(diagnostics, null, 2)}
-                </pre>
+                <div className="space-y-6">
+                  {/* Database section */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                      </svg>
+                      数据库
+                    </h4>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center">
+                        <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{diagnostics.database?.users ?? '?'}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">用户</div>
+                      </div>
+                      <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center">
+                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">{diagnostics.database?.files ?? '?'}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">文件</div>
+                      </div>
+                      <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 text-center">
+                        <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{diagnostics.database?.settings ?? '?'}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">设置</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* R2 Storage section */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      </svg>
+                      R2 对象存储
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 text-center">
+                        <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{diagnostics.r2?.objects ?? '?'}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">对象数</div>
+                      </div>
+                      <div className="bg-rose-50 dark:bg-rose-900/20 rounded-lg p-3 text-center">
+                        <div className="text-lg font-bold text-rose-600 dark:text-rose-400">
+                          {(() => {
+                            const bytes = diagnostics.r2?.totalSize ?? 0;
+                            if (bytes === 0) return '0 B';
+                            const k = 1024;
+                            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+                            const i = Math.floor(Math.log(bytes) / Math.log(k));
+                            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+                          })()}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">总大小</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Settings summary */}
+                  {diagnostics.settings && Object.keys(diagnostics.settings).length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        系统设置 ({(diagnostics.settings as Record<string, string>) ? Object.keys(diagnostics.settings).length : 0} 项)
+                      </h4>
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg overflow-hidden text-xs">
+                        <table className="w-full">
+                          <tbody>
+                            {diagnostics.settings && (() => {
+                              const entries = Object.entries(diagnostics.settings as Record<string, string>);
+                              return entries.slice(0, 10).map(([key, value], i) => (
+                                <tr key={key} className={i % 2 === 0 ? 'bg-white/50 dark:bg-white/5' : ''}>
+                                  <td className="px-3 py-2 text-gray-600 dark:text-gray-300 font-mono truncate max-w-[160px]" title={key}>{key}</td>
+                                  <td className="px-3 py-2 text-gray-500 dark:text-gray-400 font-mono truncate max-w-[180px]" title={value}>{value}</td>
+                                </tr>
+                              ));
+                            })()}
+                          </tbody>
+                        </table>
+                        {diagnostics.settings && Object.keys(diagnostics.settings).length > 10 && (
+                          <div className="px-3 py-2 text-center text-gray-400 text-[10px] border-t border-gray-200 dark:border-gray-700">
+                            仅显示前 10 项，共 {Object.keys(diagnostics.settings).length} 项
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Environment info */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      运行环境
+                    </h4>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                      <div className="grid grid-cols-2 gap-y-2 text-xs">
+                        <span className="text-gray-500 dark:text-gray-400">运行时</span>
+                        <span className="text-gray-700 dark:text-gray-200">{diagnostics.environment?.nodeVersion ?? '?'}</span>
+                        <span className="text-gray-500 dark:text-gray-400">TypeScript</span>
+                        <span className="text-gray-700 dark:text-gray-200">{diagnostics.environment?.typescript ? '✓ 启用' : '✗'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Raw JSON expandable */}
+                  <details className="group">
+                    <summary className="cursor-pointer text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 select-none">
+                      <span className="group-open:hidden">▶</span>
+                      <span className="hidden group-open:inline">▼</span>
+                      {' '}查看原始 JSON 数据
+                    </summary>
+                    <pre className="text-[11px] bg-gray-100 dark:bg-gray-800 p-3 mt-2 rounded-lg overflow-auto max-h-[40vh] leading-relaxed">
+                      {JSON.stringify(diagnostics, null, 2)}
+                    </pre>
+                  </details>
+                </div>
               ) : (
                 <div className="text-center py-8 text-gray-400">点击"诊断"标签加载</div>
               )}

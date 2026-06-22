@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useState, useRef, useMemo, lazy, Suspense } from 'react';
-import { getFileUrl, getThumbUrl, getExif, saveFile, uploadCustomThumb, type ExifData } from '../api';
+import { getFileUrl, getThumbUrl, getExif, saveFile, uploadCustomThumb, getId3, type ExifData, type Id3Data } from '../api';
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
 import VideoPlayer from './VideoPlayer';
 import CodeEditor from './CodeEditor';
@@ -79,6 +79,8 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const [slideshowProgress, setSlideshowProgress] = useState(0);
   const [showSlideshowMenu, setShowSlideshowMenu] = useState(false);
   const [showMoreTools, setShowMoreTools] = useState(false);
+  // ID3 metadata cache for audio tracks — path → { artist, album, cover, ... }
+  const [audioId3Map, setAudioId3Map] = useState<Record<string, Id3Data | null>>({});
   // Toolbar horizontal scroll indicator — shows fade on right edge when content overflows
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [toolbarCanScroll, setToolbarCanScroll] = useState(false);
@@ -959,6 +961,32 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     return () => { cancelled = true; };
   }, [showInfo, current]);
 
+  // Fetch ID3 metadata for audio tracks (artist, album, cover art)
+  useEffect(() => {
+    const audioItems = items.filter(it => it.mime.startsWith('audio/'));
+    if (audioItems.length === 0) {
+      setAudioId3Map({});
+      return;
+    }
+    let cancelled = false;
+    const fetchAll = async () => {
+      const map: Record<string, Id3Data | null> = {};
+      for (const item of audioItems) {
+        try {
+          const res = await getId3(item.path);
+          if (!cancelled && res.id3) {
+            map[item.path] = res.id3;
+          }
+        } catch {
+          // Ignore ID3 fetch failures — audio still plays without metadata
+        }
+      }
+      if (!cancelled) setAudioId3Map(map);
+    };
+    fetchAll();
+    return () => { cancelled = true; };
+  }, [items]);
+
   // Fetch text content for text/code files (with size limit)
   useEffect(() => {
     if (!current || !isTextMime(current.mime)) {
@@ -1128,11 +1156,17 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
   // Audio playlist — collect all audio items for the AudioPlayer
   const audioTracks = useMemo(() => {
-    return items.filter(it => it.mime.startsWith('audio/')).map(it => ({
-      name: it.path.split('/').pop() || it.path,
-      path: it.path,
-    }));
-  }, [items]);
+    return items.filter(it => it.mime.startsWith('audio/')).map(it => {
+      const id3 = audioId3Map[it.path];
+      return {
+        name: id3?.title || it.path.split('/').pop() || it.path,
+        path: it.path,
+        ...(id3?.artist ? { artist: id3.artist } : {}),
+        ...(id3?.album ? { album: id3.album } : {}),
+        ...(id3?.cover ? { cover: id3.cover } : {}),
+      };
+    });
+  }, [items, audioId3Map]);
   const audioIndex = items.filter(it => it.mime.startsWith('audio/')).findIndex(it => it.path === current.path);
 
   return (
