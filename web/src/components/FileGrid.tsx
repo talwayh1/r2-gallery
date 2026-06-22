@@ -320,7 +320,7 @@ function VideoThumbnail({ src, path, isFirstRow }: { src: string; path: string; 
  * Inspired by Immich's virtual scroll pattern.
  */
 function VirtualFileGrid({
-  files, columns, visibleRange, totalHeight, offsetY, containerRef,
+  files, columns, visibleRange, totalHeight, offsetY, rowHeight, containerRef,
   selected, isSelectionMode, renaming, draggingFile, sortKey,
   onOpen, onSelect, onRename, setRenaming, setInternalSelected,
   handleCardClick, handleContextMenu, handleDragStart, handleDragEnd,
@@ -332,6 +332,7 @@ function VirtualFileGrid({
   visibleRange: { start: number; end: number };
   totalHeight: number;
   offsetY: number;
+  rowHeight: number;
   containerRef: React.RefObject<HTMLDivElement>;
   selected: Set<string>;
   isSelectionMode: boolean;
@@ -626,7 +627,7 @@ function VirtualFileGrid({
       </div>
 
       {/* Bottom spacer */}
-      <div style={{ height: Math.max(0, totalHeight - offsetY - (visibleFiles.length > 0 ? 280 : 0)) }} />
+      <div style={{ height: Math.max(0, totalHeight - offsetY - (visibleFiles.length > 0 ? rowHeight : 0)) }} />
 
       {/* Infinite scroll sentinel — triggers load-more when scrolled into view */}
       {hasMore && onLoadMore && (
@@ -1158,6 +1159,7 @@ export default function FileGrid({ files, dirs, dirCounts, currentDir, onNavigat
             visibleRange={virtualGrid.visibleRange}
             totalHeight={virtualGrid.totalHeight}
             offsetY={virtualGrid.offsetY}
+            rowHeight={virtualGrid.rowHeight}
             containerRef={virtualGrid.containerRef}
             selected={selected}
             isSelectionMode={isSelectionMode}

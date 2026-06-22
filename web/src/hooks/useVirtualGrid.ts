@@ -24,6 +24,8 @@ interface VirtualGridResult {
   offsetY: number;
   /** Number of columns calculated from container width */
   columns: number;
+  /** Actual row height used (adjusted for mobile screens) */
+  rowHeight: number;
 }
 
 /**
@@ -105,5 +107,6 @@ export function useVirtualGrid({
     totalHeight,
     offsetY,
     columns,
+    rowHeight: effectiveRowHeight,
   };
 }

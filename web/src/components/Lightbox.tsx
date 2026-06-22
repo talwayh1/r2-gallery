@@ -198,6 +198,34 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   scaleRef.current = scale;
   offsetRef.current = offset;
 
+  // Ref bundle for keyboard handler — synced every render so the effect can use [] deps
+  const keyboardRef = useRef({
+    handleClose: () => {},
+    goPrev: () => {},
+    goNext: () => {},
+    handleCopyFileName: () => {},
+    goPrev10: () => {},
+    goNext10: () => {},
+    resetZoom: () => {},
+    toggleSlideshow: () => {},
+    handleDeleteConfirm: () => {},
+    handleDeleteExecute: () => {},
+    scale: 1,
+    url: '',
+    name: '',
+    isZoomed: false,
+    current: null as any,
+    showMoreTools: false,
+    showInfo: false,
+    showSlideshowMenu: false,
+    showKeyboardHelp: false,
+    confirmDelete: false,
+    onDelete: null as ((path: string) => void) | null,
+    onDuplicate: null as ((path: string) => void) | null,
+    slideshowTimerRef: { current: null as number | null },
+    imgContainerRef: { current: null as HTMLElement | null },
+  });
+
   // Text content state
   const [textContent, setTextContent] = useState<string | null>(null);
   const [textLoading, setTextLoading] = useState(false);
@@ -542,6 +570,14 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     onClose();
   }, [stopSlideshow, onClose]);
 
+  const handleCopyFileName = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(name);
+      setNameCopied(true);
+      setTimeout(() => setNameCopied(false), 2000);
+    } catch { /* silent */ }
+  }, [name]);
+
   // Wrapper — sets wasSwiping ref to prevent the browser's synthesized
   // click event from closing the lightbox immediately after a swipe gesture
   const wrapSwipe = useCallback((fn: () => void) => {
@@ -776,9 +812,38 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     }
   }, [current, onDelete, deleting]);
 
-  // Keyboard shortcuts
+  // Sync keyboard ref with latest values on every render
+  keyboardRef.current = {
+    handleClose,
+    goPrev,
+    goNext,
+    handleCopyFileName,
+    goPrev10,
+    goNext10,
+    resetZoom,
+    toggleSlideshow,
+    handleDeleteConfirm,
+    handleDeleteExecute,
+    scale,
+    url: url ?? '',
+    name: name ?? '',
+    isZoomed,
+    current,
+    showMoreTools,
+    showInfo,
+    showSlideshowMenu,
+    showKeyboardHelp,
+    confirmDelete,
+    onDelete: onDelete ?? null,
+    onDuplicate: onDuplicate ?? null,
+    slideshowTimerRef: slideshowTimerRef as { current: number | null },
+    imgContainerRef,
+  };
+
+  // Keyboard shortcuts — stabilized with refs so the DOM listener is never re-registered
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const kb = keyboardRef.current;
       // Ignore when typing in inputs or when a focusable element might conflict
       const target = e.target as HTMLElement;
       const tag = target.tagName;
@@ -786,20 +851,20 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
       if (e.key === 'Escape') {
         // Close any open overlay sheets first
-        if (showMoreTools) { setShowMoreTools(false); return; }
-        if (showInfo) { setShowInfo(false); return; }
-        if (showSlideshowMenu) { setShowSlideshowMenu(false); return; }
-        if (showKeyboardHelp) { setShowKeyboardHelp(false); return; }
-        if (confirmDelete) { setConfirmDelete(false); return; }
-        if (isZoomed) {
-          resetZoom();
+        if (kb.showMoreTools) { setShowMoreTools(false); return; }
+        if (kb.showInfo) { setShowInfo(false); return; }
+        if (kb.showSlideshowMenu) { setShowSlideshowMenu(false); return; }
+        if (kb.showKeyboardHelp) { setShowKeyboardHelp(false); return; }
+        if (kb.confirmDelete) { setConfirmDelete(false); return; }
+        if (kb.isZoomed) {
+          kb.resetZoom();
         } else {
-          handleClose();
+          kb.handleClose();
         }
-      } else if (e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowUp')) { e.preventDefault(); goPrev10(); }
-      else if (e.shiftKey && (e.key === 'ArrowRight' || e.key === 'ArrowDown')) { e.preventDefault(); goNext10(); }
-      else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goPrev(); }
-      else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); goNext(); }
+      } else if (e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowUp')) { e.preventDefault(); kb.goPrev10(); }
+      else if (e.shiftKey && (e.key === 'ArrowRight' || e.key === 'ArrowDown')) { e.preventDefault(); kb.goNext10(); }
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); kb.goPrev(); }
+      else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); kb.goNext(); }
       else if (e.key === 'i') setShowInfo((s) => !s);
       else if (e.key === 'd') setShowMoreTools((s) => !s);
       else if (e.key === '?' || e.key === 'h' || e.key === 'H') {
@@ -809,19 +874,19 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       else if (e.key === '+' || e.key === '=') {
         e.preventDefault();
         // Zoom in centered on the image container
-        const container = imgContainerRef.current;
+        const container = kb.imgContainerRef.current;
         if (container) {
           const rect = container.getBoundingClientRect();
-          zoomAtPoint(rect.left + rect.width / 2, rect.top + rect.height / 2, scale * 1.3);
+          zoomAtPoint(rect.left + rect.width / 2, rect.top + rect.height / 2, kb.scale * 1.3);
         } else {
           setScale((s) => Math.min(s * 1.3, 8));
         }
       } else if (e.key === '-') {
         e.preventDefault();
-        const newScale = scale / 1.3;
-        if (newScale <= 1.05) { resetZoom(); }
+        const newScale = kb.scale / 1.3;
+        if (newScale <= 1.05) { kb.resetZoom(); }
         else {
-          const container = imgContainerRef.current;
+          const container = kb.imgContainerRef.current;
           if (container) {
             const rect = container.getBoundingClientRect();
             zoomAtPoint(rect.left + rect.width / 2, rect.top + rect.height / 2, newScale);
@@ -830,32 +895,32 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
           }
         }
       } else if (e.key === '0') {
-        resetZoom();
+        kb.resetZoom();
       } else if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
-        handleCopyFileName();
+        kb.handleCopyFileName();
       } else if (e.key === 'd' || e.key === 'D') {
-        if (!isZoomed) {
+        if (!kb.isZoomed) {
           e.preventDefault();
           const a = document.createElement('a');
-          a.href = url;
-          a.download = name;
+          a.href = kb.url;
+          a.download = kb.name;
           a.click();
         }
       } else if ((e.ctrlKey || e.metaKey) && (e.key === 'o' || e.key === 'O')) {
         e.preventDefault();
-        window.open(url, '_blank');
+        window.open(kb.url, '_blank');
       } else if (e.key === ' ' || e.key === 's' || e.key === 'S') {
         e.preventDefault();
-        if (current?.mime.startsWith('video/')) {
+        if (kb.current?.mime.startsWith('video/')) {
           // Space toggles play/pause when viewing a video
-          const videoEl = imgContainerRef.current?.querySelector('video');
+          const videoEl = kb.imgContainerRef.current?.querySelector('video');
           if (videoEl) {
             if (videoEl.paused) videoEl.play().catch(() => {});
             else videoEl.pause();
           }
         } else {
-          toggleSlideshow();
+          kb.toggleSlideshow();
         }
       } else if (e.key === 'f' || e.key === 'F') {
         e.preventDefault();
@@ -870,18 +935,18 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       } else if (e.key === 'R') {
         e.preventDefault();
         setRotation(r => (r - 90 + 360) % 360);
-      } else if ((e.key === 'Delete' || e.key === 'Backspace') && onDelete) {
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && kb.onDelete) {
         e.preventDefault();
-        handleDeleteConfirm();
+        kb.handleDeleteConfirm();
       } else if ((e.ctrlKey || e.metaKey) && (e.key === 'w' || e.key === 'W')) {
         e.preventDefault();
-        handleClose();
-      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D') && onDuplicate) {
+        kb.handleClose();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D') && kb.onDuplicate) {
         e.preventDefault();
-        onDuplicate(current.path);
+        kb.onDuplicate(kb.current?.path);
       } else if (e.key === ']' || e.key === '[') {
         // Slideshow speed shortcuts — only active when slideshow is playing
-        if (!slideshowTimerRef.current) return;
+        if (!kb.slideshowTimerRef.current) return;
         e.preventDefault();
         const step = 0.5;
         if (e.key === ']') {
@@ -897,7 +962,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [onClose, goPrev, goNext, goPrev10, goNext10, url, name, isZoomed, scale, resetZoom, toggleSlideshow, current, onDelete, handleDeleteConfirm, onDuplicate]);
+  }, []);
 
   // Reset state on navigation
   useEffect(() => {
@@ -1080,14 +1145,6 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       setDirectUrlCopied(true);
       setTimeout(() => setDirectUrlCopied(false), 2000);
     }
-  };
-
-  const handleCopyFileName = async () => {
-    try {
-      await navigator.clipboard.writeText(name);
-      setNameCopied(true);
-      setTimeout(() => setNameCopied(false), 2000);
-    } catch { /* silent */ }
   };
 
   const handleCopyImage = async () => {
