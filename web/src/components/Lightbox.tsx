@@ -907,10 +907,6 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     setShowInfo(false);
     setExifData(null);
     setExifLoading(false);
-    setImageLoaded(false);
-    setImageError(false);
-    retryKeyRef.current = 0;
-    retryCountRef.current = 0;
     setImageDimensions(null);
     resetZoom();
     setSlideshowProgress(0);

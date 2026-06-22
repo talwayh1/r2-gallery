@@ -85,6 +85,17 @@ export function SafeThumbUrl({ url, className = 'w-full h-full object-cover', co
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
+  // Reset loading state when url changes — prevents stale thumbnail from
+  // lingering or showing a fallback from a previously failed image.
+  const prevUrlRef = useRef(url);
+  useEffect(() => {
+    if (prevUrlRef.current !== url) {
+      prevUrlRef.current = url;
+      setLoaded(false);
+      setFailed(false);
+    }
+  }, [url]);
+
   const handleLoad = useCallback(() => setLoaded(true), []);
   const handleError = useCallback(() => setFailed(true), []);
 
