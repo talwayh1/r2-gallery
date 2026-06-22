@@ -359,9 +359,24 @@ export default function App() {
         }
       } else if (e.key === 'g' || e.key === 'G') {
         e.preventDefault();
-        const newLayout = layout === 'grid' ? 'rows' : 'grid';
-        setLayout(newLayout);
-        localStorage.setItem('layout', newLayout);
+        const layouts: LayoutMode[] = ['grid', 'list', 'imagelist', 'columns', 'blocks', 'rows'];
+        const labels: Record<LayoutMode, string> = { grid: '网格', list: '列表', imagelist: '图片列表', columns: '列', blocks: '块', rows: '行' };
+        const idx = layouts.indexOf(layout);
+        const next = layouts[(idx + 1) % layouts.length];
+        setLayout(next);
+        localStorage.setItem('layout', next);
+        toast('info', `布局: ${labels[next]}`);
+      } else if (e.key >= '1' && e.key <= '6') {
+        e.preventDefault();
+        const layoutMap: LayoutMode[] = ['grid', 'list', 'imagelist', 'columns', 'blocks', 'rows'];
+        const labels: Record<LayoutMode, string> = { grid: '网格', list: '列表', imagelist: '图片列表', columns: '列', blocks: '块', rows: '行' };
+        const idx = parseInt(e.key) - 1;
+        const newLayout = layoutMap[idx];
+        if (newLayout && newLayout !== layout) {
+          setLayout(newLayout);
+          localStorage.setItem('layout', newLayout);
+          toast('info', `布局: ${labels[newLayout]}`);
+        }
       } else if (e.key === 't' || e.key === 'T') {
         if (!e.ctrlKey && !e.metaKey) {
           e.preventDefault();
@@ -969,7 +984,12 @@ export default function App() {
         fileCount={Object.keys(files).length}
         dirCount={dirs.length}
         onNavigate={navigate}
-        onLayoutChange={(l) => { setLayout(l); localStorage.setItem('layout', l); }}
+        onLayoutChange={(l) => {
+          const labels: Record<string, string> = { grid: '网格', list: '列表', imagelist: '图片列表', columns: '列', blocks: '块', rows: '行' };
+          setLayout(l);
+          localStorage.setItem('layout', l);
+          if (l !== layout) toast('info', `布局: ${labels[l] || l}`);
+        }}
         onThemeToggle={toggleTheme}
         onSearchChange={setSearch}
         onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
