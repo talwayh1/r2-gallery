@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { getFileUrl, getThumbUrl } from '../api';
 
+const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
 interface Props {
   path: string;
   name: string;
@@ -15,12 +17,20 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
+  const [volume, setVolume] = useState(() => {
+    const saved = localStorage.getItem('videoVolume');
+    return saved ? parseFloat(saved) : 1;
+  });
   const [muted, setMuted] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(() => {
+    const saved = localStorage.getItem('videoPlaybackRate');
+    return saved ? parseFloat(saved) : 1;
+  });
   const [showControls, setShowControls] = useState(true);
   const [buffered, setBuffered] = useState(0);
   const [pipSupported] = useState(() => typeof document !== 'undefined' && 'pictureInPictureEnabled' in document && document.pictureInPictureEnabled);
   const [pipActive, setPipActive] = useState(false);
+  const [speedMenuOpen, setSpeedMenuOpen] = useState(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const url = getFileUrl(path);
@@ -58,6 +68,27 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
       video.removeEventListener('leavepictureinpicture', onLeavePip);
     };
   }, [onEnded]);
+
+  // Sync volume to video element and persist to localStorage
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.volume = volume;
+    localStorage.setItem('videoVolume', String(volume));
+  }, [volume]);
+
+  // Sync playback rate to video element and persist to localStorage
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.playbackRate = playbackRate;
+    localStorage.setItem('videoPlaybackRate', String(playbackRate));
+  }, [playbackRate]);
+
+  // Close speed menu when controls auto-hide
+  useEffect(() => {
+    if (!showControls) setSpeedMenuOpen(false);
+  }, [showControls]);
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -227,6 +258,37 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
               </svg>
             </button>
           )}
+
+          {/* Playback speed */}
+          <div className="relative">
+            <button
+              onClick={() => setSpeedMenuOpen(!speedMenuOpen)}
+              className="text-white/70 hover:text-white transition-colors text-xs font-mono font-bold px-1.5 py-0.5 rounded hover:bg-white/10"
+              title="播放速度"
+            >
+              {playbackRate}x
+            </button>
+            {speedMenuOpen && (
+              <div
+                className="absolute bottom-full right-0 mb-2 bg-gray-900 border border-gray-700 rounded-lg shadow-xl overflow-hidden"
+                onMouseLeave={() => setSpeedMenuOpen(false)}
+              >
+                {SPEEDS.map((speed) => (
+                  <button
+                    key={speed}
+                    onClick={() => { setPlaybackRate(speed); setSpeedMenuOpen(false); }}
+                    className={`block w-full text-left px-4 py-2 text-sm whitespace-nowrap hover:bg-white/10 transition-colors ${
+                      speed === playbackRate ? 'text-blue-400 font-medium' : 'text-white/80'
+                    }`}
+                  >
+                    {speed}x
+                    {speed === 1 && <span className="ml-2 text-xs text-gray-500">正常</span>}
+                    {speed === playbackRate && <span className="ml-2 text-blue-400">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Volume */}
           <button onClick={toggleMute} className="text-white/70 hover:text-white transition-colors">
