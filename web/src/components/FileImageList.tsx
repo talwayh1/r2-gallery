@@ -5,7 +5,7 @@ import { toast } from '../hooks/useToast';
 import SafeThumb from './SafeThumb';
 import FileTypeIcon from './FileTypeIcon';
 import EmptyState from './EmptyState';
-import { formatSize } from '../utils';
+import { formatSize, formatDate } from '../utils';
 
 const FolderPicker = lazy(() => import('./FolderPicker'));
 const ShareDialog = lazy(() => import('./ShareDialog'));
@@ -26,11 +26,6 @@ interface Props {
   loadingMore?: boolean;
 }
 
-
-function formatDate(ts: number) {
-  if (!ts) return '';
-  return new Date(ts * 1000).toLocaleDateString();
-}
 
 /**
  * Video thumbnail for list views — loads poster image from /api/thumb.

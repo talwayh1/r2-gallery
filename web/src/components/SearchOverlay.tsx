@@ -311,6 +311,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
                     {item.count}
                   </span>
                 )}
+                <kbd className="text-[9px] text-gray-400 dark:text-gray-500 bg-gray-200/60 dark:bg-gray-600/60 px-1 rounded ml-0.5 hidden sm:inline">Alt+{item.shortcut}</kbd>
               </button>
             ))}
           </div>
