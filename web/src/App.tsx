@@ -348,13 +348,26 @@ export default function App() {
         setShowShortcuts((s) => !s);
       } else if (e.key === '/' && !e.shiftKey) {
         e.preventDefault();
-        setShowSearch(true);
+        // Focus inline search filter input by placeholder attribute
+        const input = document.querySelector<HTMLInputElement>('input[placeholder*="过滤器"]');
+        if (input) {
+          input.focus();
+          input.select();
+        } else {
+          setShowSearch(true);
+        }
       } else if ((e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         setShowSearch(true);
       } else if ((e.key === 'f' || e.key === 'F') && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
-        setShowSearch(true);
+        const input = document.querySelector<HTMLInputElement>('input[placeholder*="过滤器"]');
+        if (input) {
+          input.focus();
+          input.select();
+        } else {
+          setShowSearch(true);
+        }
       } else if (e.key === 'r' || e.key === 'R') {
         if (!e.ctrlKey && !e.metaKey) {
           e.preventDefault();
