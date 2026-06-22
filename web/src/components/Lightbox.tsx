@@ -2,6 +2,7 @@ import { useEffect, useCallback, useState, useRef, useMemo, lazy, Suspense } fro
 import { getFileUrl, getThumbUrl, getExif, saveFile, uploadCustomThumb, type ExifData } from '../api';
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
 import VideoPlayer from './VideoPlayer';
+import CodeEditor from './CodeEditor';
 import MarkdownEditor from './MarkdownEditor';
 import AudioPlayer from './AudioPlayer';
 import { toast } from '../hooks/useToast';
@@ -1114,6 +1115,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const isAudio = current.mime.startsWith('audio/');
   const isPdf = current.mime === 'application/pdf';
   const isText = isTextMime(current.mime);
+  const isMarkdown = isText && /\.(md|markdown|mdown|mkdn|mkd|mdwn|mkdown|ron)$/i.test(name);
   const isOffice = current.mime.includes('word') || current.mime.includes('document') ||
     current.mime.includes('sheet') || current.mime.includes('excel') ||
     current.mime.includes('presentation') || current.mime.includes('powerpoint') ||
@@ -2489,25 +2491,50 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/50" />
               </div>
             ) : textContent !== null ? (
-              <MarkdownEditor
-                content={textContent}
-                fileName={name}
-                saving={textSaving}
-                onSave={async (newContent: string) => {
-                  if (!current) return;
-                  setTextSaving(true);
-                  try {
-                    await saveFile(current.path, newContent);
-                    setTextContent(newContent);
-                    toast('success', '文件已保存');
-                  } catch (e) {
-                    console.error('Save failed:', e);
-                    toast('error', '保存失败: ' + (e instanceof Error ? e.message : String(e)));
-                  } finally {
-                    setTextSaving(false);
-                  }
-                }}
-              />
+              isMarkdown ? (
+                <MarkdownEditor
+                  content={textContent}
+                  fileName={name}
+                  saving={textSaving}
+                  onSave={async (newContent: string) => {
+                    if (!current) return;
+                    setTextSaving(true);
+                    try {
+                      await saveFile(current.path, newContent);
+                      setTextContent(newContent);
+                      toast('success', '文件已保存');
+                    } catch (e) {
+                      console.error('Save failed:', e);
+                      toast('error', '保存失败: ' + (e instanceof Error ? e.message : String(e)));
+                    } finally {
+                      setTextSaving(false);
+                    }
+                  }}
+                />
+              ) : (
+                <CodeEditor
+                  content={textContent}
+                  fileName={name}
+                  language={ext || 'text'}
+                  saving={textSaving}
+                  embedded
+                  onSave={async (newContent: string) => {
+                    if (!current) return;
+                    setTextSaving(true);
+                    try {
+                      await saveFile(current.path, newContent);
+                      setTextContent(newContent);
+                      toast('success', '文件已保存');
+                    } catch (e) {
+                      console.error('Save failed:', e);
+                      toast('error', '保存失败: ' + (e instanceof Error ? e.message : String(e)));
+                    } finally {
+                      setTextSaving(false);
+                    }
+                  }}
+                  onClose={() => {}} // Lightbox handles close via backdrop click
+                />
+              )
             ) : textError === 'too-large' ? (
               <div className="flex items-center justify-center h-full text-white/50 px-8">
                 <div className="text-center max-w-md">
