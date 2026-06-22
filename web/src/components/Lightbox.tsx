@@ -1739,6 +1739,20 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
           )}
         </div>
 
+        {/* Download */}
+        <a
+          href={url}
+          download={name}
+          onClick={(e) => e.stopPropagation()}
+          className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+          title="下载 (D)"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+        </a>
+        <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
+
         {/* Info toggle */}
         <button
           onClick={(e) => { e.stopPropagation(); setShowInfo(!showInfo); }}

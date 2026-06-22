@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { listDirs } from '../api';
 
 interface Props {
@@ -58,6 +58,7 @@ export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts }: 
   );
   const [maxDepth] = useState(MAX_DEPTH);
   const [filterText, setFilterText] = useState('');
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Use cache if fresh
@@ -91,6 +92,15 @@ export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts }: 
       }
       return changed ? next : prev;
     });
+  }, [currentDir]);
+
+  // Auto-scroll to show the active directory in the sidebar
+  useEffect(() => {
+    if (!currentDir || !sidebarRef.current) return;
+    const activeEl = sidebarRef.current.querySelector(`[data-path="${CSS.escape(currentDir)}"]`);
+    if (activeEl) {
+      activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
   }, [currentDir]);
 
   useEffect(() => {
@@ -136,6 +146,7 @@ export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts }: 
       <div key={node.path}>
         <button
           onClick={() => onNavigate(node.path)}
+          data-path={node.path}
           className={`w-full flex items-center gap-1 px-2 py-1.5 text-sm rounded-lg transition-colors ${
             isActive
               ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
@@ -168,7 +179,7 @@ export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts }: 
   const showFiltered = filterText.trim().length > 0;
 
   return (
-    <aside className="w-60 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto shrink-0">
+    <aside ref={sidebarRef} className="w-60 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto shrink-0">
       <div className="p-3">
         <div className="flex items-center justify-between mb-2">
           <button
