@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import type { FileItem } from '../types';
 import { getFileUrl, getThumbUrl, duplicateFile, downloadZip, moveItem, copyFile } from '../api';
 import { toast } from '../hooks/useToast';
 import SafeThumb from './SafeThumb';
 import FileTypeIcon from './FileTypeIcon';
 import EmptyState from './EmptyState';
-import { formatSize, formatDate } from '../utils';
+import { formatSize, formatDate, getKindOrder } from '../utils';
+import HighlightText from './HighlightText';
 
 const FolderPicker = lazy(() => import('./FolderPicker'));
 const ShareDialog = lazy(() => import('./ShareDialog'));
@@ -25,6 +26,9 @@ interface Props {
   onLoadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  search?: string;
 }
 
 
@@ -65,7 +69,7 @@ function VideoListThumb({ path }: { path: string }) {
   );
 }
 
-export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore }: Props) {
+export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, sortBy: sortByProp, sortOrder: sortOrderProp, search }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
@@ -124,13 +128,36 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
     return () => observer.disconnect();
   }, [onLoadMore, hasMore]);
 
-  const dirItems = dirs.map((name) => ({
-    name, type: 'directory' as const, size: 0, mime: 'directory',
-    mtime: dirMtimes?.[name] ?? 0,
-    path: currentDir ? `${currentDir}/${name}` : name,
-  }));
-  const fileItems = Object.values(files);
-  const allItems = [...dirItems, ...fileItems];
+  // Client-side sort
+  const sortKey: 'name' | 'size' | 'mtime' | 'kind' | 'shuffle' = (sortByProp as any) || 'name';
+  const sortDir: 'asc' | 'desc' = sortOrderProp || 'asc';
+
+  const sortedItems = useMemo(() => {
+    const dirItems = dirs.map((name) => ({
+      name, type: 'directory' as const, size: 0, mime: 'directory',
+      mtime: dirMtimes?.[name] ?? 0,
+      path: currentDir ? `${currentDir}/${name}` : name,
+    }));
+    const fileItems = Object.values(files);
+    const allItems = [...dirItems, ...fileItems];
+    return allItems.sort((a, b) => {
+      // Directories always come first
+      if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+      let cmp = 0;
+      if (sortKey === 'name') {
+        cmp = a.name.localeCompare(b.name);
+      } else if (sortKey === 'size') {
+        cmp = a.size - b.size;
+      } else if (sortKey === 'mtime') {
+        cmp = (a.mtime || 0) - (b.mtime || 0);
+      } else if (sortKey === 'kind') {
+        cmp = getKindOrder(a.mime) - getKindOrder(b.mime);
+      } else if (sortKey === 'shuffle') {
+        cmp = Math.random() - 0.5;
+      }
+      return sortDir === 'desc' ? -cmp : cmp;
+    });
+  }, [dirs, files, currentDir, sortKey, sortDir, dirMtimes]);
 
   const handleToggleSelect = (path: string) => {
     if (onSelect) { onSelect(path); return; }
@@ -205,7 +232,7 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
   return (
     <>
       <div className="space-y-2">
-        {allItems.map((item) => {
+        {sortedItems.map((item) => {
           const isDir = item.type === 'directory';
           const isSelected = selected.has(item.path);
           const isImage = item.mime.startsWith('image/');
@@ -262,7 +289,9 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
                     onClick={(e) => e.stopPropagation()}
                   />
                 ) : (
-                  <div className="font-medium text-sm truncate">{item.name.endsWith('.url') ? item.name.slice(0, -4) : item.name}</div>
+                  <div className="font-medium text-sm truncate">
+                    <HighlightText text={item.name.endsWith('.url') ? item.name.slice(0, -4) : item.name} searchTerm={search} />
+                  </div>
                 )}
                 <div className="text-xs text-gray-500">
                   {isDir ? '文件夹' : formatSize(item.size)}
@@ -282,7 +311,7 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
         </div>
       )}
 
-      {allItems.length === 0 && (
+      {sortedItems.length === 0 && (
         <EmptyState type="directory" />
       )}
 

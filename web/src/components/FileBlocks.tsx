@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import type { FileItem } from '../types';
 import { getFileUrl, duplicateFile, downloadZip, moveItem, copyFile } from '../api';
 import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
@@ -6,7 +6,8 @@ import { toast } from '../hooks/useToast';
 import SafeThumb from './SafeThumb';
 import FileTypeIcon from './FileTypeIcon';
 import EmptyState from './EmptyState';
-import { formatSize } from '../utils';
+import HighlightText from './HighlightText';
+import { formatSize, getKindOrder } from '../utils';
 
 const FolderPicker = lazy(() => import('./FolderPicker'));
 const ShareDialog = lazy(() => import('./ShareDialog'));
@@ -26,10 +27,13 @@ interface Props {
   onLoadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  search?: string;
 }
 
 
-export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore }: Props) {
+export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, sortBy: sortByProp, sortOrder: sortOrderProp, search }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
@@ -82,13 +86,36 @@ export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavig
     return () => observer.disconnect();
   }, [onLoadMore, hasMore]);
 
-  const dirItems = dirs.map((name) => ({
-    name, type: 'directory' as const, size: 0, mime: 'directory',
-    mtime: dirMtimes?.[name] ?? 0,
-    path: currentDir ? `${currentDir}/${name}` : name,
-  }));
-  const fileItems = Object.values(files);
-  const allItems = [...dirItems, ...fileItems];
+  // Client-side sort
+  const sortKey: 'name' | 'size' | 'mtime' | 'kind' | 'shuffle' = (sortByProp as any) || 'name';
+  const sortDir: 'asc' | 'desc' = sortOrderProp || 'asc';
+
+  const sortedItems = useMemo(() => {
+    const dirItems = dirs.map((name) => ({
+      name, type: 'directory' as const, size: 0, mime: 'directory',
+      mtime: dirMtimes?.[name] ?? 0,
+      path: currentDir ? `${currentDir}/${name}` : name,
+    }));
+    const fileItems = Object.values(files);
+    const allItems = [...dirItems, ...fileItems];
+    return allItems.sort((a, b) => {
+      // Directories always come first
+      if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+      let cmp = 0;
+      if (sortKey === 'name') {
+        cmp = a.name.localeCompare(b.name);
+      } else if (sortKey === 'size') {
+        cmp = a.size - b.size;
+      } else if (sortKey === 'mtime') {
+        cmp = (a.mtime || 0) - (b.mtime || 0);
+      } else if (sortKey === 'kind') {
+        cmp = getKindOrder(a.mime) - getKindOrder(b.mime);
+      } else if (sortKey === 'shuffle') {
+        cmp = Math.random() - 0.5;
+      }
+      return sortDir === 'desc' ? -cmp : cmp;
+    });
+  }, [dirs, files, currentDir, sortKey, sortDir, dirMtimes]);
 
   const handleToggleSelect = (path: string) => {
     if (onSelect) { onSelect(path); return; }
@@ -170,7 +197,7 @@ export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavig
   return (
     <>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {allItems.map((item) => {
+        {sortedItems.map((item) => {
           const isDir = item.type === 'directory';
           const isImage = item.mime.startsWith('image/');
           const isVideo = item.mime.startsWith('video/');
@@ -226,7 +253,7 @@ export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavig
                     onClick={(e) => e.stopPropagation()}
                   />
                 ) : (
-                  <div className="text-white text-sm font-medium truncate">{item.name.endsWith('.url') ? item.name.slice(0, -4) : item.name}</div>
+                  <div className="text-white text-sm font-medium truncate"><HighlightText text={item.name.endsWith('.url') ? item.name.slice(0, -4) : item.name} searchTerm={search} /></div>
                 )}
                 {!isDir && <div className="text-white/70 text-xs">{formatSize(item.size)}</div>}
               </div>
@@ -255,7 +282,7 @@ export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavig
         </div>
       )}
 
-      {allItems.length === 0 && (
+      {sortedItems.length === 0 && (
         <EmptyState type="directory" />
       )}
 
