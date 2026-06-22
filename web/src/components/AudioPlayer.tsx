@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { getFileUrl, getThumbUrl } from '../api';
+import { toast } from '../hooks/useToast';
 
 interface AudioTrack {
   name: string;
@@ -41,6 +42,9 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
   // Refs to avoid stale closures in event handlers attached to <audio>
   const goNextRef = useRef<() => void>(() => {});
   const goPrevRef = useRef<() => void>(() => {});
+  // Track consecutive audio errors to avoid infinite skipping on a completely broken playlist
+  const trackErrorCountRef = useRef(0);
+  const maxTrackErrors = 3;
 
   // ──────────────────────────────────────────────
   // State (declared AFTER refs to avoid TDZ issues)
@@ -73,6 +77,21 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
     const handleLoadedMetadata = () => setDuration(audio.duration);
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
+    const handleError = () => {
+      trackErrorCountRef.current += 1;
+      if (trackErrorCountRef.current >= maxTrackErrors) {
+        toast('error', `连续 ${maxTrackErrors} 首音频加载失败，可能无法连接服务器`, 5000);
+        return;
+      }
+      const trackName = tracks[currentIndex]?.name || '未知';
+      toast('warning', `"${trackName}" 加载失败，自动跳到下一首`, 4000);
+      // Reset the current track error state and auto-skip after a brief pause
+      goNextRef.current();
+    };
+    const handleLoadedData = () => {
+      // A track loaded successfully — reset consecutive error counter
+      trackErrorCountRef.current = 0;
+    };
     const handleEnded = () => {
       if (loop === 'one') {
         audio.currentTime = 0;
@@ -87,6 +106,8 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
+    audio.addEventListener('loadeddata', handleLoadedData);
 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
@@ -94,6 +115,8 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
+      audio.removeEventListener('loadeddata', handleLoadedData);
     };
   }, [currentIndex, tracks.length, loop]);
 
