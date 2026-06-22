@@ -2268,22 +2268,21 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
         {isImage ? (
           <>
-            {/* Blurred thumbnail placeholder — shows while full image loads */}
-            {!imageLoaded && (
-              <img
-                src={getThumbUrl(current.path)}
-                alt=""
-                fetchPriority="low"
-                className="absolute inset-0 w-full h-full object-contain rounded-lg pointer-events-none"
-                style={{
-                  filter: 'blur(25px)',
-                  transform: `scale(${scale}) rotate(${rotation}deg) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
-                  transition: isDragging.current ? 'none' : 'transform 0.15s ease-out',
-                  transformOrigin: 'center center',
-                }}
-                draggable={false}
-              />
-            )}
+            {/* Blurred thumbnail placeholder — fades out smoothly when full image loads */}
+            <img
+              src={getThumbUrl(current.path)}
+              alt=""
+              fetchPriority="low"
+              className="absolute inset-0 w-full h-full object-contain rounded-lg pointer-events-none"
+              style={{
+                filter: 'blur(25px)',
+                opacity: imageLoaded ? 0 : 1,
+                transform: `scale(${scale}) rotate(${rotation}deg) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                transition: `opacity 0.5s ease-out, ${isDragging.current ? 'none' : 'transform 0.15s ease-out'}`,
+                transformOrigin: 'center center',
+              }}
+              draggable={false}
+            />
             <img
               key={`${current.path}-retry${retryKeyRef.current}`}
               src={url}

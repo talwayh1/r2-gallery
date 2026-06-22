@@ -31,6 +31,13 @@ export default function StatsPanel({ onClose }: Props) {
     getStats().then(setStats).catch(console.error).finally(() => setLoading(false));
   }, []);
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
   // Compute conic-gradient for pie chart
   const pieGradient = stats ? (() => {
     const total = stats.totalSize || 1;

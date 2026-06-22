@@ -352,6 +352,9 @@ export default function App() {
       } else if ((e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         setShowSearch(true);
+      } else if ((e.key === 'f' || e.key === 'F') && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        setShowSearch(true);
       } else if (e.key === 'r' || e.key === 'R') {
         if (!e.ctrlKey && !e.metaKey) {
           e.preventDefault();
@@ -622,6 +625,22 @@ export default function App() {
   const mediaItems = Object.entries(filteredFiles)
     .filter(([, f]) => isLightboxMime(f.mime, f.name))
     .map(([, f]) => ({ path: f.path, mime: f.mime, size: f.size }));
+
+  // Dynamic page title — update document.title based on current directory and lightbox file
+  useEffect(() => {
+    let title = 'R2 Gallery';
+    const currentFile = lightbox && mediaItems[lightbox.index];
+    if (currentFile) {
+      // Show file name when lightbox is open
+      const name = currentFile.path.split('/').pop() || '';
+      title = `${name} - R2 Gallery`;
+    } else if (dir) {
+      // Show current directory name (last segment)
+      const dirName = dir.split('/').filter(Boolean).pop() || dir;
+      title = `${dirName} - R2 Gallery`;
+    }
+    document.title = title;
+  }, [dir, lightbox, mediaItems]);
 
   // Auto-open lightbox for /view/* deep links
   useEffect(() => {

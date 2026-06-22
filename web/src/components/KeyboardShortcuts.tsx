@@ -15,6 +15,8 @@ const shortcuts: { category: string; items: Shortcut[] }[] = [
     items: [
       { keys: ['?'], description: '显示/隐藏快捷键帮助' },
       { keys: ['/'], description: '全局搜索' },
+      { keys: ['Ctrl', 'F'], description: '全局搜索' },
+      { keys: ['Ctrl', 'K'], description: '全局搜索' },
       { keys: ['R'], description: '刷新文件列表' },
       { keys: ['G'], description: '切换下一个布局' },
       { keys: ['1'], description: '网格布局' },

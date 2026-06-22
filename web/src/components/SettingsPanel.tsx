@@ -22,6 +22,13 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
     loadUsers();
   }, []);
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
   const loadSettings = async () => {
     try {
       const data = await getSettings();
