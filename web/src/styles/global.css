@@ -68,6 +68,15 @@
   to { opacity: 1; }
 }
 
+/* Mobile filter bar slide-down animation */
+@keyframes slideDown {
+  from { transform: translateY(-8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-slide-down {
+  animation: slideDown 0.2s ease-out;
+}
+
 /* Dialog backdrop fade-in */
 @keyframes fadeInOverlay {
   from { opacity: 0; }

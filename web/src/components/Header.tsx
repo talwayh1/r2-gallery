@@ -40,6 +40,8 @@ interface Props {
   selectMode?: boolean;
   onSelectModeToggle?: () => void;
   onDelete?: (paths: string[]) => void;
+  /** Ref to the scrollable main content element — used to auto-dismiss the mobile filter bar on scroll */
+  scrollRef?: React.RefObject<HTMLElement | null>;
 }
 
 const LAYOUTS: { key: LayoutMode; label: string; icon: React.ReactNode }[] = [
@@ -78,7 +80,7 @@ export default function Header({
   dir, layout, theme, search, user, sidebarOpen, sortBy, sortOrder, typeFilter, isMobile, fileCount, dirCount,
   onNavigate, onLayoutChange, onThemeToggle, onSearchChange,
   onSidebarToggle, onLogout, onRefresh, onLoginClick, onShortcutsClick,
-  onCreateFolder, onSearchClick, onDiscoverClick, onMemoriesClick, onStatsClick, onSettingsClick, onTrashClick, onActivityClick, onSortChange, onTypeFilterChange, hideLoginButton, selectMode, onSelectModeToggle, onDelete,
+  onCreateFolder, onSearchClick, onDiscoverClick, onMemoriesClick, onStatsClick, onSettingsClick, onTrashClick, onActivityClick, onSortChange, onTypeFilterChange, hideLoginButton, selectMode, onSelectModeToggle, onDelete, scrollRef,
 }: Props) {
   const breadcrumbs = dir ? dir.split('/') : [];
   const confirm = useConfirm();
@@ -103,6 +105,24 @@ export default function Header({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [mobileFilterOpen]);
+
+  // Auto-dismiss mobile filter bar when user starts scrolling the main content
+  useEffect(() => {
+    if (!mobileFilterOpen || !scrollRef?.current) return;
+    let lastScrollY = scrollRef.current.scrollTop;
+    const THRESHOLD = 30;
+    const handleScroll = () => {
+      const el = scrollRef?.current;
+      if (!el) return;
+      const delta = Math.abs(el.scrollTop - lastScrollY);
+      if (delta > THRESHOLD) {
+        setMobileFilterOpen(false);
+      }
+    };
+    const el = scrollRef.current;
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [mobileFilterOpen, scrollRef]);
 
   // Listen for PWA install prompt availability
   useEffect(() => {
@@ -782,7 +802,7 @@ export default function Header({
 
         {/* Mobile inline filter bar — outside header flex to avoid layout breakage */}
         {isMobile && mobileFilterOpen && (
-          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-14 z-30 space-y-2 shadow-sm">
+          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-14 z-30 space-y-2 shadow-sm animate-slide-down">
             <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-1.5">
               <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />

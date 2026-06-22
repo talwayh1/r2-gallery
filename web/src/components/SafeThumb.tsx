@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useSafeImage } from '../hooks/useSafeImage';
 
 interface Props {
   path: string;
@@ -10,7 +10,7 @@ interface Props {
   priority?: boolean;
 }
 
-const iconSizes: Record<string, string> = {
+const SIZE_MAP: Record<string, string> = {
   sm: 'text-xl',
   md: 'text-2xl',
   lg: 'text-4xl',
@@ -33,30 +33,15 @@ const FallbackIcon = ({ size }: { size: string }) => (
 
 const ShimmerSkeleton = () => (
   <div className="absolute inset-0 overflow-hidden">
-  <div className="absolute inset-0 shimmer" />
+    <div className="absolute inset-0 shimmer" />
   </div>
 );
 
 export default function SafeThumb({ path, className = 'w-full h-full object-cover', containerSize = 'md', priority = false }: Props) {
-  const [failed, setFailed] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-
-  // Reset loading state when path changes — prevents stale thumbnail from
-  // lingering or showing a fallback from a previously failed image.
-  const prevPathRef = useRef(path);
-  useEffect(() => {
-    if (prevPathRef.current !== path) {
-      prevPathRef.current = path;
-      setLoaded(false);
-      setFailed(false);
-    }
-  }, [path]);
-
-  const handleLoad = useCallback(() => setLoaded(true), []);
-  const handleError = useCallback(() => setFailed(true), []);
+  const { failed, loaded, handleLoad, handleError, imgClasses } = useSafeImage(path);
 
   if (failed) {
-    return <FallbackIcon size={iconSizes[containerSize]} />;
+    return <FallbackIcon size={SIZE_MAP[containerSize]} />;
   }
 
   return (
@@ -66,7 +51,7 @@ export default function SafeThumb({ path, className = 'w-full h-full object-cove
         key={path}
         src={`/api/thumb?path=${encodeURIComponent(path)}`}
         alt=""
-        className={`${className} ${loaded ? 'img-fade-in' : 'opacity-0'}`}
+        className={`${className} ${imgClasses}`}
         loading={priority ? undefined : 'lazy'}
         decoding="async"
         fetchPriority={priority ? 'high' : undefined}
@@ -81,26 +66,18 @@ export default function SafeThumb({ path, className = 'w-full h-full object-cove
  * Same as SafeThumb but accepts a direct URL instead of a path.
  * Supports fetchpriority for initial-viewport images.
  */
-export function SafeThumbUrl({ url, className = 'w-full h-full object-cover', containerSize = 'sm', priority = false }: { url: string; className?: string; containerSize?: string; priority?: boolean }) {
-  const [failed, setFailed] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+interface SafeThumbUrlProps {
+  url: string;
+  className?: string;
+  containerSize?: 'sm' | 'md' | 'lg';
+  priority?: boolean;
+}
 
-  // Reset loading state when url changes — prevents stale thumbnail from
-  // lingering or showing a fallback from a previously failed image.
-  const prevUrlRef = useRef(url);
-  useEffect(() => {
-    if (prevUrlRef.current !== url) {
-      prevUrlRef.current = url;
-      setLoaded(false);
-      setFailed(false);
-    }
-  }, [url]);
-
-  const handleLoad = useCallback(() => setLoaded(true), []);
-  const handleError = useCallback(() => setFailed(true), []);
+export function SafeThumbUrl({ url, className = 'w-full h-full object-cover', containerSize = 'sm', priority = false }: SafeThumbUrlProps) {
+  const { failed, loaded, handleLoad, handleError, imgClasses } = useSafeImage(url);
 
   if (failed) {
-    return <FallbackIcon size={containerSize === 'sm' ? 'text-xl' : containerSize === 'lg' ? 'text-4xl' : 'text-2xl'} />;
+    return <FallbackIcon size={SIZE_MAP[containerSize]} />;
   }
 
   return (
@@ -109,7 +86,7 @@ export function SafeThumbUrl({ url, className = 'w-full h-full object-cover', co
       <img
         src={url}
         alt=""
-        className={`${className} ${loaded ? 'img-fade-in' : 'opacity-0'}`}
+        className={`${className} ${imgClasses}`}
         loading={priority ? undefined : 'lazy'}
         decoding="async"
         fetchPriority={priority ? 'high' : undefined}

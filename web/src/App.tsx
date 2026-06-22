@@ -983,6 +983,7 @@ export default function App() {
         hideLoginButton={hideLoginButton}
         selectMode={selectMode}
         onSelectModeToggle={() => setSelectMode(!selectMode)}
+        scrollRef={mainRef}
       />
       <InstallPrompt />
       <div
