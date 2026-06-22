@@ -1052,7 +1052,7 @@ export default function App() {
         {/* Mobile sidebar overlay — always rendered for fade-out animation */}
         {isMobile && (
           <div
-            className={`fixed inset-0 z-30 bg-black/40 top-14 transition-opacity duration-300 ${
+            className={`fixed inset-0 z-30 bg-black/40 backdrop-blur-sm top-14 transition-opacity duration-300 ${
               sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}
             onClick={() => setSidebarOpen(false)}
