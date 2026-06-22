@@ -173,6 +173,53 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
     }
   };
 
+  const SEEK_STEP = 5;
+  const VOLUME_STEP = 0.1;
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    switch (e.key) {
+      case 'ArrowLeft':
+        e.preventDefault();
+        video.currentTime = Math.max(0, video.currentTime - SEEK_STEP);
+        showControlsWithTimer();
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        video.currentTime = Math.min(duration, video.currentTime + SEEK_STEP);
+        showControlsWithTimer();
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setVolume(v => Math.min(1, v + VOLUME_STEP));
+        showControlsWithTimer();
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        setVolume(v => Math.max(0, v - VOLUME_STEP));
+        showControlsWithTimer();
+        break;
+      case ' ':
+        e.preventDefault();
+        togglePlay();
+        showControlsWithTimer();
+        break;
+      case 'f':
+      case 'F':
+        e.preventDefault();
+        toggleFullscreen();
+        break;
+      case 'm':
+      case 'M':
+        e.preventDefault();
+        toggleMute();
+        showControlsWithTimer();
+        break;
+    }
+  };
+
   const formatTime = (s: number) => {
     if (!s || !isFinite(s)) return '0:00';
     const m = Math.floor(s / 60);
@@ -183,7 +230,9 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
   return (
     <div
       ref={containerRef}
-      className="relative group bg-black rounded-lg overflow-hidden"
+      className="relative group bg-black rounded-lg overflow-hidden focus:outline-none"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
       onMouseMove={handleMouseMove}
       onMouseLeave={() => playing && setShowControls(false)}
       onTouchStart={handleTouchStart}

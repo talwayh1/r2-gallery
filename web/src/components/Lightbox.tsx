@@ -760,7 +760,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       // Ignore when typing in inputs or when a focusable element might conflict
       const target = e.target as HTMLElement;
       const tag = target.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SELECT' || tag === 'A' || target.isContentEditable) return;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SELECT' || tag === 'A' || tag === 'VIDEO' || target.isContentEditable) return;
 
       if (e.key === 'Escape') {
         // Close any open overlay sheets first
@@ -1380,7 +1380,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
           {/* More tools bottom sheet */}
           {showMoreTools && (
-            <div className="bg-gray-900/95 backdrop-blur-md border-t border-white/10 px-3 py-3 flex flex-wrap justify-center gap-1.5 max-h-[40vh] overflow-y-auto">
+            <div className="bg-gray-900/95 backdrop-blur-md border-t border-white/10 px-3 py-3 flex flex-wrap justify-center gap-1.5 max-h-[40vh] overflow-y-auto animate-slide-up-bottom">
               {/* Rotation controls (images only) */}
               {isImage && (
                 <>
