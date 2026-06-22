@@ -61,6 +61,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const resultsContainerRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Per-type counts for the filter chips
   const typeCounts = useMemo(() => ({
@@ -156,6 +157,25 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
       doSearch(query, undefined, typeFilter);
     }
   }, [typeFilter]);
+
+  // IntersectionObserver-based infinite scroll for search results
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore || loadingMore || loading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && hasMore && !loadingMore) {
+          doSearch(query, results.length, typeFilter);
+        }
+      },
+      { root: null, rootMargin: '200px', threshold: 0 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, loading, query, results.length, typeFilter, doSearch]);
 
   const handleSearchSubmit = () => {
     if (query.length >= 2) {
@@ -410,20 +430,17 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
                 </button>
               ))}
 
-              {/* Load more button */}
+              {/* Infinite scroll sentinel + loading more spinner */}
               {hasMore && (
-                <div className="px-4 py-3">
+                <div ref={sentinelRef} className="px-4 py-3">
                   {loadingMore ? (
                     <div className="flex items-center justify-center py-2">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500" />
                     </div>
                   ) : (
-                    <button
-                      onClick={() => doSearch(query, results.length, typeFilter)}
-                      className="w-full py-2 text-sm text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                    >
-                      加载更多 ({total - results.length} 个结果未显示)
-                    </button>
+                    <div className="flex items-center justify-center py-2">
+                      <div className="text-xs text-gray-400">滚动加载更多...</div>
+                    </div>
                   )}
                 </div>
               )}
