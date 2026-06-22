@@ -65,6 +65,8 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const retryCountRef = useRef(0);
   const MAX_RETRIES = 3;
   const [imageDimensions, setImageDimensions] = useState<{ w: number; h: number } | null>(null);
+  // Ref to the full-res <img> element, used for 1:1 (actual size) zoom computation
+  const imageRef = useRef<HTMLImageElement>(null);
   const [swipeHint, setSwipeHint] = useState<'left' | 'right' | 'down' | null>(null);
   // Ref to prevent click-after-swipe bug on mobile — browsers synthesize a click
   // after touchend even when the user was swiping, which would close the lightbox
@@ -122,6 +124,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     goPrev10: () => {},
     goNext10: () => {},
     resetZoom: () => {},
+    handleZoomActualSize: () => {},
     toggleSlideshow: () => {},
     handleDeleteConfirm: () => {},
     handleDeleteExecute: () => {},
@@ -251,9 +254,18 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const isUrlFile = name.endsWith('.url');
   const isHls = name.endsWith('.m3u8') || url.includes('.m3u8');
 
-  // Reset zoom
+  // Reset zoom (fit to viewport)
   const resetZoom = useCallback(() => {
     setScale(1);
+    setOffset({ x: 0, y: 0 });
+  }, []);
+
+  // Zoom to actual pixel size (1:1)
+  const handleZoomActualSize = useCallback(() => {
+    const img = imageRef.current;
+    if (!img || !img.naturalWidth || img.clientWidth === 0) return;
+    const ratio = img.naturalWidth / img.clientWidth;
+    setScale(ratio);
     setOffset({ x: 0, y: 0 });
   }, []);
 
@@ -736,6 +748,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     goPrev10,
     goNext10,
     resetZoom,
+    handleZoomActualSize,
     toggleSlideshow,
     handleDeleteConfirm,
     handleDeleteExecute,
@@ -754,7 +767,6 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     slideshowTimerRef: slideshowTimerRef as { current: number | null },
     imgContainerRef,
   };
-
   // Keyboard shortcuts — stabilized with refs so the DOM listener is never re-registered
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -811,6 +823,9 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         }
       } else if (e.key === '0') {
         kb.resetZoom();
+      } else if (e.key === '1') {
+        e.preventDefault();
+        kb.handleZoomActualSize();
       } else if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
         kb.handleCopyFileName();
@@ -1337,6 +1352,16 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
                   </svg>
                 </button>
+                {/* 1:1 Actual Size — only show when image has loaded */}
+                {imageLoaded && imageDimensions ? (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleZoomActualSize(); }}
+                    className="px-1.5 py-1 text-xs font-mono font-bold text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
+                    title="实际大小 (1:1)"
+                  >
+                    1:1
+                  </button>
+                ) : null}
                 {isZoomed && (
                   <button
                     onClick={(e) => { e.stopPropagation(); resetZoom(); }}
@@ -1615,6 +1640,19 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
               </svg>
             </button>
+            {/* 1:1 Actual Size — only show when image has loaded with natural dimensions */}
+            {imageLoaded && imageDimensions ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleZoomActualSize();
+                }}
+                className="px-1.5 py-1 text-xs font-mono font-bold text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
+                title="实际大小 (1:1)"
+              >
+                1:1
+              </button>
+            ) : null}
             {/* Zoom level percentage */}
             <span
               className="min-w-[3rem] text-center text-xs text-white/60 font-mono cursor-default select-none"
@@ -2311,6 +2349,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
               src={url}
               alt={name}
               fetchPriority="high"
+              ref={imageRef}
               className={`max-w-full max-h-[90vh] object-contain rounded-lg transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
               style={{
                 transform: `scale(${scale}) rotate(${rotation}deg) translate(${offset.x / scale}px, ${offset.y / scale}px)`,

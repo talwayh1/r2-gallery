@@ -53,6 +53,7 @@ const shortcuts: { category: string; items: Shortcut[] }[] = [
       { keys: ['Space', 'S'], description: '播放/暂停幻灯片' },
       { keys: ['+', '-'], description: '放大/缩小' },
       { keys: ['0'], description: '重置缩放' },
+      { keys: ['1'], description: '实际大小 (1:1)' },
       { keys: ['Ctrl', 'O'], description: '在新标签页打开文件' },
       { keys: ['[', ']'], description: '幻灯片播放中减速/加速' },
       { keys: ['F'], description: '切换全屏' },
