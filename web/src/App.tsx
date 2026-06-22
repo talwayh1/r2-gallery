@@ -1084,14 +1084,6 @@ export default function App() {
             </Suspense></ErrorBoundary>
           )}
 
-          {/* Loading more indicator for infinite scroll */}
-          {loadingMore && (
-            <div className="flex items-center justify-center py-6 gap-2">
-              <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent" />
-              <span className="text-sm text-gray-400">加载更多...</span>
-            </div>
-          )}
-
           {/* Summary bar */}
           {!loading && (summaryStats.fileCount > 0 || summaryStats.dirCount > 0) && selected.size === 0 && (
             <div className="mt-2 px-1 pb-1 flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
