@@ -92,6 +92,19 @@ export default function EmptyState({ type, user, onClearSearch, onClearFilter, o
           </button>
         )}
       </div>
+
+      {/* Keyboard shortcut hints for new users */}
+      {type !== 'filtered' && (
+        <div className="mt-8 pt-4 border-t border-gray-100 dark:border-gray-800 w-full max-w-xs">
+          <p className="text-xs text-gray-400 dark:text-gray-500 text-center leading-loose">
+            <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-[10px] font-mono border border-gray-200 dark:border-gray-700">?</kbd>
+            <span className="mx-1">查看快捷键</span>
+            <span className="mx-1.5 text-gray-300 dark:text-gray-600">·</span>
+            <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-[10px] font-mono border border-gray-200 dark:border-gray-700">/</kbd>
+            <span className="mx-1">搜索文件</span>
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -135,7 +148,7 @@ const CONFIGS: Record<Props['type'], {
     titleKey: 'empty.files',
     titleFallback: '暂无文件',
     descKey: 'empty.files_hint',
-    descFallback: '拖拽文件到此处，或点击上传按钮添加文件',
+    descFallback: '选择文件或拖拽到此处上传',
   },
   search: {
     icon: SEARCH_ICON,
