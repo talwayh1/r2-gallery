@@ -921,6 +921,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         const distance = Math.abs(i - index);
         const img = new Image();
         img.referrerPolicy = 'no-referrer';
+        img.fetchPriority = 'low';
         if (distance <= 1) {
           // Preload full-size original for immediate neighbors (smooth navigation)
           img.src = getFileUrl(items[i].path);
@@ -1176,6 +1177,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
           <img
             src={getThumbUrl(current.path)}
             alt=""
+            fetchPriority="low"
             className="w-full h-full object-cover"
             style={{
               filter: 'blur(50px)',
@@ -2248,6 +2250,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
               <img
                 src={getThumbUrl(current.path)}
                 alt=""
+                fetchPriority="low"
                 className="absolute inset-0 w-full h-full object-contain rounded-lg pointer-events-none"
                 style={{
                   filter: 'blur(25px)',
@@ -2262,6 +2265,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
               key={`${current.path}-retry${retryKeyRef.current}`}
               src={url}
               alt={name}
+              fetchPriority="high"
               className={`max-w-full max-h-[90vh] object-contain rounded-lg transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
               style={{
                 transform: `scale(${scale}) rotate(${rotation}deg) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
@@ -2278,6 +2282,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 key={crossfadeUrl}
                 src={crossfadeUrl}
                 alt=""
+                fetchPriority="low"
                 className="absolute inset-0 max-w-full max-h-[90vh] object-contain rounded-lg pointer-events-none"
                 style={{
                   zIndex: 2,

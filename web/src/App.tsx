@@ -1081,7 +1081,7 @@ export default function App() {
           <Sidebar currentDir={dir} onNavigate={navigate} onClose={isMobile ? () => setSidebarOpen(false) : undefined} dirCounts={dirCounts} />
         </div>
         {/* Main content */}
-        <main ref={mainRef} className={`flex-1 overflow-auto ${isMobile ? 'p-2' : 'p-4'}`}>
+        <main ref={mainRef} className={`flex-1 overflow-auto ${isMobile ? 'p-2' : 'p-4'}`} style={{ contain: 'layout style paint' }}>
           {/* Type filter bar - mobile: horizontal scroll, desktop: normal */}
           <div className={`mb-3 ${isMobile ? 'overflow-x-auto scrollbar-none -mx-2 px-2' : 'hidden sm:block'}`}>
             <TypeFilter
