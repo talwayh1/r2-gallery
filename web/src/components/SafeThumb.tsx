@@ -47,7 +47,14 @@ export default function SafeThumb({ path, className = 'w-full h-full object-cove
 
   return (
     <div className="relative w-full h-full">
-      {!loaded && <ShimmerSkeleton />}
+      {/* Shimmer skeleton — fades out smoothly when image loads (transition via opacity) */}
+      <div
+        className={`absolute inset-0 overflow-hidden transition-opacity duration-300 ${
+          loaded ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
+      >
+        <div className="absolute inset-0 shimmer" />
+      </div>
       <img
         key={path}
         src={getThumbUrl(path)}
@@ -83,7 +90,14 @@ export function SafeThumbUrl({ url, className = 'w-full h-full object-cover', co
 
   return (
     <div className="relative w-full h-full">
-      {!loaded && <ShimmerSkeleton />}
+      {/* Shimmer skeleton — fades out smoothly when image loads */}
+      <div
+        className={`absolute inset-0 overflow-hidden transition-opacity duration-300 ${
+          loaded ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
+      >
+        <div className="absolute inset-0 shimmer" />
+      </div>
       <img
         src={url}
         alt=""

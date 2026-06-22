@@ -8,6 +8,7 @@ import { formatSize, formatDate, getKindOrder } from '../utils';
 import ShareDialog from './ShareDialog';
 import FileTypeIcon from './FileTypeIcon';
 import EmptyState from './EmptyState';
+import HighlightText from './HighlightText';
 
 /** Long-press threshold (ms) for mobile context menu */
 const LONG_PRESS_MS = 500;
@@ -89,6 +90,8 @@ interface Props {
   /** Parent sort from Header — keeps FileGrid in sync with API-returned order */
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  /** Current search term for filename highlighting */
+  search?: string;
 }
 
 type SortKey = 'name' | 'size' | 'mtime' | 'kind' | 'shuffle';
@@ -326,7 +329,7 @@ function VirtualFileGrid({
   onOpen, onSelect, onRename, setRenaming, setInternalSelected,
   handleCardClick, handleContextMenu, handleDragStart, handleDragEnd,
   touchLongPress, touchTargetRef,
-  onLoadMore, hasMore, loadingMore,
+  onLoadMore, hasMore, loadingMore, search,
 }: {
   files: FileItem[];
   columns: number;
@@ -354,6 +357,7 @@ function VirtualFileGrid({
   onLoadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
+  search?: string;
 }) {
   const [preview, setPreview] = useState<{ file: FileItem; rect: DOMRect } | null>(null);
   const [hoverInfo, setHoverInfo] = useState<{ file: FileItem; rect: DOMRect } | null>(null);
@@ -613,7 +617,7 @@ function VirtualFileGrid({
                 />
               ) : (
                 <span className="text-xs text-center truncate w-full group-hover:text-blue-500" title={file.name}>
-                  {getDisplayName(file.name)}
+                  <HighlightText text={getDisplayName(file.name)} searchTerm={search} />
                 </span>
               )}
               <span className="text-[10px] text-gray-400">
@@ -704,7 +708,7 @@ function VirtualFileGrid({
   );
 }
 
-export default function FileGrid({ files, dirs, dirCounts, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, sortBy, sortOrder }: Props) {
+export default function FileGrid({ files, dirs, dirCounts, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, sortBy, sortOrder, search }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
@@ -1184,6 +1188,7 @@ export default function FileGrid({ files, dirs, dirCounts, dirMtimes, currentDir
             onLoadMore={onLoadMore}
             hasMore={hasMore}
             loadingMore={loadingMore}
+            search={search}
           />
         </div>
       )}

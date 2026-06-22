@@ -586,6 +586,7 @@ export default function App() {
       currentDir: dir,
       sortBy,
       sortOrder,
+      search: debouncedSearch,
       onNavigate: navigate,
       onOpen: openLightbox,
       onDelete: handleDelete,

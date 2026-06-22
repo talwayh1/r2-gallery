@@ -7,6 +7,7 @@ import ShareDialog from './ShareDialog';
 import EmptyState from './EmptyState';
 import FileTypeIcon from './FileTypeIcon';
 import { formatSize } from '../utils';
+import HighlightText from './HighlightText';
 
 const FolderPicker = lazy(() => import('./FolderPicker'));
 
@@ -28,6 +29,8 @@ interface Props {
   /** Parent sort from Header — keeps FileList in sync with API-returned order */
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  /** Current search term for filename highlighting */
+  search?: string;
 }
 
 type SortKey = 'name' | 'size' | 'mtime' | 'kind' | 'shuffle';
@@ -49,7 +52,7 @@ function formatDate(ts: number) {
   return new Date(ts * 1000).toLocaleDateString();
 }
 
-export default function FileList({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, sortBy: sortByProp, sortOrder: sortOrderProp }: Props) {
+export default function FileList({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, sortBy: sortByProp, sortOrder: sortOrderProp, search }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
@@ -278,7 +281,9 @@ export default function FileList({ files, dirs, dirMtimes, currentDir, onNavigat
                             onClick={(e) => e.stopPropagation()}
                           />
                         ) : (
-                          <div className="font-medium truncate">{item.name.endsWith('.url') ? item.name.slice(0, -4) : item.name}</div>
+                          <div className="font-medium truncate">
+                            <HighlightText text={item.name.endsWith('.url') ? item.name.slice(0, -4) : item.name} searchTerm={search} />
+                          </div>
                         )}
                       </div>
                     </div>
