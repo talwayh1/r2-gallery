@@ -518,22 +518,17 @@ export default function App() {
     } else {
       window.history.pushState(null, '', url);
     }
-
-    // Restore scroll position after DOM update
-    requestAnimationFrame(() => {
-      const saved = scrollPositions.current.get(path);
-      if (saved !== undefined && mainEl) {
-        mainEl.scrollTop = saved;
-      } else if (mainEl) {
-        mainEl.scrollTop = 0;
-      }
-    });
   }, [isMobile, dir]);
 
   // Handle browser back/forward navigation
   useEffect(() => {
     const handlePopState = () => {
       const path = window.location.pathname;
+      // Save current scroll position before navigating away (browser back/forward)
+      const mainEl = document.querySelector('main');
+      if (mainEl && dir) {
+        scrollPositions.current.set(dir, mainEl.scrollTop);
+      }
       if (path.startsWith('/dir/')) {
         const dirPath = decodeURIComponent(path.slice(5));
         setDir(dirPath);
@@ -543,7 +538,18 @@ export default function App() {
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [dir]); // dir dependency ensures we always save the latest scroll position
+
+  // Restore scroll position whenever directory changes (navigate, popstate, initial load)
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      const mainEl = document.querySelector('main');
+      const saved = scrollPositions.current.get(dir);
+      if (mainEl) {
+        mainEl.scrollTop = saved !== undefined ? saved : 0;
+      }
+    });
+  }, [dir]);
 
   // Restore directory from URL on mount
   useEffect(() => {

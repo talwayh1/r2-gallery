@@ -29,6 +29,10 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
   });
   const [shuffle, setShuffle] = useState(false);
   const [loop, setLoop] = useState<'none' | 'all' | 'one'>('all');
+  const [playbackRate, setPlaybackRate] = useState(() => {
+    const saved = localStorage.getItem('audioPlaybackRate');
+    return saved ? parseFloat(saved) : 1;
+  });
   const [mini, setMini] = useState(initialMini);
   const [hidden, setHidden] = useState(false);
   const [showPlaylist, setShowPlaylist] = useState(false);
@@ -101,15 +105,24 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
     localStorage.setItem('audioVolume', String(volume));
   }, [volume]);
 
+  // Playback rate persistence
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = playbackRate;
+    }
+    localStorage.setItem('audioPlaybackRate', String(playbackRate));
+  }, [playbackRate]);
+
   // Save state to localStorage
   useEffect(() => {
     localStorage.setItem('audioPlayerState', JSON.stringify({
       currentIndex,
       shuffle,
       loop,
+      playbackRate,
       mini,
     }));
-  }, [currentIndex, shuffle, loop, mini]);
+  }, [currentIndex, shuffle, loop, playbackRate, mini]);
 
   const togglePlay = useCallback(() => {
     if (audioRef.current) {
@@ -179,6 +192,15 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
     setLoop(modes[(idx + 1) % modes.length]);
   };
 
+  const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+  const cycleSpeed = () => {
+    const idx = SPEEDS.indexOf(playbackRate);
+    const next = SPEEDS[(idx + 1) % SPEEDS.length];
+    setPlaybackRate(next);
+  };
+
+  const formatSpeed = (rate: number) => `${rate}x`;
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -212,6 +234,23 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
           e.preventDefault();
           setVolume(v => Math.max(0, v - 0.1));
           break;
+        case '>':
+        case '.':
+          if (e.shiftKey) {
+            e.preventDefault();
+            cycleSpeed();
+          }
+          break;
+        case '<':
+        case ',':
+          if (e.shiftKey) {
+            e.preventDefault();
+            // Reverse cycle — go back one speed
+            const idx = SPEEDS.indexOf(playbackRate);
+            const prev = SPEEDS[(idx - 1 + SPEEDS.length) % SPEEDS.length];
+            setPlaybackRate(prev);
+          }
+          break;
       }
     };
     window.addEventListener('keydown', handler);
@@ -233,7 +272,12 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
             {coverUrl ? <img src={coverUrl} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><svg className="w-5 h-5 text-white/50" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" /></svg></div>}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-white text-xs font-medium truncate">{track.name}</div>
+            <div className="text-white text-xs font-medium truncate flex items-center gap-1.5">
+              {track.name}
+              {playbackRate !== 1 && (
+                <span className="text-[10px] text-blue-400 font-mono bg-blue-400/10 px-1 rounded shrink-0">{formatSpeed(playbackRate)}</span>
+              )}
+            </div>
             <div className="text-white/40 text-[10px] truncate">{track.artist || '未知艺术家'}</div>
           </div>
           <button onClick={goPrev} className="p-1.5 text-white/50 hover:text-white transition-colors">
@@ -355,6 +399,9 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
               ) : (
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z" /></svg>
               )}
+            </button>
+            <button onClick={cycleSpeed} className={`p-1.5 rounded-full transition-colors text-xs font-mono ${playbackRate !== 1 ? 'text-blue-400 bg-blue-400/10' : 'text-white/40 hover:text-white'}`} title={`播放速度: ${formatSpeed(playbackRate)}`}>
+              {formatSpeed(playbackRate)}
             </button>
           </div>
 
