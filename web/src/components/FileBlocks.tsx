@@ -44,6 +44,7 @@ export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavig
   const folderThumbs = useFolderThumbnails(dirs, currentDir);
 
   const selected = externalSelected ?? internalSelected;
+
   const isSelectionMode = selected.size > 0;
 
   // Long-press for mobile context menu
@@ -116,6 +117,21 @@ export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavig
       return sortDir === 'desc' ? -cmp : cmp;
     });
   }, [dirs, files, currentDir, sortKey, sortDir, dirMtimes]);
+
+  // Determine which image thumbnails are in the initial viewport (first ~5 images)
+  // so we can set priority to skip lazy loading and improve LCP.
+  const priorityPaths = useMemo(() => {
+    const paths = new Set<string>();
+    let count = 0;
+    for (const item of sortedItems) {
+      if (item.type !== 'directory' && item.mime.startsWith('image/')) {
+        if (count < 5) paths.add(item.path);
+        count++;
+        if (count >= 5) break;
+      }
+    }
+    return paths;
+  }, [sortedItems]);
 
   const handleToggleSelect = (path: string) => {
     if (onSelect) { onSelect(path); return; }
@@ -230,7 +246,7 @@ export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavig
                     )}
                   </div>
                 ) : isImage ? (
-                  <SafeThumb path={item.path} />
+                  <SafeThumb path={item.path} priority={priorityPaths.has(item.path)} />
                 ) : isVideo ? (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                     <svg className="w-12 h-12 text-white/60" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>

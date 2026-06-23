@@ -3,6 +3,7 @@ import { searchFiles, getFileUrl, getThumbUrl, type SearchResult } from '../api'
 import { formatSize } from '../utils';
 import FileTypeIcon from './FileTypeIcon';
 import SafeThumb from './SafeThumb';
+import HighlightText from './HighlightText';
 
 interface Props {
   onClose: () => void;
@@ -33,20 +34,6 @@ function addRecentSearch(query: string) {
 
 function clearRecentSearches() {
   localStorage.removeItem(RECENT_SEARCHES_KEY);
-}
-
-/** Highlight matching text in a string */
-function HighlightText({ text, query }: { text: string; query: string }) {
-  if (!query) return <>{text}</>;
-  const idx = text.toLowerCase().indexOf(query.toLowerCase());
-  if (idx < 0) return <>{text}</>;
-  return (
-    <>
-      {text.slice(0, idx)}
-      <mark className="bg-yellow-200 dark:bg-yellow-800 rounded px-0.5">{text.slice(idx, idx + query.length)}</mark>
-      {text.slice(idx + query.length)}
-    </>
-  );
 }
 
 export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props) {
@@ -391,7 +378,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
 
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">
-                      <HighlightText text={r.name} query={query} />
+                      <HighlightText text={r.name} searchTerm={query} />
                     </div>
                     <div className="text-xs text-gray-400 dark:text-gray-500 truncate">
                       {r.dir ? (
