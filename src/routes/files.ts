@@ -11,11 +11,26 @@ const files = new Hono<{ Bindings: AppBindings; Variables: Variables }>();
 // Short-term cache for R2 list results (avoids repeated list ops on quick navigation)
 const listCache = new Map<string, { data: any; ts: number }>();
 const LIST_CACHE_TTL = 10_000; // 10 seconds
+const LIST_CACHE_MAX = 50; // max entries — prevents unbounded growth in long-lived Workers
 function evictStaleListCache() {
   const now = Date.now();
+  // Evict stale entries (past TTL)
   for (const [key, entry] of listCache) {
     if (now - entry.ts > LIST_CACHE_TTL) listCache.delete(key);
   }
+  // Evict overflow (oldest entries first — Map preserves insertion/access order)
+  while (listCache.size > LIST_CACHE_MAX) {
+    const oldest = listCache.keys().next().value;
+    if (oldest !== undefined) listCache.delete(oldest);
+  }
+}
+/** Track access order for LRU: re-insert the entry so Map iteration order stays fresh */
+function touchListCache(key: string): boolean {
+  const entry = listCache.get(key);
+  if (!entry) return false;
+  listCache.delete(key);
+  listCache.set(key, entry);
+  return true;
 }
 
 // Demo mode middleware - blocks write operations
@@ -47,8 +62,8 @@ files.get('/files', async (c) => {
   const cacheKey = `${dir}:${sort}:${order}:${typeFilter}`;
   if (!cursor) {
     evictStaleListCache();
-    const cached = listCache.get(cacheKey);
-    if (cached && Date.now() - cached.ts < LIST_CACHE_TTL) {
+    if (touchListCache(cacheKey)) {
+      const cached = listCache.get(cacheKey)!;
       return c.json(cached.data);
     }
   }

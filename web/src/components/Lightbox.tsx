@@ -2438,6 +2438,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
               alt={name}
               fetchPriority="high"
               ref={imageRef}
+              decoding="async"
               className={`max-w-full max-h-[90vh] object-contain rounded-lg transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
               style={{
                 transform: `scale(${scale}) rotate(${rotation}deg) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
