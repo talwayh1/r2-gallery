@@ -85,10 +85,10 @@ export default function UploadPanel() {
   const { tasks, isOpen, setOpen, cancel, cancelAll, retry, dismissCompleted, hasActiveUploads, activeCount, completedCount, failedCount } = useUploadQueue();
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to top when new tasks arrive (newest tasks are prepended)
+  // Auto-scroll to the latest task when new ones arrive (newest at bottom)
   useEffect(() => {
     if (isOpen && tasks.length > 0 && listRef.current) {
-      listRef.current.scrollTop = 0;
+      listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, [isOpen, tasks.length]);
 

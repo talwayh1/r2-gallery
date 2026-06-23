@@ -287,7 +287,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
             className="flex-1 text-lg bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-500 [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden"
           />
           {query && (
-            <button onClick={() => { setQuery(''); setResults([]); setTotal(0); inputRef.current?.focus(); }} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+            <button onClick={() => { setQuery(''); setTypeFilter(null); setResults([]); setTotal(0); inputRef.current?.focus(); }} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
               <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>

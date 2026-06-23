@@ -176,7 +176,7 @@ export function UploadQueueProvider({ children }: { children: ReactNode }) {
       etaSeconds: null,
       run: item.run,
     }));
-    tasksRef.current = [...newTasks, ...tasksRef.current];
+    tasksRef.current = [...tasksRef.current, ...newTasks];
     if (onBatchComplete) {
       batchRef.current.set(makeId(), {
         ids: new Set(newTasks.map(t => t.id)),
