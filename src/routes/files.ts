@@ -259,6 +259,7 @@ files.get('/file', async (c) => {
       headers.set('Accept-Ranges', 'bytes');
       headers.set('Cache-Control', 'public, max-age=86400');
       headers.set('ETag', etag);
+      headers.set('X-Content-Type-Options', 'nosniff');
 
       // Log traffic
       try { await db.logTraffic(c.env.DB, path, length, c.get('userId')); } catch {}
@@ -274,6 +275,7 @@ files.get('/file', async (c) => {
   headers.set('Accept-Ranges', 'bytes');
   headers.set('Cache-Control', 'public, max-age=86400');
   headers.set('ETag', etag);
+  headers.set('X-Content-Type-Options', 'nosniff');
 
   if (isDownload) {
     headers.set('Content-Disposition', `attachment; filename="${path.split('/').pop()}"`);
@@ -305,6 +307,7 @@ files.get('/thumb', async (c) => {
       headers.set('Content-Length', String(cachedThumb.size));
       headers.set('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
       headers.set('ETag', etag);
+      headers.set('X-Content-Type-Options', 'nosniff');
       return new Response((cachedThumb as any).body, { headers });
     }
   } catch {}
@@ -323,7 +326,7 @@ files.get('/thumb', async (c) => {
   // SVG: serve directly (browser renders natively, no WASM decode needed)
   if (isSvg(mime)) {
     return new Response(arrayBuffer, {
-      headers: { 'Content-Type': 'image/svg+xml', 'Content-Length': String(arrayBuffer.byteLength), 'Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400', 'ETag': origEtag },
+      headers: { 'Content-Type': 'image/svg+xml', 'Content-Length': String(arrayBuffer.byteLength), 'Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400', 'ETag': origEtag, 'X-Content-Type-Options': 'nosniff' },
     });
   }
 
@@ -334,7 +337,7 @@ files.get('/thumb', async (c) => {
         await r2.putObject(bucket, thumbKey, thumbBuffer, { contentType: 'image/webp' });
         const newEtag = `"thumb-${thumbBuffer.byteLength}"`;
         return new Response(thumbBuffer, {
-          headers: { 'Content-Type': 'image/webp', 'Content-Length': String(thumbBuffer.byteLength), 'Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400', 'ETag': newEtag },
+          headers: { 'Content-Type': 'image/webp', 'Content-Length': String(thumbBuffer.byteLength), 'Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400', 'ETag': newEtag, 'X-Content-Type-Options': 'nosniff' },
         });
       }
     } catch (err) {
@@ -344,7 +347,7 @@ files.get('/thumb', async (c) => {
 
   // Fallback: serve original from buffer
   return new Response(arrayBuffer, {
-    headers: { 'Content-Type': mime, 'Content-Length': String(arrayBuffer.byteLength), 'Cache-Control': 'public, max-age=86400, stale-while-revalidate=86400', 'ETag': origEtag },
+    headers: { 'Content-Type': mime, 'Content-Length': String(arrayBuffer.byteLength), 'Cache-Control': 'public, max-age=86400, stale-while-revalidate=86400', 'ETag': origEtag, 'X-Content-Type-Options': 'nosniff' },
   });
 });
 

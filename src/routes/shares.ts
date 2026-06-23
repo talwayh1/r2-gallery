@@ -140,10 +140,16 @@ shares.get('/share/:id/file', async (c) => {
   if (!obj) return c.json({ error: 'File not found' }, 404);
 
   const mime = obj.httpMetadata?.contentType || 'application/octet-stream';
+  const isDownload = c.req.query('download') === '1';
   const headers = new Headers();
   headers.set('Content-Type', mime);
   headers.set('Content-Length', String(obj.size));
   headers.set('Cache-Control', 'public, max-age=3600');
+  headers.set('X-Content-Type-Options', 'nosniff');
+
+  if (isDownload) {
+    headers.set('Content-Disposition', `attachment; filename="${share.path.split('/').pop()}"`);
+  }
 
   return new Response((obj as any).body, { headers });
 });
