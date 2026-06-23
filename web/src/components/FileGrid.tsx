@@ -172,6 +172,12 @@ function getMimeLabel(mime: string): string {
 function ImageThumbnail({ src, alt, priority }: { src: string; alt: string; priority?: boolean }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const retryTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    return () => retryTimers.current.forEach(clearTimeout);
+  }, []);
 
   if (error) {
     return (
@@ -185,11 +191,25 @@ function ImageThumbnail({ src, alt, priority }: { src: string; alt: string; prio
     );
   }
 
+  const handleError = () => {
+    if (retryCount < 2) {
+      const delay = 500 * Math.pow(2, retryCount); // 500ms, 1000ms
+      const timer = setTimeout(() => {
+        setRetryCount(c => c + 1);
+        setLoaded(false);
+      }, delay);
+      retryTimers.current.push(timer);
+    } else {
+      setError(true);
+    }
+  };
+
   return (
     <>
       {/* Shimmer placeholder — visible until image loads */}
       {!loaded && <div className="shimmer absolute inset-0 rounded-xl" />}
       <img
+        key={retryCount}
         src={src}
         alt={alt}
         loading={priority ? 'eager' : 'lazy'}
@@ -197,7 +217,7 @@ function ImageThumbnail({ src, alt, priority }: { src: string; alt: string; prio
         fetchPriority={priority ? 'high' : 'low'}
         className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
         onLoad={() => setLoaded(true)}
-        onError={() => setError(true)}
+        onError={handleError}
       />
     </>
   );
@@ -638,9 +658,12 @@ function VirtualFileGrid({
       {hasMore && onLoadMore && (
         <div ref={sentinelRef} className="flex items-center justify-center py-6">
           {loadingMore ? (
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500" />
+            <div className="flex items-center gap-2">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500" />
+              <span className="text-xs text-gray-400">已加载 {files.length} 个文件…</span>
+            </div>
           ) : (
-            <span className="text-xs text-gray-400">加载更多…</span>
+            <span className="text-xs text-gray-400">已加载 {files.length} 个文件，向下滚动加载更多</span>
           )}
         </div>
       )}
