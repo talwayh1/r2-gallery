@@ -123,6 +123,8 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     handleCopyFileName: () => {},
     goPrev10: () => {},
     goNext10: () => {},
+    goFirst: () => {},
+    goLast: () => {},
     resetZoom: () => {},
     handleZoomActualSize: () => {},
     toggleSlideshow: () => {},
@@ -333,6 +335,18 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     setSwipeHint('left');
     setTimeout(() => setSwipeHint(null), 300);
   }, [index, onNavigate, resetZoom, items.length]);
+
+  const goFirst = useCallback(() => {
+    if (items.length <= 1) return;
+    resetZoom();
+    onNavigate(0);
+  }, [onNavigate, resetZoom, items.length]);
+
+  const goLast = useCallback(() => {
+    if (items.length <= 1) return;
+    resetZoom();
+    onNavigate(items.length - 1);
+  }, [onNavigate, resetZoom, items.length]);
 
   // === Slideshow logic ===
   const getNextSlideshowIndex = useCallback(() => {
@@ -750,6 +764,8 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     handleCopyFileName,
     goPrev10,
     goNext10,
+    goFirst,
+    goLast,
     resetZoom,
     handleZoomActualSize,
     toggleSlideshow,
@@ -793,6 +809,8 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         }
       } else if (e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowUp')) { e.preventDefault(); kb.goPrev10(); }
       else if (e.shiftKey && (e.key === 'ArrowRight' || e.key === 'ArrowDown')) { e.preventDefault(); kb.goNext10(); }
+      else if (e.key === 'Home') { e.preventDefault(); kb.goFirst(); }
+      else if (e.key === 'End') { e.preventDefault(); kb.goLast(); }
       else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); kb.goPrev(); }
       else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); kb.goNext(); }
       else if (e.key === 'i') setShowInfo((s) => !s);
@@ -2203,30 +2221,34 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         </div>
       )}
 
-      {/* Previous button */}
+      {/* Previous button — hover-zone reveal on desktop, always when UI visible on mobile */}
       {hasPrev && (
-        <button
+        <div
           onClick={(e) => { e.stopPropagation(); goPrev(); }}
-          className={`absolute left-4 top-1/2 -translate-y-1/2 p-3 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all z-10 ${!uiVisible && (isImage || isVideo) ? 'opacity-0 pointer-events-none' : ''}`}
-          title="上一张 (←)"
+          className={`hidden sm:block absolute left-0 top-0 bottom-0 w-1/3 z-10 cursor-pointer transition-all duration-200 group/zone
+            ${!uiVisible && (isImage || isVideo) ? 'opacity-0 pointer-events-none' : ''}`}
         >
-          <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 p-3 text-white/40 group-hover/zone:text-white group-hover/zone:bg-white/10 rounded-full transition-all duration-200 opacity-0 md:group-hover/zone:opacity-100">
+            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </div>
+        </div>
       )}
 
-      {/* Next button */}
+      {/* Next button — hover-zone reveal on desktop, always when UI visible on mobile */}
       {hasNext && (
-        <button
+        <div
           onClick={(e) => { e.stopPropagation(); goNext(); }}
-          className={`absolute right-4 top-1/2 -translate-y-1/2 p-3 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all z-10 ${!uiVisible && (isImage || isVideo) ? 'opacity-0 pointer-events-none' : ''}`}
-          title="下一张 (→)"
+          className={`hidden sm:block absolute right-0 top-0 bottom-0 w-1/3 z-10 cursor-pointer transition-all duration-200 group/zone
+            ${!uiVisible && (isImage || isVideo) ? 'opacity-0 pointer-events-none' : ''}`}
         >
-          <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 p-3 text-white/40 group-hover/zone:text-white group-hover/zone:bg-white/10 rounded-full transition-all duration-200 opacity-0 md:group-hover/zone:opacity-100">
+            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </div>
       )}
 
       {/* Swipe direction indicators */}

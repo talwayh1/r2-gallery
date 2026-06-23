@@ -46,6 +46,10 @@ const shortcuts: { category: string; items: Shortcut[] }[] = [
     items: [
       { keys: ['←', '↑'], description: '上一张' },
       { keys: ['→', '↓'], description: '下一张' },
+      { keys: ['Shift', '←'], description: '向前跳 10 张' },
+      { keys: ['Shift', '→'], description: '向后跳 10 张' },
+      { keys: ['Home'], description: '跳转到第一张' },
+      { keys: ['End'], description: '跳转到最后一张' },
       { keys: ['Esc'], description: '关闭面板/关闭灯箱' },
       { keys: ['I'], description: '切换文件信息面板' },
       { keys: ['D'], description: '下载当前文件' },
