@@ -36,6 +36,10 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
   const lastSeekDirectionRef = useRef<'left' | 'right' | null>(null);
   const [seekHint, setSeekHint] = useState<'left' | 'right' | null>(null);
   const seekHintTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const [showShortcutHint, setShowShortcutHint] = useState(() => {
+    return typeof window !== 'undefined' && !localStorage.getItem('videoShortcutHintDismissed');
+  });
+  const SHORTCUT_HINT_DURATION = 4000;
   const url = getFileUrl(path);
 
   useEffect(() => {
@@ -93,6 +97,16 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
     if (!showControls) setSpeedMenuOpen(false);
   }, [showControls]);
 
+  // Auto-dismiss shortcut hint after SHORTCUT_HINT_DURATION ms
+  useEffect(() => {
+    if (!showShortcutHint) return;
+    const timer = setTimeout(() => {
+      setShowShortcutHint(false);
+      try { localStorage.setItem('videoShortcutHintDismissed', '1'); } catch {}
+    }, SHORTCUT_HINT_DURATION);
+    return () => clearTimeout(timer);
+  }, [showShortcutHint]);
+
   const togglePlay = () => {
     // Suppress play/pause toggle when a tap-to-seek was just performed
     if (lastSeekDirectionRef.current) {
@@ -103,6 +117,14 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
     if (!video) return;
     if (video.paused) video.play();
     else video.pause();
+    dismissShortcutHint();
+  };
+
+  const dismissShortcutHint = () => {
+    if (showShortcutHint) {
+      setShowShortcutHint(false);
+      try { localStorage.setItem('videoShortcutHintDismissed', '1'); } catch {}
+    }
   };
 
   const seek = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -153,6 +175,7 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
 
   const handleMouseMove = () => {
     showControlsWithTimer();
+    dismissShortcutHint();
   };
 
   const showControlsWithTimer = () => {
@@ -208,6 +231,8 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const video = videoRef.current;
     if (!video) return;
+
+    dismissShortcutHint();
 
     switch (e.key) {
       case 'ArrowLeft':
@@ -279,18 +304,23 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
         onClick={togglePlay}
       />
 
-      {/* Seek hint overlay — brief arrow indicating tap-to-seek direction */}
+      {/* Seek hint overlay — brief arrow indicating tap-to-seek direction with seconds */}
       <div
         className={`absolute inset-0 flex items-center justify-center pointer-events-none z-10 transition-opacity duration-500 ${
           seekHint ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        <div className={`bg-black/50 backdrop-blur-sm rounded-full w-14 h-14 flex items-center justify-center transition-all duration-300 ${
+        <div className={`flex flex-col items-center gap-1 transition-all duration-300 ${
           seekHint === 'left' ? 'ml-[-30px]' : 'mr-[-30px]'
         }`}>
-          <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={seekHint === 'left' ? "M11 19l-7-7 7-7m8 14l-7-7 7-7" : "M13 5l7 7-7 7M5 5l7 7-7 7"} />
-          </svg>
+          <div className="bg-black/50 backdrop-blur-sm rounded-full w-14 h-14 flex items-center justify-center">
+            <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={seekHint === 'left' ? "M11 19l-7-7 7-7m8 14l-7-7 7-7" : "M13 5l7 7-7 7M5 5l7 7-7 7"} />
+            </svg>
+          </div>
+          <span className="text-white/90 text-xs font-mono font-bold bg-black/50 backdrop-blur-sm px-2 py-0.5 rounded-full">
+            {seekHint === 'left' ? '-10s' : '+10s'}
+          </span>
         </div>
       </div>
 
@@ -423,6 +453,44 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
           </span>
         </div>
       )}
+
+      {/* Keyboard shortcut hint — shows briefly on first interaction */}
+      <div
+        className={`absolute bottom-16 left-1/2 -translate-x-1/2 pointer-events-none select-none transition-all duration-500 ${
+          showShortcutHint ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+        }`}
+      >
+        <div className="bg-black/70 backdrop-blur-md rounded-xl border border-white/10 px-3 py-2 shadow-2xl">
+          <div className="flex items-center gap-3 text-[11px] text-white/70 whitespace-nowrap">
+            <span className="flex items-center gap-1">
+              <kbd className="inline-flex items-center justify-center w-5 h-5 text-[10px] font-mono bg-white/10 rounded border border-white/20">Space</kbd>
+              <span>播放</span>
+            </span>
+            <span className="text-white/20">|</span>
+            <span className="flex items-center gap-1">
+              <kbd className="inline-flex items-center justify-center w-5 h-5 text-[10px] font-mono bg-white/10 rounded border border-white/20">←</kbd>
+              <kbd className="inline-flex items-center justify-center w-5 h-5 text-[10px] font-mono bg-white/10 rounded border border-white/20">→</kbd>
+              <span>进退</span>
+            </span>
+            <span className="text-white/20">|</span>
+            <span className="flex items-center gap-1">
+              <kbd className="inline-flex items-center justify-center w-5 h-5 text-[10px] font-mono bg-white/10 rounded border border-white/20">↑</kbd>
+              <kbd className="inline-flex items-center justify-center w-5 h-5 text-[10px] font-mono bg-white/10 rounded border border-white/20">↓</kbd>
+              <span>音量</span>
+            </span>
+            <span className="text-white/20">|</span>
+            <span className="flex items-center gap-1">
+              <kbd className="inline-flex items-center justify-center w-6 h-5 text-[10px] font-mono bg-white/10 rounded border border-white/20">F</kbd>
+              <span>全屏</span>
+            </span>
+            <span className="text-white/20">|</span>
+            <span className="flex items-center gap-1">
+              <kbd className="inline-flex items-center justify-center w-6 h-5 text-[10px] font-mono bg-white/10 rounded border border-white/20">M</kbd>
+              <span>静音</span>
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
