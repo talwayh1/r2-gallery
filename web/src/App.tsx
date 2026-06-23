@@ -901,26 +901,28 @@ export default function App() {
     toast('info', `已复制 ${selected.size} 个项目`);
   }, [selected]);
 
-  // Bulk duplicate
+  // Bulk duplicate — parallel with Promise.allSettled
   const handleDuplicate = useCallback(async () => {
     if (selected.size === 0 || !user) return;
     const paths = Array.from(selected);
-    toast('info', `正在复制 ${paths.length} 个项目...`);
+    if (paths.length === 0) return;
+    toast('info', `正在并行复制 ${paths.length} 个项目...`);
     let success = 0;
     let firstError = '';
-    for (const path of paths) {
-      try {
-        const result = await duplicateFile(path);
-        if (result.success) success++;
-      } catch (err) {
-        console.error('Duplicate failed:', path, err);
+    const results = await Promise.allSettled(paths.map(async (path) => {
+      const result = await duplicateFile(path);
+      if (result.success) success++;
+      return result;
+    }));
+    results.forEach((r, i) => {
+      if (r.status === 'rejected') {
+        const msg = (r.reason as Error)?.message || '未知错误';
         if (!firstError) {
-          const msg = (err as Error).message || '未知错误';
           firstError = msg;
           toast('error', `复制失败: ${msg}`, 4000);
         }
       }
-    }
+    });
     const failed = paths.length - success;
     if (failed > 0) {
       toast('warning', `已复制 ${success}/${paths.length} 个项目，${failed} 个失败`);
@@ -941,17 +943,28 @@ export default function App() {
     if (selected.size === 0) return;
     const paths = Array.from(selected);
     setShowMoveDialog(false);
-    toast('info', `正在移动 ${paths.length} 个项目...`);
+    toast('info', `正在并行移动 ${paths.length} 个项目...`);
     let success = 0;
-    for (const path of paths) {
-      try {
-        await moveItem(path, targetDir);
-        success++;
-      } catch (err) {
-        console.error('Move failed:', path, err);
+    let firstError = '';
+    const results = await Promise.allSettled(paths.map(async (path) => {
+      await moveItem(path, targetDir);
+      success++;
+    }));
+    results.forEach((r) => {
+      if (r.status === 'rejected') {
+        const msg = (r.reason as Error)?.message || '未知错误';
+        if (!firstError) {
+          firstError = msg;
+          toast('error', `移动失败: ${msg}`, 4000);
+        }
       }
+    });
+    const failed = paths.length - success;
+    if (failed > 0) {
+      toast('warning', `已移动 ${success}/${paths.length} 个项目，${failed} 个失败`);
+    } else {
+      toast('success', `已移动 ${success}/${paths.length} 个项目到目标文件夹`);
     }
-    toast('success', `已移动 ${success}/${paths.length} 个项目到目标文件夹`);
     setSelected(new Set());
     loadFiles(dir);
   }, [selected, dir, loadFiles]);
