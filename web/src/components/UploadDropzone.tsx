@@ -35,6 +35,26 @@ interface WebKitDirectoryReader {
   readEntries: (cb: (entries: WebKitEntry[]) => void) => void;
 }
 
+/** Maximum files allowed in a single upload batch — prevents browser freeze with huge selections */
+const MAX_BATCH_FILES = 500;
+/** Human-readable file size formatter */
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / 1024 ** i).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
+}
+/** Summarize a batch of files for the drag overlay */
+function summarizeFiles(files: { file: File; relativePath?: string }[]): { total: number; totalSize: string; note?: string } {
+  const total = files.length;
+  const totalBytes = files.reduce((s, f) => s + f.file.size, 0);
+  let note: string | undefined;
+  if (total > MAX_BATCH_FILES) {
+    note = `超过单次上传上限 (${MAX_BATCH_FILES})`;
+  }
+  return { total, totalSize: formatFileSize(totalBytes), note };
+}
+
 /** Read all entries from a directory reader recursively */
 async function readAllEntries(reader: WebKitDirectoryReader): Promise<WebKitEntry[]> {
   return new Promise((resolve) => {
@@ -80,13 +100,19 @@ function isFolderSelection(files: { file: File; relativePath?: string }[]): bool
 const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDropzone({ dir, onUpload, children }, ref) {
   const { enqueue } = useUploadQueue();
   const dragCounter = useRef(0);
-  const overlayRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
-  const [dragFileCount, setDragFileCount] = useState(0);
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [dragFiles, setDragFiles] = useState<{ file: File; relativePath?: string }[] | null>(null);
 
   const handleUpload = useCallback((files: { file: File; relativePath?: string }[]) => {
     if (files.length === 0) return;
+
+    // Validate batch size
+    if (files.length > MAX_BATCH_FILES) {
+      toast('warning', `单次最多上传 ${MAX_BATCH_FILES} 个文件，已跳过 ${files.length - MAX_BATCH_FILES} 个`);
+      files = files.slice(0, MAX_BATCH_FILES);
+    }
 
     enqueue(
       files.map(({ file, relativePath }) => ({
@@ -110,8 +136,8 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
     e.preventDefault();
     e.stopPropagation();
     dragCounter.current = 0;
-    if (overlayRef.current) overlayRef.current.style.display = 'none';
-    setDragFileCount(0);
+    setShowOverlay(false);
+    setDragFiles(null);
 
     const items = Array.from(e.dataTransfer.items);
     if (items.length === 0) return;
@@ -138,9 +164,31 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
     e.preventDefault();
     e.stopPropagation();
     dragCounter.current++;
-    if (overlayRef.current) overlayRef.current.style.display = 'flex';
-    const items = e.dataTransfer.items;
-    if (items) setDragFileCount(items.length);
+    setShowOverlay(true);
+    const items = Array.from(e.dataTransfer.items);
+    // Build a preview of what's being dragged
+    if (items.length > 0) {
+      const hasFolder = items.some(item => {
+        const entry = (item as any).webkitGetAsEntry?.() as WebKitEntry | null;
+        return entry?.isDirectory;
+      });
+      // For drag preview we show count/mode; actual file names are resolved on drop
+      const count = items.length;
+      const preview = [];
+      for (let i = 0; i < Math.min(count, 5); i++) {
+        const item = items[i];
+        const entry = (item as any).webkitGetAsEntry?.() as WebKitEntry | null;
+        if (entry) {
+          preview.push({ file: new File([], entry.name), relativePath: entry.fullPath });
+        } else {
+          const file = item.getAsFile();
+          if (file) preview.push({ file, relativePath: file.name });
+        }
+      }
+      setDragFiles(preview.length > 0 ? preview : null);
+    } else {
+      setDragFiles(null);
+    }
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
@@ -149,7 +197,8 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
     dragCounter.current--;
     if (dragCounter.current <= 0) {
       dragCounter.current = 0;
-      if (overlayRef.current) overlayRef.current.style.display = 'none';
+      setShowOverlay(false);
+      setDragFiles(null);
     }
   }, []);
 
@@ -211,6 +260,9 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
     return () => document.removeEventListener('paste', handlePaste);
   }, [handleUpload]);
 
+  // Compute drag overlay summary
+  const dropSummary = dragFiles ? summarizeFiles(dragFiles) : null;
+
   return (
     <div
       className="relative h-full"
@@ -221,28 +273,38 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
     >
       {children}
 
-      {/* Drag overlay */}
-      <div
-        ref={overlayRef}
-        className="fixed inset-0 z-50 hidden items-center justify-center bg-blue-500/10 backdrop-blur-sm"
-        style={{ display: 'none' }}
-      >
-        <div className="flex flex-col items-center gap-4 p-8 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border-2 border-dashed border-blue-500">
-          <svg className="w-16 h-16 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-          </svg>
-          <p className="text-lg font-medium text-gray-700 dark:text-gray-200">松开以上传文件</p>
-          <p className="text-sm text-gray-400">支持文件和文件夹拖拽</p>
-          {dragFileCount > 0 && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-sm font-medium">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              {dragFileCount} 个项目
-            </span>
-          )}
+      {/* Drag overlay — rendered via React state instead of imperative style.display */}
+      {showOverlay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-500/10 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4 p-8 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border-2 border-dashed border-blue-500">
+            <svg className="w-16 h-16 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <p className="text-lg font-medium text-gray-700 dark:text-gray-200">松开以上传文件</p>
+            <p className="text-sm text-gray-400">支持文件和文件夹拖拽</p>
+            {dropSummary && (
+              <div className="flex flex-col items-center gap-1">
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${
+                  dropSummary.total > MAX_BATCH_FILES
+                    ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400'
+                    : 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+                }`}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  {dragFiles!.length} 个项目
+                  {dropSummary.totalSize !== '0 B' && (
+                    <span className="text-xs opacity-75">({dropSummary.totalSize})</span>
+                  )}
+                </span>
+                {dropSummary.note && (
+                  <span className="text-xs text-amber-500">{dropSummary.note}</span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Hidden file inputs */}
       <input
@@ -256,10 +318,10 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
         ref={folderInputRef}
         type="file"
         multiple
+        className="hidden"
         // @ts-ignore — webkitdirectory is non-standard but widely supported
         webkitdirectory=""
         directory=""
-        className="hidden"
         onChange={handleFileInputChange}
       />
     </div>
