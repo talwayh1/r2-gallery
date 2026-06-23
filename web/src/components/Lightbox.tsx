@@ -81,6 +81,9 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const [slideshowProgress, setSlideshowProgress] = useState(0);
   const [showSlideshowMenu, setShowSlideshowMenu] = useState(false);
   const [showMoreTools, setShowMoreTools] = useState(false);
+  // Refs for thumbnail navigation strip
+  const thumbStripRef = useRef<HTMLDivElement>(null);
+  const activeThumbRef = useRef<HTMLButtonElement>(null);
   // ID3 metadata cache for audio tracks — path → { artist, album, cover, ... }
   const [audioId3Map, setAudioId3Map] = useState<Record<string, Id3Data | null>>({});
   // Toolbar horizontal scroll indicator — shows fade on right edge when content overflows
@@ -960,7 +963,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         const distance = Math.abs(i - index);
         const img = new Image();
         img.referrerPolicy = 'no-referrer';
-        img.fetchPriority = 'low';
+        img.fetchPriority = distance <= 1 ? 'high' : 'low';
         if (distance <= 1) {
           // Preload full-size original for immediate neighbors (smooth navigation)
           img.src = getFileUrl(items[i].path);
@@ -977,6 +980,18 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       }
     };
   }, [index, items, current?.path, current?.mime, items.length]);
+
+  // Auto-scroll thumbnail strip to keep active thumb visible
+  useEffect(() => {
+    if (!thumbStripRef.current || !activeThumbRef.current) return;
+    const strip = thumbStripRef.current;
+    const thumb = activeThumbRef.current;
+    const stripRect = strip.getBoundingClientRect();
+    const thumbRect = thumb.getBoundingClientRect();
+    if (thumbRect.left < stripRect.left || thumbRect.right > stripRect.right) {
+      thumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [index]);
   useEffect(() => {
     if (!showInfo || !current || !current.mime.startsWith('image/')) {
       return;
@@ -2717,6 +2732,48 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
           </div>
         )}
       </div>
+      {/* Thumbnail navigation strip — all items in current collection */}
+      {items.length > 1 && items.length <= 200 && (
+        <div className="absolute bottom-0 left-0 right-0 z-20 flex justify-center pointer-events-none pb-1 bg-gradient-to-t from-black/40 to-transparent">
+          <div
+            ref={thumbStripRef}
+            className="flex items-center gap-1.5 overflow-x-auto px-4 py-2 max-w-[90vw] scrollbar-thin pointer-events-auto gap-1"
+            style={{ scrollbarWidth: 'thin', scrollSnapType: 'x mandatory' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {items.map((item, i) => (
+              <button
+                key={`${i}-${item.path}`}
+                onClick={(e) => { e.stopPropagation(); onNavigate(i); }}
+                ref={i === index ? activeThumbRef : undefined}
+                className={`shrink-0 w-10 h-8 rounded-md overflow-hidden transition-all duration-150 ${
+                  i === index
+                    ? 'ring-2 ring-blue-400 ring-offset-1 ring-offset-black/80 scale-110 z-10 brightness-110'
+                    : 'opacity-60 hover:opacity-90 brightness-75 hover:brightness-100'
+                }`}
+                data-index={i}
+                title={item.path.split('/').pop() || item.path}
+              >
+                {item.mime.startsWith('image/') ? (
+                  <img
+                    src={getThumbUrl(item.path)}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    fetchPriority={Math.abs(i - index) <= 2 ? 'high' : 'low'}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-700 text-white/50 text-xs font-mono">
+                    {item.mime.startsWith('video/') ? '▶' :
+                     item.mime.startsWith('audio/') ? '♪' :
+                     item.mime === 'application/pdf' ? 'PDF' : '📄'}
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {showPanorama && current?.mime.startsWith('image/') && (
         <Suspense fallback={<div className="fixed inset-0 bg-black z-50 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/50" /></div>}>
           <PanoramaViewer src={url} onClose={() => setShowPanorama(false)} />
