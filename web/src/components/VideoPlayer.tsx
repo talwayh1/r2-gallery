@@ -33,6 +33,9 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
   const [speedMenuOpen, setSpeedMenuOpen] = useState(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const lastSeekDirectionRef = useRef<'left' | 'right' | null>(null);
+  const [seekHint, setSeekHint] = useState<'left' | 'right' | null>(null);
+  const seekHintTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const url = getFileUrl(path);
 
   useEffect(() => {
@@ -91,6 +94,11 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
   }, [showControls]);
 
   const togglePlay = () => {
+    // Suppress play/pause toggle when a tap-to-seek was just performed
+    if (lastSeekDirectionRef.current) {
+      lastSeekDirectionRef.current = null;
+      return;
+    }
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) video.play();
@@ -169,11 +177,32 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
     const dy = Math.abs(touch.clientY - startPos.y);
     // Only treat as a tap if finger moved less than 15px (ignore swipes/scrolling)
     if (dx < 15 && dy < 15) {
+      const container = containerRef.current;
+      const video = videoRef.current;
+      if (container && video && duration) {
+        const rect = container.getBoundingClientRect();
+        const relX = (touch.clientX - rect.left) / rect.width;
+        if (relX < 0.3) {
+          // Left 30% — seek backward
+          lastSeekDirectionRef.current = 'left';
+          video.currentTime = Math.max(0, video.currentTime - 10);
+          setSeekHint('left');
+          clearTimeout(seekHintTimerRef.current);
+          seekHintTimerRef.current = setTimeout(() => setSeekHint(null), 600);
+        } else if (relX > 0.7) {
+          // Right 30% — seek forward
+          lastSeekDirectionRef.current = 'right';
+          video.currentTime = Math.min(duration, video.currentTime + 10);
+          setSeekHint('right');
+          clearTimeout(seekHintTimerRef.current);
+          seekHintTimerRef.current = setTimeout(() => setSeekHint(null), 600);
+        }
+      }
       showControlsWithTimer();
     }
   };
 
-  const SEEK_STEP = 5;
+  const SEEK_STEP = 10;
   const VOLUME_STEP = 0.1;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -249,6 +278,21 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
         preload="metadata"
         onClick={togglePlay}
       />
+
+      {/* Seek hint overlay — brief arrow indicating tap-to-seek direction */}
+      <div
+        className={`absolute inset-0 flex items-center justify-center pointer-events-none z-10 transition-opacity duration-500 ${
+          seekHint ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
+        <div className={`bg-black/50 backdrop-blur-sm rounded-full w-14 h-14 flex items-center justify-center transition-all duration-300 ${
+          seekHint === 'left' ? 'ml-[-30px]' : 'mr-[-30px]'
+        }`}>
+          <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={seekHint === 'left' ? "M11 19l-7-7 7-7m8 14l-7-7 7-7" : "M13 5l7 7-7 7M5 5l7 7-7 7"} />
+          </svg>
+        </div>
+      </div>
 
       {/* Big play button overlay when paused */}
       {!playing && (
@@ -370,6 +414,15 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
       <div className={`absolute top-3 left-3 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
         <span className="text-white/80 text-sm font-medium bg-black/50 px-2 py-1 rounded backdrop-blur-sm">{name}</span>
       </div>
+
+      {/* Speed badge — always visible when playback rate ≠ 1 */}
+      {playbackRate !== 1 && (
+        <div className="absolute top-3 right-3 pointer-events-none select-none">
+          <span className="text-blue-400 text-xs font-mono font-bold bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded-md shadow-lg border border-blue-500/30">
+            {playbackRate}x
+          </span>
+        </div>
+      )}
     </div>
   );
 }
