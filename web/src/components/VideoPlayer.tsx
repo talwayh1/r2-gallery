@@ -353,7 +353,7 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
             style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
           />
           {/* Hover indicator */}
-          <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-blue-500 opacity-0 group-hover/progress:opacity-100 transition-opacity shadow-md"
+          <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-blue-500 opacity-0 group-hover/progress:opacity-100 progress-thumb-touch transition-opacity shadow-md"
             style={{ left: `calc(${duration ? (currentTime / duration) * 100 : 0}% - 6px)` }}
           />
         </div>

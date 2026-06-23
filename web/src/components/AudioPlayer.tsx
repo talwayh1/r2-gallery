@@ -42,6 +42,7 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
   // Refs to avoid stale closures in event handlers attached to <audio>
   const goNextRef = useRef<() => void>(() => {});
   const goPrevRef = useRef<() => void>(() => {});
+  const togglePlayRef = useRef<() => void>(() => {});
   // Track consecutive audio errors to avoid infinite skipping on a completely broken playlist
   const trackErrorCountRef = useRef(0);
   const maxTrackErrors = 3;
@@ -195,6 +196,7 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
   // Keep refs current so event handlers in useEffect always see latest callbacks
   goNextRef.current = goNext;
   goPrevRef.current = goPrev;
+  togglePlayRef.current = togglePlay;
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const time = parseFloat(e.target.value);
@@ -279,6 +281,55 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [togglePlay]);
+
+  // Media Session API — lock screen / notification shade controls on mobile
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    const ms = navigator.mediaSession;
+
+    // Update now-playing metadata whenever track info changes
+    const artwork: { src: string; sizes: string; type: string }[] = [];
+    if (track?.cover) {
+      artwork.push({ src: track.cover, sizes: '256x256', type: 'image/jpeg' });
+    }
+
+    ms.metadata = new MediaMetadata({
+      title: track?.name || '',
+      artist: track?.artist || '',
+      album: track?.album || '',
+      artwork,
+    });
+  }, [track?.name, track?.artist, track?.album, track?.cover]);
+
+  // Register media session action handlers once (uses refs to stay current)
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    const ms = navigator.mediaSession;
+
+    ms.setActionHandler('play', () => togglePlayRef.current());
+    ms.setActionHandler('pause', () => togglePlayRef.current());
+    ms.setActionHandler('nexttrack', () => goNextRef.current());
+    ms.setActionHandler('previoustrack', () => goPrevRef.current());
+    ms.setActionHandler('seekbackward', () => {
+      if (audioRef.current) {
+        audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+      }
+    });
+    ms.setActionHandler('seekforward', () => {
+      if (audioRef.current) {
+        audioRef.current.currentTime = Math.min(audioRef.current.duration || 0, audioRef.current.currentTime + 10);
+      }
+    });
+
+    return () => {
+      ms.setActionHandler('play', null);
+      ms.setActionHandler('pause', null);
+      ms.setActionHandler('nexttrack', null);
+      ms.setActionHandler('previoustrack', null);
+      ms.setActionHandler('seekbackward', null);
+      ms.setActionHandler('seekforward', null);
+    };
+  }, []);
 
   if (!track) return null;
 
@@ -375,7 +426,7 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
         {/* Thumb indicator */}
         {duration > 0 && (
           <div
-            className="absolute w-3 h-3 bg-white rounded-full shadow-md -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+            className="absolute w-3 h-3 bg-white rounded-full shadow-md -translate-x-1/2 opacity-0 group-hover:opacity-100 progress-thumb-touch transition-opacity pointer-events-none"
             style={{ left: `${(currentTime / duration) * 100}%` }}
           />
         )}

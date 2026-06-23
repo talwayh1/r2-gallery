@@ -448,6 +448,13 @@ html {
 .mobile-bottom-sheet.open {
   transform: translateY(0);
 }
+
+/* Show progress bar thumb on touch devices where hover doesn't exist */
+@media (hover: none) and (pointer: coarse) {
+  .progress-thumb-touch {
+    opacity: 1 !important;
+  }
+}
 .dark .mobile-bottom-sheet {
   background: #1f2937;
 }
