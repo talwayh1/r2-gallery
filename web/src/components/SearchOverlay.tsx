@@ -269,7 +269,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
             value={query}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="搜索所有文件..."
+            placeholder="搜索所有文件... Esc 关闭 · ↑↓ 选择 · Alt+0~4 筛选"
             enterKeyHint="search"
             autoComplete="off"
             className="flex-1 text-lg bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-500 [&::-webkit-search-decoration]:hidden [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-results-button]:hidden"

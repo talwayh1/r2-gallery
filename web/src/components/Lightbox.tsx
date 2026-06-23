@@ -286,6 +286,22 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     setShowZoomIndicator(false);
   }, [scale]);
 
+  // Clamp zoom pan offset so the image can't be dragged completely off-screen
+  // Keeps at least 10% of the image edge visible when zoomed in
+  const clampOffset = useCallback((proposedOffset: {x: number; y: number}, currentScale: number) => {
+    if (currentScale <= 1.05) return { x: 0, y: 0 };
+    const container = imgContainerRef.current;
+    if (!container) return proposedOffset;
+    const rect = container.getBoundingClientRect();
+    // Max offset in screen-pixel space (see transform: translate(offset.x / scale, ...))
+    const maxX = (rect.width * (currentScale - 1)) / 2 * 0.9;
+    const maxY = (rect.height * (currentScale - 1)) / 2 * 0.9;
+    return {
+      x: Math.max(-maxX, Math.min(maxX, proposedOffset.x)),
+      y: Math.max(-maxY, Math.min(maxY, proposedOffset.y)),
+    };
+  }, []);
+
   // Zoom to a specific level centered on a point
   const zoomAtPoint = useCallback((clientX: number, clientY: number, newScale: number) => {
     const container = imgContainerRef.current;
@@ -297,13 +313,13 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     setScale((prevScale) => {
       const clampedScale = Math.max(1, Math.min(newScale, 8));
       const ratio = clampedScale / prevScale;
-      setOffset((prev) => ({
+      setOffset((prev) => clampOffset({
         x: cx - ratio * (cx - prev.x),
         y: cy - ratio * (cy - prev.y),
-      }));
+      }, clampedScale));
       return clampedScale;
     });
-  }, []);
+  }, [clampOffset]);
 
   const goPrev = useCallback(() => {
     if (hasPrev) {
@@ -657,6 +673,9 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
           x: dragOffsetStart.current.x + dx,
           y: dragOffsetStart.current.y + dy,
         });
+        // Clamp boundary immediately — using a functional update ensures
+        // we clamp against the latest drag state without waiting for re-render
+        setOffset((prev) => clampOffset(prev, scaleRef.current));
       }
     };
 
@@ -697,6 +716,8 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         x: dragOffsetStart.current.x + dx,
         y: dragOffsetStart.current.y + dy,
       });
+      // Clamp boundary immediately
+      setOffset((prev) => clampOffset(prev, scaleRef.current));
     };
 
     const handleMouseUp = () => {
