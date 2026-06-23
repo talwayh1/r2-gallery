@@ -866,7 +866,9 @@ export default function FileGrid({ files, dirs, dirCounts, dirMtimes, currentDir
       let cmp = 0;
       if (sortKey === 'mtime') cmp = a.mtime - b.mtime;
       else if (sortKey === 'size') cmp = a.name.localeCompare(b.name); // dirs have size=0, fall back to name
-      else cmp = a.name.localeCompare(b.name);
+      else if (sortKey === 'shuffle') cmp = seededHash(a.name) - seededHash(b.name);
+      else if (sortKey === 'kind') cmp = getKindOrder(a.mime) - getKindOrder(b.mime) || a.name.localeCompare(b.name);
+      else cmp = a.name.localeCompare(b.name); // 'name' and default
       return sortDir === 'asc' ? cmp : -cmp;
     });
   }, [dirs, currentDir, sortKey, sortDir, dirMtimes]);

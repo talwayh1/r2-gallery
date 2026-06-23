@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import type { FileItem } from '../types';
 import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
 import SafeThumb, { SafeThumbUrl } from './SafeThumb';
@@ -36,6 +36,27 @@ function getExtBadge(name: string): string | null {
   return ext;
 }
 
+/** Seeded hash for deterministic shuffle order */
+function seededHash(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const chr = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + chr;
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function getKindOrder(mime: string): number {
+  if (mime.startsWith('image/')) return 0;
+  if (mime.startsWith('video/')) return 1;
+  if (mime.startsWith('audio/')) return 2;
+  if (mime === 'application/pdf' || mime.startsWith('text/') ||
+      mime === 'application/json' || mime === 'application/xml' ||
+      mime === 'application/javascript' || mime === 'application/x-yaml') return 3;
+  return 4;
+}
+
 interface Props {
   files: Record<string, FileItem>;
   dirs: string[];
@@ -49,15 +70,59 @@ interface Props {
   onLoadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
+  /** Parent sort from Header */
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  /** Current search term for filename highlighting */
+  search?: string;
 }
 
 
-export default function FileColumns({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore }: Props) {
+export default function FileColumns({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, sortBy: sortByProp, sortOrder: sortOrderProp, search }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const folderThumbs = useFolderThumbnails(dirs, currentDir);
 
   const selected = externalSelected ?? internalSelected;
   const isSelectionMode = selected.size > 0;
+
+  const sortKey: 'name' | 'size' | 'mtime' | 'kind' | 'shuffle' = (sortByProp as any) || 'name';
+  const sortDir: 'asc' | 'desc' = sortOrderProp || 'asc';
+
+  const sortedItems = useMemo(() => {
+    const dirItems = dirs.map((name) => ({
+      name, type: 'directory' as const, size: 0, mime: 'directory',
+      mtime: dirMtimes?.[name] ?? 0,
+      path: currentDir ? `${currentDir}/${name}` : name,
+    }));
+    const fileItems = Object.values(files);
+    const allItems = [...dirItems, ...fileItems];
+    return allItems.sort((a, b) => {
+      // Directories always come first
+      if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+      let cmp = 0;
+      if (sortKey === 'name') {
+        cmp = a.name.localeCompare(b.name);
+      } else if (sortKey === 'size') {
+        cmp = a.size - b.size;
+      } else if (sortKey === 'mtime') {
+        cmp = (a.mtime || 0) - (b.mtime || 0);
+      } else if (sortKey === 'kind') {
+        cmp = getKindOrder(a.mime) - getKindOrder(b.mime);
+      } else if (sortKey === 'shuffle') {
+        cmp = seededHash(a.name) - seededHash(b.name);
+      }
+      return sortDir === 'desc' ? -cmp : cmp;
+    });
+  }, [dirs, files, currentDir, sortKey, sortDir, dirMtimes]);
+
+  const handleToggleSelect = (path: string) => {
+    if (onSelect) { onSelect(path); return; }
+    setInternalSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path); else next.add(path);
+      return next;
+    });
+  };
 
   const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -70,27 +135,10 @@ export default function FileColumns({ files, dirs, dirMtimes, currentDir, onNavi
     return () => observer.disconnect();
   }, [onLoadMore, hasMore]);
 
-  const dirItems = dirs.map((name) => ({
-    name, type: 'directory' as const, size: 0, mime: 'directory',
-    mtime: dirMtimes?.[name] ?? 0,
-    path: currentDir ? `${currentDir}/${name}` : name,
-  }));
-  const fileItems = Object.values(files);
-  const allItems = [...dirItems, ...fileItems];
-
-  const handleToggleSelect = (path: string) => {
-    if (onSelect) { onSelect(path); return; }
-    setInternalSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(path)) next.delete(path); else next.add(path);
-      return next;
-    });
-  };
-
   return (
     <>
       <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-4 space-y-4">
-        {allItems.map((item) => {
+        {sortedItems.map((item) => {
           const isDir = item.type === 'directory';
           const isImage = item.mime.startsWith('image/');
           const isVideo = item.mime.startsWith('video/');
@@ -184,7 +232,7 @@ export default function FileColumns({ files, dirs, dirMtimes, currentDir, onNavi
         </div>
       )}
 
-      {allItems.length === 0 && (
+      {sortedItems.length === 0 && (
         <EmptyState type="directory" />
       )}
     </>
