@@ -66,9 +66,10 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     setSelectedIndex(0);
   }, [typeFilter]);
 
-  // Focus input on mount
+  // Focus input and select existing text on mount
   useEffect(() => {
     inputRef.current?.focus();
+    inputRef.current?.select();
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       if (abortRef.current) abortRef.current.abort();

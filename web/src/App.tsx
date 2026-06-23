@@ -1155,7 +1155,7 @@ export default function App() {
           <Sidebar currentDir={dir} onNavigate={navigate} onClose={isMobile ? () => setSidebarOpen(false) : undefined} dirCounts={dirCounts} />
         </div>
         {/* Main content */}
-        <main ref={mainRef} className={`flex-1 overflow-auto ${isMobile ? 'p-2' : 'p-4'}`} style={{ contain: 'layout style paint' }}
+        <main ref={mainRef} className={`flex-1 overflow-auto ${isMobile ? 'p-2' : 'p-4'}`} style={{ contain: 'layout style paint', overscrollBehavior: 'contain' }}
           onTouchStart={ptr.handlers.onTouchStart}
           onTouchMove={ptr.handlers.onTouchMove}
           onTouchEnd={ptr.handlers.onTouchEnd}

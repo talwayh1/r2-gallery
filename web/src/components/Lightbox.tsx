@@ -768,7 +768,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     setDeleting(true);
     setConfirmDelete(false);
     try {
-      onDelete(current.path);
+      await onDelete(current.path);
     } catch {
       setDeleting(false);
     }
