@@ -528,7 +528,7 @@ function VirtualFileGrid({
               draggable={true}
               onDragStart={(e) => handleDragStart(e, file.path)}
               onDragEnd={handleDragEnd}
-              className={`render-optimized flex flex-col items-center gap-1 sm:gap-2 p-1.5 sm:p-3 rounded-xl transition-colors transition-transform duration-100 group relative active:scale-[0.97] active:bg-gray-100 dark:active:bg-gray-700 ${
+              className={`render-optimized flex flex-col items-center gap-1 sm:gap-2 p-1.5 sm:p-3 rounded-xl transition-all duration-150 group relative hover:scale-[1.03] hover:shadow-lg hover:z-10 hover:bg-gray-50 dark:hover:bg-gray-800 active:scale-[0.97] active:bg-gray-100 dark:active:bg-gray-700 ${
                 isSelected
                   ? 'bg-blue-100 dark:bg-blue-900/30 ring-2 ring-blue-500'
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700'
