@@ -257,12 +257,12 @@ export interface ExifData {
 }
 
 export async function getExif(path: string): Promise<{ exif: ExifData | null; message?: string }> {
-  const res = await fetch(`${API_BASE}/exif?path=${encodeURIComponent(path)}`);
+  const res = await request(`/exif?path=${encodeURIComponent(path)}`);
   return res.json();
 }
 
 export async function getThumbnail(dir: string): Promise<{ path: string | null; url: string | null }> {
-  const res = await fetch(`${API_BASE}/thumbnail?dir=${encodeURIComponent(dir)}`);
+  const res = await request(`/thumbnail?dir=${encodeURIComponent(dir)}`);
   return res.json();
 }
 
@@ -281,7 +281,7 @@ export async function searchFiles(query: string, limit?: number, offset?: number
   if (limit) params.set('limit', String(limit));
   if (offset) params.set('offset', String(offset));
   if (type) params.set('type', type);
-  const res = await fetch(`${API_BASE}/search?${params}`, { signal });
+  const res = await request(`/search?${params}`, { signal });
   return res.json();
 }
 
@@ -299,7 +299,7 @@ export async function discoverMedia(limit?: number, offset?: number): Promise<{ 
   const params = new URLSearchParams();
   if (limit) params.set('limit', String(limit));
   if (offset) params.set('offset', String(offset));
-  const res = await fetch(`${API_BASE}/discover?${params}`);
+  const res = await request(`/discover?${params}`);
   return res.json();
 }
 
@@ -314,7 +314,7 @@ export async function getMemories(month?: number, day?: number): Promise<{ date:
   const params = new URLSearchParams();
   if (month) params.set('month', String(month));
   if (day) params.set('day', String(day));
-  const res = await fetch(`${API_BASE}/memories?${params}`);
+  const res = await request(`/memories?${params}`);
   return res.json();
 }
 
@@ -431,7 +431,7 @@ export async function getDiagnostics(): Promise<DiagnosticsResult> {
 
 // --- URL Content ---
 export async function getUrlContent(path: string): Promise<{ url: string }> {
-  const res = await fetch(`${API_BASE}/url-content?path=${encodeURIComponent(path)}`);
+  const res = await request(`/url-content?path=${encodeURIComponent(path)}`);
   return res.json();
 }
 
@@ -576,7 +576,7 @@ export interface Id3Data {
 }
 
 export async function getId3(path: string): Promise<{ id3: Id3Data | null; message?: string }> {
-  const res = await fetch(`${API_BASE}/id3?path=${encodeURIComponent(path)}`);
+  const res = await request(`/id3?path=${encodeURIComponent(path)}`);
   return res.json();
 }
 

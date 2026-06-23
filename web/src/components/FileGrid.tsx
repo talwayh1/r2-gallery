@@ -87,6 +87,7 @@ interface Props {
   onLoadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
+  loadMoreError?: string | null;
   /** Parent sort from Header — keeps FileGrid in sync with API-returned order */
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
@@ -349,7 +350,7 @@ function VirtualFileGrid({
   onOpen, onSelect, onRename, setRenaming, setInternalSelected,
   handleCardClick, handleContextMenu, handleDragStart, handleDragEnd,
   touchLongPress, touchTargetRef,
-  onLoadMore, hasMore, loadingMore, search,
+  onLoadMore, hasMore, loadingMore, loadMoreError, search,
 }: {
   files: FileItem[];
   columns: number;
@@ -377,6 +378,7 @@ function VirtualFileGrid({
   onLoadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
+  loadMoreError?: string | null;
   search?: string;
 }) {
   const [preview, setPreview] = useState<{ file: FileItem; rect: DOMRect } | null>(null);
@@ -491,7 +493,7 @@ function VirtualFileGrid({
   // Infinite scroll sentinel — inside scroll container for proper IntersectionObserver behaviour
   const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!sentinelRef.current || !onLoadMore || !hasMore) return;
+    if (!sentinelRef.current || !onLoadMore || !hasMore || loadMoreError) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
@@ -502,7 +504,7 @@ function VirtualFileGrid({
     );
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [onLoadMore, hasMore]);
+  }, [onLoadMore, hasMore, loadMoreError]);
 
   return (
     <div
@@ -662,6 +664,19 @@ function VirtualFileGrid({
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500" />
               <span className="text-xs text-gray-400">已加载 {files.length} 个文件…</span>
             </div>
+          ) : loadMoreError ? (
+            <div className="flex flex-col items-center gap-2">
+              <span className="text-xs text-red-400">加载失败: {loadMoreError}</span>
+              <button
+                onClick={onLoadMore}
+                className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-md transition-colors flex items-center gap-1.5"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                点击重试
+              </button>
+            </div>
           ) : (
             <span className="text-xs text-gray-400">已加载 {files.length} 个文件，向下滚动加载更多</span>
           )}
@@ -731,7 +746,7 @@ function VirtualFileGrid({
   );
 }
 
-export default function FileGrid({ files, dirs, dirCounts, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, sortBy, sortOrder, search }: Props) {
+export default function FileGrid({ files, dirs, dirCounts, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, loadMoreError, sortBy, sortOrder, search }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
@@ -1213,6 +1228,7 @@ export default function FileGrid({ files, dirs, dirCounts, dirMtimes, currentDir
             onLoadMore={onLoadMore}
             hasMore={hasMore}
             loadingMore={loadingMore}
+            loadMoreError={loadMoreError}
             search={search}
           />
         </div>

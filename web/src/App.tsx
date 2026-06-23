@@ -102,6 +102,7 @@ export default function App() {
   const [showMemories, setShowMemories] = useState(false);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [hasMore, setHasMore] = useState(false);
 
@@ -158,6 +159,7 @@ export default function App() {
       const msg = (e as Error).message || '加载文件失败';
       // Only show toast for non-Abort errors — AbortError is handled above
       toast('error', `加载文件失败: ${msg}`);
+      if (append) setLoadMoreError(msg);
     } finally {
       if (controller === abortRef.current) {
         setLoading(false);
@@ -611,6 +613,7 @@ export default function App() {
       onLoadMore: loadMore,
       hasMore,
       loadingMore,
+      loadMoreError,
     };
 
     switch (layout) {
@@ -1029,6 +1032,7 @@ export default function App() {
   const loadMore = useCallback(() => {
     if (loadingMore || loading || !hasMore || !cursor) return;
     setLoadingMore(true);
+    setLoadMoreError(null);
     loadFiles(dir, true);
   }, [loadingMore, loading, hasMore, cursor, dir, loadFiles]);
 
