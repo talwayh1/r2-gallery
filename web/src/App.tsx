@@ -68,6 +68,7 @@ export default function App() {
     return (localStorage.getItem('layout') as LayoutMode) || 'blocks';
   });
   const [lightbox, setLightbox] = useState<{ index: number } | null>(null);
+  const [lightboxClosing, setLightboxClosing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     const saved = localStorage.getItem('sidebarOpen');
     if (saved !== null) return saved === 'true';
@@ -711,13 +712,17 @@ export default function App() {
   }, [lightbox]);
 
   const handleLightboxClose = useCallback(() => {
-    setLightbox(null);
-    if (lightboxHistoryPushedRef.current) {
-      lightboxHistoryPushedRef.current = false;
-      window.history.back();
-    } else if (window.location.pathname.startsWith('/view/')) {
-      window.history.replaceState(null, '', '/');
-    }
+    setLightboxClosing(true);
+    setTimeout(() => {
+      setLightbox(null);
+      setLightboxClosing(false);
+      if (lightboxHistoryPushedRef.current) {
+        lightboxHistoryPushedRef.current = false;
+        window.history.back();
+      } else if (window.location.pathname.startsWith('/view/')) {
+        window.history.replaceState(null, '', '/');
+      }
+    }, 280);
   }, []);
 
   const handleLightboxDelete = async (path: string) => {
@@ -1229,6 +1234,7 @@ export default function App() {
           <Lightbox
             items={mediaItems}
             index={lightbox.index}
+            closing={lightboxClosing}
             onClose={handleLightboxClose}
             onNavigate={handleLightboxNavigate}
             onDelete={user ? handleLightboxDelete : undefined}

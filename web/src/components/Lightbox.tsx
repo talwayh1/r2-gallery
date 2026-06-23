@@ -27,6 +27,7 @@ interface Props {
   /** Called when user wants to delete the current file */
   onDelete?: (path: string) => void;
   onDuplicate?: (path: string) => void;
+  closing?: boolean;
 }
 
 function formatTime(seconds: number): string {
@@ -45,7 +46,7 @@ function isTextMime(mime: string): boolean {
          mime === 'application/yaml';
 }
 
-export default function Lightbox({ items, index, onClose, onNavigate, onDelete, onDuplicate }: Props) {
+export default function Lightbox({ items, index, onClose, onNavigate, onDelete, onDuplicate, closing }: Props) {
   const current = items[index];
   const hasPrev = items.length > 1;
   const hasNext = items.length > 1;
@@ -78,6 +79,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const [slideshowSpeed, setSlideshowSpeed] = useState(3); // seconds
   const [slideshowShuffle, setSlideshowShuffle] = useState(false);
   const [slideshowLoop, setSlideshowLoop] = useState(true);
+  const [slideshowImagesOnly, setSlideshowImagesOnly] = useState(false);
   const [slideshowProgress, setSlideshowProgress] = useState(0);
   const [showSlideshowMenu, setShowSlideshowMenu] = useState(false);
   const [showMoreTools, setShowMoreTools] = useState(false);
@@ -353,29 +355,37 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
   // === Slideshow logic ===
   const getNextSlideshowIndex = useCallback(() => {
+    // Build filtered candidate indices (non-image items excluded when imagesOnly)
+    const candidateIndices = items
+      .map((item, i) => ({ item, i }))
+      .filter(({ item }) => !slideshowImagesOnly || item.mime.startsWith('image/'))
+      .map(({ i }) => i);
+
+    if (candidateIndices.length === 0) return -1;
+
     if (slideshowShuffle) {
-      // Pick a random unplayed index
-      const unplayed: number[] = [];
-      for (let i = 0; i < items.length; i++) {
-        if (!playedIndicesRef.current.has(i)) unplayed.push(i);
-      }
+      // Pick a random unplayed index from candidates
+      const unplayed = candidateIndices.filter(i => !playedIndicesRef.current.has(i));
       if (unplayed.length === 0) {
         if (slideshowLoop) {
           playedIndicesRef.current = new Set();
-          const all = items.map((_, i) => i).filter(i => i !== index);
-          return all.length > 0 ? all[Math.floor(Math.random() * all.length)] : index;
+          const others = candidateIndices.filter(i => i !== index);
+          return others.length > 0 ? others[Math.floor(Math.random() * others.length)] : index;
         }
-        return -1; // done
+        return -1;
       }
       const pick = unplayed[Math.floor(Math.random() * unplayed.length)];
       playedIndicesRef.current.add(pick);
       return pick;
     }
     // Sequential
-    if (index < items.length - 1) return index + 1;
-    if (slideshowLoop) return 0;
+    const currentPos = candidateIndices.indexOf(index);
+    if (currentPos >= 0 && currentPos < candidateIndices.length - 1) {
+      return candidateIndices[currentPos + 1];
+    }
+    if (slideshowLoop) return candidateIndices[0];
     return -1;
-  }, [index, items.length, slideshowShuffle, slideshowLoop]);
+  }, [index, items, slideshowShuffle, slideshowLoop, slideshowImagesOnly]);
 
   const stopSlideshow = useCallback(() => {
     setSlideshowPlaying(false);
@@ -450,6 +460,11 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   useEffect(() => {
     playedIndicesRef.current = new Set([index]);
   }, [slideshowShuffle, index]);
+
+  // Reset played indices when images-only toggled
+  useEffect(() => {
+    playedIndicesRef.current = new Set([index]);
+  }, [slideshowImagesOnly, index]);
 
   // Stop slideshow on unmount; lock body scroll while lightbox is open
   useEffect(() => {
@@ -1234,7 +1249,11 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   return (
     <div
       ref={swipeRef}
-      style={swipeDragY > 0 ? {
+      style={closing ? {
+        opacity: 0,
+        transform: 'scale(0.95)',
+        transition: 'opacity 0.25s ease, transform 0.25s ease',
+      } : swipeDragY > 0 ? {
         transform: `translateY(${swipeDragY}px) scale(${Math.max(0.92, 1 - swipeDragY / (window.innerHeight * 0.6))})`,
         opacity: Math.max(0.5, 1 - swipeDragY / (window.innerHeight * 0.5)),
         transition: 'none',
@@ -1855,6 +1874,17 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 <span className="text-white/70 text-xs">随机顺序</span>
                 <div className={`w-8 h-4 rounded-full transition-colors relative ${slideshowShuffle ? 'bg-blue-500' : 'bg-white/20'}`}>
                   <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${slideshowShuffle ? 'left-4' : 'left-0.5'}`} />
+                </div>
+              </button>
+
+              {/* Images Only toggle */}
+              <button
+                onClick={() => setSlideshowImagesOnly(!slideshowImagesOnly)}
+                className="w-full flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-white/5 transition-colors mt-1"
+              >
+                <span className="text-white/70 text-xs">仅图片</span>
+                <div className={`w-8 h-4 rounded-full transition-colors relative ${slideshowImagesOnly ? 'bg-blue-500' : 'bg-white/20'}`}>
+                  <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${slideshowImagesOnly ? 'left-4' : 'left-0.5'}`} />
                 </div>
               </button>
             </div>
