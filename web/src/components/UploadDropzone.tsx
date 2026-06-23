@@ -104,6 +104,7 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
   const folderInputRef = useRef<HTMLInputElement>(null);
   const [showOverlay, setShowOverlay] = useState(false);
   const [dragFiles, setDragFiles] = useState<{ file: File; relativePath?: string }[] | null>(null);
+  const [dragHasFolder, setDragHasFolder] = useState(false);
 
   const handleUpload = useCallback((files: { file: File; relativePath?: string }[]) => {
     if (files.length === 0) return;
@@ -152,6 +153,7 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
     dragCounter.current = 0;
     setShowOverlay(false);
     setDragFiles(null);
+    setDragHasFolder(false);
 
     const items = Array.from(e.dataTransfer.items);
     if (items.length === 0) return;
@@ -186,6 +188,7 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
         const entry = (item as any).webkitGetAsEntry?.() as WebKitEntry | null;
         return entry?.isDirectory;
       });
+      setDragHasFolder(hasFolder);
       // For drag preview we show count/mode; actual file names are resolved on drop
       const count = items.length;
       const preview = [];
@@ -213,6 +216,7 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
       dragCounter.current = 0;
       setShowOverlay(false);
       setDragFiles(null);
+      setDragHasFolder(false);
     }
   }, []);
 
@@ -297,7 +301,8 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
             <p className="text-lg font-medium text-gray-700 dark:text-gray-200">松开以上传文件</p>
             <p className="text-sm text-gray-400">支持文件和文件夹拖拽</p>
             {dropSummary && (
-              <div className="flex flex-col items-center gap-1">
+              <div className="flex flex-col items-center gap-2">
+                {/* Batch count badge */}
                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${
                   dropSummary.total > MAX_BATCH_FILES
                     ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400'
@@ -306,13 +311,36 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  {dragFiles!.length} 个项目
-                  {dropSummary.totalSize !== '0 B' && (
-                    <span className="text-xs opacity-75">({dropSummary.totalSize})</span>
-                  )}
+                  {dropSummary.total} 个项目
                 </span>
-                {dropSummary.note && (
-                  <span className="text-xs text-amber-500">{dropSummary.note}</span>
+
+                {/* File name preview — only when the names are meaningful */}
+                {dragFiles!.length > 0 && dragFiles!.length <= 5 && (
+                  <div className="flex flex-col items-start gap-0.5 max-w-[220px]">
+                    {dragFiles!.map((f, i) => {
+                      const name = f.relativePath || f.file.name;
+                      const isDir = name.includes('/');
+                      return (
+                        <span key={i} className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 truncate w-full" title={name}>
+                          {isDir ? (
+                            <svg className="w-3 h-3 shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-3 h-3 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                            </svg>
+                          )}
+                          <span className="truncate">{name.split('/').pop()}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Folder indicator — show when dragging a directory */}
+                {dragHasFolder && (
+                  <span className="text-xs text-amber-500">包含文件夹</span>
                 )}
               </div>
             )}

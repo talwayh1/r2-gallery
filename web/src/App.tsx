@@ -514,6 +514,12 @@ export default function App() {
             }
           })();
         }
+      } else if (e.key === 'd' && e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        // Shift+D — download selected files
+        if (selected.size > 0) {
+          e.preventDefault();
+          handleBatchDownload();
+        }
       }
     };
     document.addEventListener('keydown', handleKey);

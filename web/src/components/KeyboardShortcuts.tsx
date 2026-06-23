@@ -36,6 +36,7 @@ const shortcuts: { category: string; items: Shortcut[] }[] = [
       { keys: ['Ctrl', 'X'], description: '剪切选中文件' },
       { keys: ['Ctrl', 'V'], description: '粘贴文件到当前目录' },
       { keys: ['Ctrl', 'D'], description: '复制文件（创建副本）' },
+      { keys: ['Shift', 'D'], description: '下载选中文件' },
       { keys: ['Delete'], description: '删除选中文件' },
       { keys: ['F2'], description: '重命名选中文件' },
       { keys: ['Esc'], description: '取消选择' },
