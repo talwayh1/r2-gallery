@@ -206,7 +206,7 @@ export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavig
           return (
             <div
               key={item.path}
-              className={`group relative rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 cursor-pointer transition-all ${
+              className={`group relative render-optimized rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 cursor-pointer transition-all ${
                 isSelected ? 'ring-2 ring-blue-500' : 'hover:shadow-lg'
               }`}
               onClick={() => isDir ? onNavigate(item.path) : onOpen(item.path, item.mime)}

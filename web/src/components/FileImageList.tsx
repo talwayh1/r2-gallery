@@ -241,7 +241,7 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
           return (
             <div
               key={item.path}
-              className={`flex items-center gap-4 p-3 rounded-lg cursor-pointer transition-colors ${
+              className={`flex items-center gap-4 p-3 rounded-lg cursor-pointer transition-colors render-optimized ${
                 isSelected ? 'bg-blue-50 dark:bg-blue-900/30 ring-1 ring-blue-500' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
               }`}
               onClick={() => isDir ? onNavigate(item.path) : onOpen(item.path, item.mime)}

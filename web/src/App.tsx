@@ -472,18 +472,25 @@ export default function App() {
           e.preventDefault();
           const { paths, mode } = clipboardRef.current;
           (async () => {
-            for (const path of paths) {
-              try {
-                if (mode === 'cut') {
-                  await moveItem(path, dir || '');
-                } else {
-                  await copyFile(path, dir || '');
+            const results = await Promise.allSettled(
+              paths.map(path =>
+                mode === 'cut'
+                  ? moveItem(path, dir || '')
+                  : copyFile(path, dir || '')
+              )
+            );
+            const failed = results.filter(r => r.status === 'rejected').length;
+            if (failed === 0) {
+              toast('success', `已粘贴 ${paths.length} 个项目`);
+            } else {
+              toast('info', `已粘贴 ${paths.length - failed} / ${paths.length} 个项目（${failed} 个失败）`);
+              // Log individual failures
+              results.forEach((r, i) => {
+                if (r.status === 'rejected') {
+                  console.error(`Paste failed for "${paths[i]}":`, r.reason);
                 }
-              } catch (err) {
-                console.error('Paste failed:', err);
-              }
+              });
             }
-            toast('success', `已粘贴 ${paths.length} 个项目`);
             if (mode === 'cut') clipboardRef.current = null;
             loadFiles(dir);
           })();

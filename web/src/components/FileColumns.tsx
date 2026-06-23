@@ -101,7 +101,7 @@ export default function FileColumns({ files, dirs, dirMtimes, currentDir, onNavi
           return (
             <div
               key={item.path}
-              className={`break-inside-avoid rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 cursor-pointer transition-all relative ${
+              className={`break-inside-avoid render-optimized rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 cursor-pointer transition-all relative ${
                 isSelected ? 'ring-2 ring-blue-500' : 'hover:shadow-lg'
               }`}
               onClick={() => isDir ? onNavigate(item.path) : onOpen(item.path, item.mime)}
