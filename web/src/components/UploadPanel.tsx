@@ -40,7 +40,13 @@ function TaskRow({ task, onCancel, onRetry }: { task: UploadTask; onCancel: () =
   return (
     <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 shrink-0"><StatusIcon status={task.status} /></div>
+        {task.previewUrl ? (
+          <div className="shrink-0 w-8 h-8 rounded overflow-hidden bg-gray-100 dark:bg-gray-700">
+            <img src={task.previewUrl} alt="" className="w-full h-full object-cover img-fade-in" loading="lazy" />
+          </div>
+        ) : (
+          <div className="mt-0.5 shrink-0"><StatusIcon status={task.status} /></div>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="truncate text-sm font-medium flex-1">{task.fileName}</p>

@@ -28,6 +28,8 @@ export interface UploadTask {
   speed: number;
   etaSeconds: number | null;
   error?: string;
+  /** Blob URL for image preview — cleaned up when task is dismissed */
+  previewUrl?: string;
 }
 
 interface InternalTask extends UploadTask {
@@ -38,6 +40,7 @@ interface InternalTask extends UploadTask {
 export interface UploadQueueInput {
   file: File;
   relativePath?: string;
+  previewUrl?: string;
   run: (ctx: UploadRunnerContext) => Promise<void>;
 }
 
@@ -174,6 +177,7 @@ export function UploadQueueProvider({ children }: { children: ReactNode }) {
       total: item.file.size,
       speed: 0,
       etaSeconds: null,
+      previewUrl: item.previewUrl,
       run: item.run,
     }));
     tasksRef.current = [...tasksRef.current, ...newTasks];
@@ -223,6 +227,12 @@ export function UploadQueueProvider({ children }: { children: ReactNode }) {
   }, [publish, maybeStartNext]);
 
   const dismissCompleted = useCallback(() => {
+    // Revoke object URLs for dismissed tasks to avoid memory leaks
+    for (const t of tasksRef.current) {
+      if (t.status !== 'queued' && t.status !== 'uploading' && t.previewUrl) {
+        try { URL.revokeObjectURL(t.previewUrl); } catch { /* noop */ }
+      }
+    }
     tasksRef.current = tasksRef.current.filter(t =>
       t.status === 'queued' || t.status === 'uploading'
     );

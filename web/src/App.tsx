@@ -33,6 +33,7 @@ import TypeFilter, { matchFilter } from './components/TypeFilter';
 import type { TypeFilter as TypeFilterKind } from './components/TypeFilter';
 import SkeletonGrid from './components/SkeletonGrid';
 import ScrollToTop from './components/ScrollToTop';
+import { PullToRefreshIndicator, usePullToRefresh } from './hooks/usePullToRefresh';
 import EmptyState from './components/EmptyState';
 
 // Lazy-loaded components (not needed for first paint)
@@ -1020,6 +1021,15 @@ export default function App() {
     loadFiles(dir, true);
   }, [loadingMore, loading, hasMore, cursor, dir, loadFiles]);
 
+  // Pull-to-refresh on mobile
+  const ptr = usePullToRefresh({
+    scrollRef: mainRef,
+    onRefresh: useCallback(() => {
+      loadFiles(dir);
+    }, [dir, loadFiles]),
+    query: '(max-width: 640px)',
+  });
+
   return (
     <UploadQueueProvider>
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
@@ -1140,7 +1150,14 @@ export default function App() {
           <Sidebar currentDir={dir} onNavigate={navigate} onClose={isMobile ? () => setSidebarOpen(false) : undefined} dirCounts={dirCounts} />
         </div>
         {/* Main content */}
-        <main ref={mainRef} className={`flex-1 overflow-auto ${isMobile ? 'p-2' : 'p-4'}`} style={{ contain: 'layout style paint' }}>
+        <main ref={mainRef} className={`flex-1 overflow-auto ${isMobile ? 'p-2' : 'p-4'}`} style={{ contain: 'layout style paint' }}
+          onTouchStart={ptr.handlers.onTouchStart}
+          onTouchMove={ptr.handlers.onTouchMove}
+          onTouchEnd={ptr.handlers.onTouchEnd}
+        >
+          {/* Pull-to-refresh indicator (mobile only) */}
+          {isMobile && <PullToRefreshIndicator pullDistance={ptr.pullDistance} refreshing={ptr.refreshing} />}
+
           {/* Type filter bar - mobile: horizontal scroll, desktop: normal */}
           <div className={`mb-3 ${isMobile ? 'overflow-x-auto scrollbar-none -mx-2 px-2' : 'hidden sm:block'}`}>
             <TypeFilter

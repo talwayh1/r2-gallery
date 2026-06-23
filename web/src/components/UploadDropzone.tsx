@@ -114,14 +114,28 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
       files = files.slice(0, MAX_BATCH_FILES);
     }
 
+    // Generate preview URLs for image files
+    const imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/bmp', 'image/svg+xml'];
+
     enqueue(
-      files.map(({ file, relativePath }) => ({
-        file,
-        relativePath,
-        run: async (ctx: UploadRunnerContext) => {
-          await uploadFileWithProgress(dir, file, relativePath, ctx.onProgress, ctx.signal);
-        },
-      })),
+      files.map(({ file, relativePath }) => {
+        const previewUrl = imageTypes.includes(file.type) ? URL.createObjectURL(file) : undefined;
+
+        return {
+          file,
+          relativePath,
+          previewUrl,
+          run: async (ctx: UploadRunnerContext) => {
+            try {
+              await uploadFileWithProgress(dir, file, relativePath, ctx.onProgress, ctx.signal);
+            } catch (e) {
+              // If upload fails, revoke the preview URL to free memory immediately
+              if (previewUrl) try { URL.revokeObjectURL(previewUrl); } catch { /* noop */ }
+              throw e;
+            }
+          },
+        };
+      }),
       (hadSuccess) => {
         if (hadSuccess) {
           toast('success', `已上传 ${files.length} 个文件`);
