@@ -179,7 +179,7 @@ export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts }: 
   const showFiltered = filterText.trim().length > 0;
 
   return (
-    <aside ref={sidebarRef} className="w-60 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto shrink-0">
+    <aside ref={sidebarRef} className="w-60 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto overscroll-contain shrink-0">
       <div className="p-3">
         <div className="flex items-center justify-between mb-2">
           <button

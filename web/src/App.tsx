@@ -1058,7 +1058,7 @@ export default function App() {
       />
       <InstallPrompt />
       <div
-        className="flex flex-1 overflow-hidden relative"
+        className="flex flex-1 overflow-hidden relative touch-pan-y"
         onTouchStart={(e) => {
           if (!isMobile || sidebarOpen) return;
           const touchX = e.touches[0].clientX;

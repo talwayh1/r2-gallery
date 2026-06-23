@@ -437,11 +437,14 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   // Stop slideshow on unmount; lock body scroll while lightbox is open
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
+    const prevOverscroll = document.body.style.overscrollBehavior;
     document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'none';
     return () => {
       if (slideshowTimerRef.current) clearTimeout(slideshowTimerRef.current);
       if (slideshowProgressRef.current) clearInterval(slideshowProgressRef.current);
       document.body.style.overflow = prevOverflow;
+      document.body.style.overscrollBehavior = prevOverscroll;
     };
   }, []);
 
