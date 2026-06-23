@@ -528,7 +528,7 @@ function VirtualFileGrid({
               draggable={true}
               onDragStart={(e) => handleDragStart(e, file.path)}
               onDragEnd={handleDragEnd}
-              className={`render-optimized flex flex-col items-center gap-1 sm:gap-2 p-1.5 sm:p-3 rounded-xl transition-colors group relative active:scale-[0.97] active:bg-gray-100 dark:active:bg-gray-700 ${
+              className={`render-optimized flex flex-col items-center gap-1 sm:gap-2 p-1.5 sm:p-3 rounded-xl transition-colors transition-transform duration-100 group relative active:scale-[0.97] active:bg-gray-100 dark:active:bg-gray-700 ${
                 isSelected
                   ? 'bg-blue-100 dark:bg-blue-900/30 ring-2 ring-blue-500'
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -1120,7 +1120,7 @@ export default function FileGrid({ files, dirs, dirCounts, dirMtimes, currentDir
                 onDragOver={(e) => handleDragOverFolder(e, item.path)}
                 onDragLeave={handleDragLeaveFolder}
                 onDrop={(e) => handleDropOnFolder(e, item.path)}
-                className={`flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group render-optimized active:scale-[0.97] active:bg-gray-100 dark:active:bg-gray-700 ${
+                className={`flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors transition-transform duration-100 group render-optimized active:scale-[0.97] active:bg-gray-100 dark:active:bg-gray-700 ${
                   dragOverFolder === item.path
                     ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/30 scale-[1.02]'
                     : ''

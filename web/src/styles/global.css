@@ -9,6 +9,10 @@
   body {
     @apply m-0 antialiased;
   }
+  /* Respect EXIF orientation metadata from cameras/mobile devices — fixes rotated portrait photos */
+  img {
+    image-orientation: from-image;
+  }
   ::-webkit-scrollbar {
     @apply w-2 h-2;
   }
