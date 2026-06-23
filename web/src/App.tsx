@@ -1298,7 +1298,7 @@ export default function App() {
       )}
       {showStats && user && (
         <ErrorBoundary><Suspense fallback={<LazyLoading />}>
-          <StatsPanel onClose={() => setShowStats(false)} />
+          <StatsPanel onClose={() => setShowStats(false)} onNavigate={navigate} />
         </Suspense></ErrorBoundary>
       )}
       {showSettings && user && (

@@ -3,6 +3,7 @@ import { getStats, type Stats } from '../api';
 
 interface Props {
   onClose: () => void;
+  onNavigate?: (dir: string) => void;
 }
 
 import { formatSize } from '../utils';
@@ -23,7 +24,7 @@ const TYPE_LABELS: Record<string, string> = {
   other: '其他',
 };
 
-export default function StatsPanel({ onClose }: Props) {
+export default function StatsPanel({ onClose, onNavigate }: Props) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -126,7 +127,11 @@ export default function StatsPanel({ onClose }: Props) {
                     </thead>
                     <tbody>
                       {stats.topDirs.map(d => (
-                        <tr key={d.dir} className="border-b border-gray-100 dark:border-gray-700/50">
+                        <tr
+                          key={d.dir}
+                          onClick={() => { onNavigate?.(d.dir); onClose(); }}
+                          className="border-b border-gray-100 dark:border-gray-700/50 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                        >
                           <td className="p-3 font-mono text-xs truncate max-w-[200px]" title={d.dir}>{d.dir}</td>
                           <td className="p-3 text-right text-gray-500">{d.count}</td>
                           <td className="p-3 text-right text-gray-500">{formatSize(d.size)}</td>
@@ -143,13 +148,20 @@ export default function StatsPanel({ onClose }: Props) {
               <div>
                 <h3 className="font-medium mb-3">🕐 最近上传</h3>
                 <div className="space-y-1">
-                  {stats.recentUploads.map(f => (
-                    <div key={f.path} className="flex items-center gap-3 text-sm py-1.5 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <span className="flex-1 truncate font-mono text-xs">{f.path}</span>
-                      <span className="text-gray-400">{formatSize(f.size)}</span>
-                      <span className="text-gray-400 text-xs">{f.mtime ? new Date(f.mtime * 1000).toLocaleDateString() : ''}</span>
-                    </div>
-                  ))}
+                  {stats.recentUploads.map(f => {
+                    const parentDir = f.path.lastIndexOf('/') >= 0 ? f.path.substring(0, f.path.lastIndexOf('/')) : '';
+                    return (
+                      <div
+                        key={f.path}
+                        onClick={() => { onNavigate?.(parentDir); onClose(); }}
+                        className="flex items-center gap-3 text-sm py-1.5 px-3 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer transition-colors"
+                      >
+                        <span className="flex-1 truncate font-mono text-xs">{f.path}</span>
+                        <span className="text-gray-400">{formatSize(f.size)}</span>
+                        <span className="text-gray-400 text-xs">{f.mtime ? new Date(f.mtime * 1000).toLocaleDateString() : ''}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
