@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import type { FileItem } from '../types';
 import { getFileUrl, duplicateFile, downloadZip, moveItem, copyFile } from '../api';
 import { toast } from '../hooks/useToast';
@@ -111,35 +111,37 @@ export default function FileList({ files, dirs, dirMtimes, currentDir, onNavigat
 
   const handleTouchEnd = () => { longPressCancelled.current = true; clearLongPress(); };
 
-  const dirItems = dirs.map((name) => ({
-    name, type: 'directory' as const, size: 0, mime: 'directory',
-    mtime: dirMtimes?.[name] ?? 0,
-    path: currentDir ? `${currentDir}/${name}` : name,
-  }));
-  const fileItems = Object.values(files);
-  const allItems = [...dirItems, ...fileItems];
-
-  // Client-side sort
+  // Client-side sort — memoized to avoid re-sorting on unrelated state changes (contextMenu, selection, etc.)
   const effectiveSortBy: SortKey = (sortByProp as SortKey) || 'name';
   const effectiveSortOrder: SortDir = sortOrderProp || 'asc';
 
-  const sorted = [...allItems].sort((a, b) => {
-    // Directories always come first
-    if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
-    let cmp = 0;
-    if (effectiveSortBy === 'name') {
-      cmp = a.name.localeCompare(b.name);
-    } else if (effectiveSortBy === 'size') {
-      cmp = a.size - b.size;
-    } else if (effectiveSortBy === 'mtime') {
-      cmp = (a.mtime || 0) - (b.mtime || 0);
-    } else if (effectiveSortBy === 'kind') {
-      cmp = getKindOrder(a.mime) - getKindOrder(b.mime);
-    } else if (effectiveSortBy === 'shuffle') {
-      cmp = Math.random() - 0.5;
-    }
-    return effectiveSortOrder === 'desc' ? -cmp : cmp;
-  });
+  const sorted = useMemo(() => {
+    const dirItems = dirs.map((name) => ({
+      name, type: 'directory' as const, size: 0, mime: 'directory',
+      mtime: dirMtimes?.[name] ?? 0,
+      path: currentDir ? `${currentDir}/${name}` : name,
+    }));
+    const fileItems = Object.values(files);
+    const allItems = [...dirItems, ...fileItems];
+
+    return [...allItems].sort((a, b) => {
+      // Directories always come first
+      if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+      let cmp = 0;
+      if (effectiveSortBy === 'name') {
+        cmp = a.name.localeCompare(b.name);
+      } else if (effectiveSortBy === 'size') {
+        cmp = a.size - b.size;
+      } else if (effectiveSortBy === 'mtime') {
+        cmp = (a.mtime || 0) - (b.mtime || 0);
+      } else if (effectiveSortBy === 'kind') {
+        cmp = getKindOrder(a.mime) - getKindOrder(b.mime);
+      } else if (effectiveSortBy === 'shuffle') {
+        cmp = Math.random() - 0.5;
+      }
+      return effectiveSortOrder === 'desc' ? -cmp : cmp;
+    });
+  }, [dirs, files, currentDir, dirMtimes, effectiveSortBy, effectiveSortOrder]);
 
   const handleContextMenu = (e: React.MouseEvent, path: string, name: string, isDir: boolean) => {
     e.preventDefault();
@@ -259,10 +261,8 @@ export default function FileList({ files, dirs, dirMtimes, currentDir, onNavigat
                   <td className="px-2 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-lg">
-                        {isDir ? <FileTypeIcon mime="folder" className="w-5 h-5" isDir={true} /> : isImage ? (
+                        {isDir ? <FileTypeIcon mime="folder" className="w-5 h-5" isDir={true} /> : isImage || isVideo ? (
                           <SafeThumb path={item.path} />
-                        ) : isVideo ? (
-                          <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
                         ) : (
                           <FileTypeIcon mime="application/octet-stream" className="w-5 h-5" />
                         )}
