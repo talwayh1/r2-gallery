@@ -4,6 +4,9 @@ import { useEffect, useRef } from 'react';
  * Touch gesture hook for swipe navigation (only when not zoomed).
  * Detects horizontal swipes (left/right) for navigation and vertical
  * downward swipe for closing/closing gestures with progress feedback.
+ *
+ * Uses callback refs internally to avoid re-attaching touch event
+ * listeners on every render when parent passes unstable callbacks.
  */
 export function useSwipeGesture({
   onSwipeLeft,
@@ -21,6 +24,16 @@ export function useSwipeGesture({
   const touchStart = useRef<{ x: number; y: number; time: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const swipeDownConfirmed = useRef(false);
+
+  // Stable callback refs — avoids useEffect re-running when callbacks change
+  const onSwipeLeftRef = useRef(onSwipeLeft);
+  onSwipeLeftRef.current = onSwipeLeft;
+  const onSwipeRightRef = useRef(onSwipeRight);
+  onSwipeRightRef.current = onSwipeRight;
+  const onSwipeDownRef = useRef(onSwipeDown);
+  onSwipeDownRef.current = onSwipeDown;
+  const onSwipeProgressRef = useRef(onSwipeProgress);
+  onSwipeProgressRef.current = onSwipeProgress;
 
   useEffect(() => {
     const el = containerRef.current;
@@ -40,9 +53,9 @@ export function useSwipeGesture({
       const dt = Date.now() - touchStart.current.time;
 
       // Only show progress for downward swipes (not left/right navigations)
-      if (dy > 0 && dt < 500 && onSwipeProgress) {
+      if (dy > 0 && dt < 500 && onSwipeProgressRef.current) {
         if (dy > 30) swipeDownConfirmed.current = true;
-        onSwipeProgress(dy);
+        onSwipeProgressRef.current(dy);
       }
     };
 
@@ -62,21 +75,21 @@ export function useSwipeGesture({
       const absDy = Math.abs(dy);
 
       if (absDx > absDy && absDx > minDist) {
-        if (dx < 0) onSwipeLeft();
-        else onSwipeRight();
+        if (dx < 0) onSwipeLeftRef.current();
+        else onSwipeRightRef.current();
       } else if (dy > 0 && (swipeDownConfirmed.current || (absDy > minDist))) {
         // Close if dragged past threshold (30% of viewport height)
         const closeThreshold = Math.min(window.innerHeight * 0.3, 200);
         if (dy >= closeThreshold) {
-          onSwipeDown();
+          onSwipeDownRef.current();
         } else {
           // Snap back with animation
-          onSwipeProgress?.(0);
+          onSwipeProgressRef.current?.(0);
           swipeDownConfirmed.current = false;
         }
       } else {
         // Snap back if not a downward swipe or too short
-        if (dy > 0) onSwipeProgress?.(0);
+        if (dy > 0) onSwipeProgressRef.current?.(0);
       }
     };
 
@@ -88,7 +101,10 @@ export function useSwipeGesture({
       el.removeEventListener('touchmove', handleTouchMove);
       el.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [onSwipeLeft, onSwipeRight, onSwipeDown, onSwipeProgress, enabled]);
+    // Only re-attach when enabled state or the container ref element changes.
+    // Callback refs keep stable references regardless of parent re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled]);
 
   return containerRef;
 }
