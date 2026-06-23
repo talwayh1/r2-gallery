@@ -432,10 +432,10 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
         )}
       </div>
 
-      <div className="bg-gray-900/95 backdrop-blur-xl border-t border-white/10 px-4 py-3">
-        <div className="flex items-center gap-4">
+      <div className="bg-gray-900/95 backdrop-blur-xl border-t border-white/10 px-2 sm:px-4 py-2 sm:py-3">
+        <div className="flex items-center gap-1.5 sm:gap-4">
           {/* Album art */}
-          <div className="w-14 h-14 flex-shrink-0 bg-gray-700 rounded-xl overflow-hidden">
+          <div className="w-10 h-10 sm:w-14 sm:h-14 flex-shrink-0 bg-gray-700 rounded-xl overflow-hidden">
             {coverUrl ? (
               <img src={coverUrl} alt="" className="w-full h-full object-cover" />
             ) : (
@@ -450,11 +450,11 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
           </div>
 
           {/* Controls */}
-          <div className="flex items-center gap-2">
-            <button onClick={() => setShuffle(!shuffle)} className={`p-2 rounded-full transition-colors ${shuffle ? 'text-blue-400 bg-blue-400/10' : 'text-white/40 hover:text-white'}`} title="随机播放">
+          <div className="flex items-center gap-0.5 sm:gap-2">
+            <button onClick={() => setShuffle(!shuffle)} className={`p-1.5 sm:p-2 rounded-full transition-colors ${shuffle ? 'text-blue-400 bg-blue-400/10' : 'text-white/40 hover:text-white'}`} title="随机播放">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" /></svg>
             </button>
-            <button onClick={goPrev} className="p-2 text-white/50 hover:text-white transition-colors" title="上一首">
+            <button onClick={goPrev} className="p-1.5 sm:p-2 text-white/50 hover:text-white transition-colors" title="上一首">
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" /></svg>
             </button>
             <button onClick={togglePlay} className="p-3 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
@@ -464,10 +464,10 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
                 <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
               )}
             </button>
-            <button onClick={goNext} className="p-2 text-white/50 hover:text-white transition-colors" title="下一首">
+            <button onClick={goNext} className="p-1.5 sm:p-2 text-white/50 hover:text-white transition-colors" title="下一首">
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg>
             </button>
-            <button onClick={cycleLoop} className={`p-2 rounded-full transition-colors ${loop !== 'none' ? 'text-blue-400 bg-blue-400/10' : 'text-white/40 hover:text-white'}`} title={loop === 'none' ? '关闭循环' : loop === 'all' ? '列表循环' : '单曲循环'}>
+            <button onClick={cycleLoop} className={`p-1.5 sm:p-2 rounded-full transition-colors ${loop !== 'none' ? 'text-blue-400 bg-blue-400/10' : 'text-white/40 hover:text-white'}`} title={loop === 'none' ? '关闭循环' : loop === 'all' ? '列表循环' : '单曲循环'}>
               {loop === 'one' ? (
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z" /><text x="12" y="15" textAnchor="middle" fontSize="7" fill="currentColor">1</text></svg>
               ) : (
@@ -480,12 +480,12 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
           </div>
 
           {/* Time */}
-          <div className="text-xs text-white/40 w-24 text-right font-mono">
+          <div className="text-xs text-white/40 w-16 sm:w-20 md:w-24 text-right font-mono hidden sm:block">
             {formatTime(currentTime)} / {formatTime(duration)}
           </div>
 
           {/* Volume */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 hidden md:flex">
             <button onClick={() => setVolume(volume === 0 ? 1 : 0)} className="text-white/40 hover:text-white transition-colors">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                 {volume === 0 ? (
@@ -509,17 +509,17 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
           </div>
 
           {/* Track count */}
-          <button onClick={() => setShowPlaylist(!showPlaylist)} className="text-xs text-white/40 hover:text-white transition-colors px-2 py-1 rounded hover:bg-white/10" title="播放列表">
+          <button onClick={() => setShowPlaylist(!showPlaylist)} className="text-xs text-white/40 hover:text-white transition-colors px-2 py-1 rounded hover:bg-white/10 hidden sm:inline-flex" title="播放列表">
             {currentIndex + 1} / {tracks.length}
           </button>
 
           {/* Mini toggle */}
-          <button onClick={() => setMini(true)} className="p-2 text-white/40 hover:text-white transition-colors" title="迷你模式">
+          <button onClick={() => setMini(true)} className="p-1.5 sm:p-2 text-white/40 hover:text-white transition-colors" title="迷你模式">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
           </button>
 
           {/* Close */}
-          <button onClick={onClose} className="p-2 text-white/40 hover:text-white transition-colors">
+          <button onClick={onClose} className="p-1.5 sm:p-2 text-white/40 hover:text-white transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>

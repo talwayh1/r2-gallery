@@ -488,3 +488,34 @@ html {
     background: inherit;
   }
 }
+
+/* ========== Accessibility: Respect reduced motion ========== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Preserve the loading bar strip animation — it conveys progress rather than decoration */
+  .progress-stripes {
+    animation: none !important;
+    background-image: none !important;
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  .animate-loading-bar {
+    animation: none !important;
+    background-color: #3b82f6;
+    width: 50% !important;
+  }
+  .shimmer {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%) !important;
+    background-size: 200% 100% !important;
+  }
+  :is(.dark) .shimmer {
+    background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%) !important;
+    background-size: 200% 100% !important;
+  }
+}
