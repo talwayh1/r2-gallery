@@ -14,6 +14,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { hapticFeedback } from '../utils/mobile';
 
 interface UsePullToRefreshOptions {
   /** The scrollable container ref */
@@ -60,6 +61,7 @@ export function usePullToRefresh({
   const pulling = useRef(false);
   const refresher = useRef<Promise<void> | null>(null);
   const rafId = useRef(0);
+  const crossedThreshold = useRef(false);
 
   // Cleanup animation frames
   useEffect(() => {
@@ -78,6 +80,7 @@ export function usePullToRefresh({
 
     startY.current = e.touches[0].clientY;
     pulling.current = true;
+    crossedThreshold.current = false;
   }, [scrollRef, refreshing, query]);
 
   const onTouchMove = useCallback((e: React.TouchEvent) => {
@@ -106,6 +109,14 @@ export function usePullToRefresh({
     if (rafId.current) cancelAnimationFrame(rafId.current);
     rafId.current = requestAnimationFrame(() => {
       setPullDistance(eased);
+
+      // Haptic feedback when first crossing the threshold
+      if (eased >= threshold && !crossedThreshold.current) {
+        crossedThreshold.current = true;
+        hapticFeedback('medium');
+      } else if (eased < threshold && crossedThreshold.current) {
+        crossedThreshold.current = false;
+      }
     });
   }, [refreshing, scrollRef, pullDistance, maxPull]);
 
@@ -121,7 +132,8 @@ export function usePullToRefresh({
     if (refreshing) return;
 
     if (pullDistance >= threshold) {
-      // Trigger refresh
+      // Trigger refresh with haptic confirmation
+      hapticFeedback('medium');
       setRefreshing(true);
       setPullDistance(threshold); // hold at threshold height for visual
       const result = onRefresh();

@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 /**
  * Scroll-to-top floating button.
  * Appears when the user scrolls down past `threshold` px.
- * Uses the existing .mobile-fab CSS class for consistent styling.
+ * Positioned at bottom-left to avoid overlapping with the Upload FAB.
  * Smoothly fades in/out via CSS transitions.
  */
 export default function ScrollToTop({ scrollRef }: { scrollRef?: React.RefObject<HTMLDivElement | null> }) {
@@ -37,9 +37,19 @@ export default function ScrollToTop({ scrollRef }: { scrollRef?: React.RefObject
       onClick={scrollToTop}
       aria-label="返回顶部"
       title="返回顶部"
+      style={{
+        position: 'fixed',
+        left: '1.5rem',
+        bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+        width: '48px',
+        height: '48px',
+        borderRadius: '50%',
+        zIndex: 25,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+      }}
       className={`
-        mobile-fab
         bg-blue-500 hover:bg-blue-600 text-white
+        flex items-center justify-center
         transition-all duration-300 ease-in-out
         ${visible ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-75 pointer-events-none'}
       `}
