@@ -41,7 +41,7 @@ No test framework, linter, or formatter is configured.
 - `web/src/components/` — UI components (FileGrid, FileList, Lightbox, VideoPlayer, AudioPlayer, UploadZone, etc.)
 - `web/src/hooks/` — Custom hooks (useAuth, useTheme, useToast, useFolderThumbnails)
 - `web/src/api.ts` — API client
-- `web/src/i18n.ts` — i18next internationalization
+- `web/src/i18n/index.ts` — i18next internationalization (i18n config + translations)
 
 **Database** (`/migrations/`) — D1 SQL migrations. Tables: `users`, `file_metadata`, `settings`, `shares`.
 

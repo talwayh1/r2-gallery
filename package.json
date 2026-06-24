@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "cd web && npm run build && cd .. && wrangler deploy",
+    "build": "cd web && npm run build",
     "build:web": "cd web && npm run build",
     "db:init": "wrangler d1 execute r2-gallery-db --file=./migrations/0001_init.sql",
     "db:init:local": "wrangler d1 execute r2-gallery-db --local --file=./migrations/0001_init.sql"
