@@ -945,7 +945,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); kb.goPrev(); }
       else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); kb.goNext(); }
       else if (e.key === 'i') setShowInfo((s) => !s);
-      else if (e.key === 'd') setShowMoreTools((s) => !s);
+      else if (e.key === 'm' || e.key === 'M') setShowMoreTools((s) => !s);
       else if (e.key === '?' || e.key === 'h' || e.key === 'H') {
         e.preventDefault();
         setShowKeyboardHelp((s) => !s);
@@ -1621,7 +1621,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
               <button
                 onClick={(e) => { e.stopPropagation(); setShowMoreTools(!showMoreTools); }}
                 className={`p-2 rounded-lg transition-colors ${showMoreTools ? 'text-blue-400 bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
-                title="更多操作"
+                title="更多操作 (M)"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
@@ -2194,7 +2194,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
           className={`${
             isMobile
               ? 'fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-md border-t border-white/10 rounded-t-xl p-4 z-20 max-h-[60vh] overflow-y-auto text-sm transition-transform duration-200'
-              : 'absolute top-16 right-4 bg-gray-900/95 backdrop-blur-md border border-white/10 rounded-xl p-4 z-10 min-w-[260px] text-sm'
+              : 'absolute top-16 right-4 bg-gray-900/95 backdrop-blur-md border border-white/10 rounded-xl p-4 z-10 min-w-[260px] text-sm max-h-[calc(100vh-100px)] overflow-y-auto'
           }`}
           onClick={(e) => e.stopPropagation()}
           ref={isMobile ? infoPanelRef : undefined}
