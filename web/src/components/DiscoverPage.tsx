@@ -8,6 +8,54 @@ interface Props {
   onOpenFile: (path: string, mime: string) => void;
 }
 
+/** Video poster thumbnail with shimmer, fallback gradient, and play icon overlay */
+function VideoPosterCard({ file }: { file: DiscoverFile }) {
+  const [posterLoaded, setPosterLoaded] = useState(false);
+  const [posterFailed, setPosterFailed] = useState(false);
+  const posterUrl = getThumbUrl(file.path, file.mtime);
+
+  // Reset states when file changes
+  useEffect(() => {
+    setPosterLoaded(false);
+    setPosterFailed(false);
+  }, [file.path]);
+
+  return (
+    <div className="w-full relative">
+      {posterFailed ? (
+        <div className="w-full aspect-video flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+          <svg className="w-12 h-12 text-white/60" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </div>
+      ) : (
+        <>
+          {!posterLoaded && <div className="shimmer w-full aspect-video" />}
+          <img
+            src={posterUrl}
+            alt=""
+            loading="lazy"
+            className={`w-full object-cover transition-opacity duration-300 ${posterLoaded ? 'opacity-100' : 'opacity-0 absolute'}`}
+            onLoad={() => setPosterLoaded(true)}
+            onError={() => setPosterFailed(true)}
+          />
+        </>
+      )}
+      {/* Play icon overlay */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center">
+          <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </div>
+      </div>
+      <span className="absolute bottom-2 right-2 px-2 py-0.5 text-[10px] font-bold bg-black/60 text-white rounded z-10">
+        VIDEO
+      </span>
+    </div>
+  );
+}
+
 export default function DiscoverPage({ onClose, onNavigate, onOpenFile }: Props) {
   const [files, setFiles] = useState<DiscoverFile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,6 +64,7 @@ export default function DiscoverPage({ onClose, onNavigate, onOpenFile }: Props)
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
+  const [loadError, setLoadError] = useState<string | null>(null);
   const pageSize = 30;
   const loadingRef = useRef(false); // prevent concurrent loads
 
@@ -26,6 +75,7 @@ export default function DiscoverPage({ onClose, onNavigate, onOpenFile }: Props)
     const isInitial = currentOffset === 0;
     if (isInitial) setLoading(true);
     else setLoadingMore(true);
+    setLoadError(null);
 
     try {
       const data = await discoverMedia(pageSize, currentOffset);
@@ -35,6 +85,7 @@ export default function DiscoverPage({ onClose, onNavigate, onOpenFile }: Props)
       setOffset(currentOffset + data.files.length);
     } catch (err) {
       console.error('Discover load error:', err);
+      setLoadError('加载失败，请重试');
     } finally {
       loadingRef.current = false;
       setLoading(false);
@@ -99,7 +150,23 @@ export default function DiscoverPage({ onClose, onNavigate, onOpenFile }: Props)
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {files.length === 0 && !loading && (
+        {/* Error state */}
+        {loadError && files.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+            <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-lg font-medium">{loadError}</p>
+            <button
+              onClick={() => loadMore(0)}
+              className="mt-4 px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              重新加载
+            </button>
+          </div>
+        )}
+
+        {files.length === 0 && !loading && !loadError && (
           <div className="flex flex-col items-center justify-center h-64 text-gray-400">
             <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -137,14 +204,7 @@ export default function DiscoverPage({ onClose, onNavigate, onOpenFile }: Props)
                     />
                   </>
                 ) : isVideo ? (
-                  <div className="w-full aspect-video flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                    <svg className="w-12 h-12 text-white/60" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                    <span className="absolute bottom-2 right-2 px-2 py-0.5 text-[10px] font-bold bg-black/60 text-white rounded">
-                      VIDEO
-                    </span>
-                  </div>
+                  <VideoPosterCard file={file} />
                 ) : null}
 
                 {/* Hover overlay */}
@@ -177,7 +237,7 @@ export default function DiscoverPage({ onClose, onNavigate, onOpenFile }: Props)
         </div>
 
         {/* Initial loading */}
-        {loading && files.length === 0 && (
+        {loading && files.length === 0 && !loadError && (
           <div className="flex items-center justify-center h-32">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
           </div>

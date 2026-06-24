@@ -33,15 +33,63 @@ function yearsAgoEmoji(n: number) {
   return <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 }
 
+/** Video poster thumbnail with shimmer, fallback gradient, and play icon overlay */
+function MemoriesVideoPoster({ file }: { file: { path: string; mime: string; mtime: number } }) {
+  const [posterLoaded, setPosterLoaded] = useState(false);
+  const [posterFailed, setPosterFailed] = useState(false);
+
+  useEffect(() => {
+    setPosterLoaded(false);
+    setPosterFailed(false);
+  }, [file.path]);
+
+  return (
+    <div className="w-full relative">
+      {posterFailed ? (
+        <div className="w-full aspect-video flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+          <svg className="w-12 h-12 text-white/60" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </div>
+      ) : (
+        <>
+          {!posterLoaded && <div className="shimmer w-full aspect-video" />}
+          <img
+            src={getThumbUrl(file.path, file.mtime)}
+            alt=""
+            loading="lazy"
+            className={`w-full object-cover transition-opacity duration-300 ${posterLoaded ? 'opacity-100' : 'opacity-0 absolute'}`}
+            onLoad={() => setPosterLoaded(true)}
+            onError={() => setPosterFailed(true)}
+          />
+        </>
+      )}
+      {/* Play icon overlay */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center">
+          <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </div>
+      </div>
+      <span className="absolute bottom-2 right-2 px-2 py-0.5 text-[10px] font-bold bg-black/60 text-white rounded z-10">
+        VIDEO
+      </span>
+    </div>
+  );
+}
+
 export default function MemoriesPage({ onClose, onNavigate, onOpenFile }: Props) {
   const [memories, setMemories] = useState<MemoryYear[]>([]);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState('');
   const [total, setTotal] = useState(0);
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadMemories = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const data = await getMemories();
       setMemories(data.memories);
@@ -49,6 +97,7 @@ export default function MemoriesPage({ onClose, onNavigate, onOpenFile }: Props)
       setTotal(data.total);
     } catch (err) {
       console.error('Memories load error:', err);
+      setLoadError('加载回忆失败，请重试');
     } finally {
       setLoading(false);
     }
@@ -93,6 +142,22 @@ export default function MemoriesPage({ onClose, onNavigate, onOpenFile }: Props)
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Error state */}
+        {loadError && !loading && memories.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+            <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-lg font-medium">{loadError}</p>
+            <button
+              onClick={loadMemories}
+              className="mt-4 px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              重新加载
+            </button>
+          </div>
+        )}
+
         {/* Initial loading */}
         {loading && (
           <div className="flex items-center justify-center h-64">
@@ -101,7 +166,7 @@ export default function MemoriesPage({ onClose, onNavigate, onOpenFile }: Props)
         )}
 
         {/* Empty state */}
-        {!loading && memories.length === 0 && (
+        {!loading && !loadError && memories.length === 0 && (
           <div className="flex flex-col items-center justify-center h-64 text-gray-400">
             <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -153,14 +218,7 @@ export default function MemoriesPage({ onClose, onNavigate, onOpenFile }: Props)
                         />
                       </>
                     ) : isVideo ? (
-                      <div className="w-full aspect-video flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                        <svg className="w-12 h-12 text-white/60" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z" />
-                        </svg>
-                        <span className="absolute bottom-2 right-2 px-2 py-0.5 text-[10px] font-bold bg-black/60 text-white rounded">
-                          VIDEO
-                        </span>
-                      </div>
+                      <MemoriesVideoPoster file={file} />
                     ) : null}
 
                     {/* Hover overlay */}
@@ -182,7 +240,7 @@ export default function MemoriesPage({ onClose, onNavigate, onOpenFile }: Props)
         ))}
 
         {/* Footer hint */}
-        {!loading && memories.length > 0 && (
+        {!loading && !loadError && memories.length > 0 && (
           <div className="text-center py-8 text-gray-300 dark:text-gray-600 text-xs">
             💡 每天打开看看，会有不同的回忆出现
           </div>
