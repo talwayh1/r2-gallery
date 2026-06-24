@@ -45,6 +45,8 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
   const [total, setTotal] = useState(0);
   const [recentSearches, setRecentSearches] = useState<string[]>(getRecentSearches);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const typeFilterRef = useRef(typeFilter);
   typeFilterRef.current = typeFilter;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -52,6 +54,8 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
   const abortRef = useRef<AbortController | null>(null);
   const resultsContainerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const swipeStartY = useRef(0);
+  const swipeStartTime = useRef(0);
   // Refs for IntersectionObserver guards — avoids stale-closure re-fire after each page load
   const loadingMoreRef = useRef(loadingMore);
   loadingMoreRef.current = loadingMore;
@@ -263,10 +267,46 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-start justify-center sm:pt-[15vh] pt-[5vh] overscroll-contain" onClick={onClose} style={{ height: '100dvh' }}>
+    <div
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-start justify-center sm:pt-[15vh] pt-[5vh] overscroll-contain transition-opacity duration-300"
+      onClick={onClose}
+      style={{
+        height: '100dvh',
+        opacity: isDragging ? Math.max(0.3, 1 - swipeOffset / 500) : undefined,
+      }}
+    >
       <div
         className="w-full max-w-2xl mx-4 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden self-start mt-[5vh] sm:mt-0"
         onClick={(e) => e.stopPropagation()}
+        onTouchStart={(e) => {
+          if (resultsContainerRef.current && resultsContainerRef.current.scrollTop > 0) return;
+          swipeStartY.current = e.touches[0].clientY;
+          swipeStartTime.current = Date.now();
+          setIsDragging(true);
+        }}
+        onTouchMove={(e) => {
+          if (swipeStartY.current === 0) return;
+          const dy = e.touches[0].clientY - swipeStartY.current;
+          if (dy > 0) {
+            setSwipeOffset(dy);
+          }
+        }}
+        onTouchEnd={() => {
+          setIsDragging(false);
+          const dy = swipeOffset;
+          const dt = Date.now() - swipeStartTime.current;
+          swipeStartY.current = 0;
+          setSwipeOffset(0);
+          // Close if swiped down past threshold (100px) or fast flick (velocity > 0.8 px/ms)
+          if (dy > 100 || (dy > 30 && dt > 0 && dy / dt > 0.8)) {
+            onClose();
+          }
+        }}
+        style={{
+          transform: isDragging ? `translateY(${Math.max(0, Math.min(swipeOffset, 300))}px)` : 'translateY(0px)',
+          transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)',
+          willChange: 'transform',
+        }}
       >
         {/* Search input */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-200 dark:border-gray-700">
