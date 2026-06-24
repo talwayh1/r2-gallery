@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export default function InstallPrompt() {
+  const { t } = useTranslation();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -76,7 +78,7 @@ export default function InstallPrompt() {
               d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
           <span className="text-sm font-medium truncate">
-            新版本可用 — 点击刷新以获取最新功能
+            {t('install.updateAvailable')}
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -84,7 +86,7 @@ export default function InstallPrompt() {
             onClick={handleUpdate}
             className="px-3 py-1 text-sm font-medium bg-white/20 hover:bg-white/30 rounded-md transition-colors whitespace-nowrap"
           >
-            立即刷新
+            {t('install.updateAction')}
           </button>
         </div>
       </div>
@@ -102,7 +104,7 @@ export default function InstallPrompt() {
             d="M12 18v-6m0 0l-3 3m3-3l3 3M3 15V7a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
         </svg>
         <span className="text-sm font-medium truncate">
-          安装 R2 Gallery 到桌面，获得更快的访问体验
+          {t('install.description')}
         </span>
       </div>
       <div className="flex items-center gap-2 shrink-0">
@@ -110,12 +112,12 @@ export default function InstallPrompt() {
           onClick={handleInstall}
           className="px-3 py-1 text-sm font-medium bg-white/20 hover:bg-white/30 rounded-md transition-colors"
         >
-          安装
+          {t('install.action')}
         </button>
         <button
           onClick={handleDismiss}
           className="p-1 hover:bg-white/20 rounded-md transition-colors"
-          title="关闭"
+          title={t('install.dismiss')}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
