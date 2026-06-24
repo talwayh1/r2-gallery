@@ -411,11 +411,21 @@ export default function App() {
           e.preventDefault();
           setSidebarOpen((prev) => !prev);
         }
+      } else if (e.key === 'a' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+        // Ctrl+Shift+A — deselect all
+        e.preventDefault();
+        setSelected(new Set());
       } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
         // Ctrl+A — select all files (prevent browser default)
         e.preventDefault();
         const filteredKeys = Object.keys(filteredFiles);
         setSelected(new Set(filteredKeys));
+      } else if (e.key === 'd' && (e.ctrlKey || e.metaKey)) {
+        // Ctrl+D — direct download selected files (bypass ZIP mode)
+        if (selected.size > 0) {
+          e.preventDefault();
+          handleBatchDownloadDirect();
+        }
       } else if (e.key === 'n' || e.key === 'N') {
         // N — create new folder (requires login)
         if (!e.ctrlKey && !e.metaKey && user) {
@@ -906,6 +916,20 @@ export default function App() {
     } catch (e) {
       toast('error', `压缩失败: ${(e as Error).message}`);
     }
+  };
+
+  const handleBatchDownloadDirect = () => {
+    if (selected.size === 0) return;
+    const paths = Array.from(selected);
+    toast('info', `正在直接下载 ${paths.length} 个文件...`);
+    paths.forEach((path, i) => {
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.href = getFileUrl(path) + '&download=1';
+        a.download = path.split('/').pop() || 'file';
+        a.click();
+      }, i * 300);
+    });
   };
 
   const handleBatchCopyLinks = async (separator?: string) => {
