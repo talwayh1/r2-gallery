@@ -5,6 +5,8 @@ export interface AppBindings {
   ADMIN_PASSWORD?: string;
   TELEGRAM_BOT_TOKEN?: string;
   TELEGRAM_BOT_USERNAME?: string;
+  CDN_DOMAIN?: string;
+  R2_BUCKET_NAME?: string;
 }
 
 export interface FileInfo {

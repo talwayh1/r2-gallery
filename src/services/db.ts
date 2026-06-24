@@ -203,7 +203,7 @@ function buildTree(paths: string[]): DirTreeNode[] {
 }
 
 // === Trash (soft delete) ===
-export async function addToTrash(db: D1Database, item: { original_path: string; name: string; mime: string; size: number; is_dir: boolean; deleted_by?: string }): Promise<void> {
+export async function addToTrash(db: D1Database, item: { original_path: string; name: string; mime: string; size: number; is_dir: boolean; deleted_by?: string | number }): Promise<void> {
   await db.prepare('INSERT OR REPLACE INTO trash (original_path, name, mime, size, is_dir, deleted_by) VALUES (?, ?, ?, ?, ?, ?)')
     .bind(item.original_path, item.name, item.mime, item.size, item.is_dir ? 1 : 0, item.deleted_by || null).run();
 }
@@ -234,7 +234,7 @@ export async function getTrashByPrefix(db: D1Database, prefix: string): Promise<
 }
 
 // === Activity Log ===
-export async function logActivity(db: D1Database, action: string, path: string, user?: string, newPath?: string, details?: string): Promise<void> {
+export async function logActivity(db: D1Database, action: string, path: string, user?: string | number, newPath?: string, details?: string): Promise<void> {
   await db.prepare('INSERT INTO activity_log (action, path, new_path, user, details) VALUES (?, ?, ?, ?, ?)')
     .bind(action, path, newPath || null, user || null, details || null).run();
 }
@@ -251,7 +251,7 @@ export async function getActivityCount(db: D1Database): Promise<number> {
 }
 
 // === Traffic Stats ===
-export async function logTraffic(db: D1Database, path: string, bytes: number, user?: string): Promise<void> {
+export async function logTraffic(db: D1Database, path: string, bytes: number, user?: string | number): Promise<void> {
   await db.prepare('INSERT INTO traffic_log (path, bytes, user) VALUES (?, ?, ?)')
     .bind(path, bytes, user || null).run();
 }
@@ -271,7 +271,7 @@ export async function getTrafficByDay(db: D1Database, days: number = 7): Promise
 }
 
 // === Upload Drafts ===
-export async function createDraft(db: D1Database, id: string, path: string, size: number, mime: string, user?: string): Promise<void> {
+export async function createDraft(db: D1Database, id: string, path: string, size: number, mime: string, user?: string | number): Promise<void> {
   await db.prepare('INSERT INTO upload_drafts (id, path, size, mime, status, created_by) VALUES (?, ?, ?, ?, ?, ?)')
     .bind(id, path, size, mime, 'draft', user || null).run();
 }

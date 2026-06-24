@@ -8,7 +8,7 @@
 | 项目 | 状态 | 备注 |
 |------|------|------|
 | 1. 布局选择器 | ✅ | 6 种布局 (grid, rows, list, imagelist, blocks, columns)，Header 下拉菜单 |
-| 2. 排序选项 | ✅ | 5 种排序: name, size, mtime, kind, shuffle |
+| 2. 排序选项 | ✅ | 5 种排序: name, size, mtime, kind, shuffle；文件夹也响应排序 |
 | 3. 类型筛选 | ✅ | 5 种筛选: all, image, video, audio, document |
 | 4. 右键菜单 | ✅ | 含 move, copy, duplicate, download, zip 解压等 |
 | 5. 文件夹下载 ZIP | ✅ | 右键菜单 + SettingsPanel 可选 ZIP 压缩 |
@@ -18,21 +18,20 @@
 | 9. 快捷键支持 | ✅ | Lightbox 操控/键盘导航/Shift+Arrow 跳转 |
 | 10. 移动端适配 | ✅ | 自适应布局、触摸滑动、底部工具栏 |
 | 11. 缩略图加载 | ✅ | SafeThumb + useSafeImage hook, shimmer skeleton, priority |
+| 12. 批量复制链接 | ✅ | select mode + BulkActions"批量复制链接/直链"按钮 |
+| 13. TypeScript 类型修复 | ✅ | 后端 22+ 类型错误全部修复 (AppBindings, bind(), Hono 重载) |
 
 ## ❌ 仍存差距
 
 | # | 项目 | 优先级 | 复杂度 | 说明 |
 |---|------|--------|--------|------|
-| 1 | 批量复制链接 | 中 | 低 | select mode 中增加 "批量复制链接" 按钮，复制所有选中文件的 URL |
-| 2 | 文件夹排序 | 低 | 中 | 文件夹固定按名称排，未像文件一样支持 name/date 排序 |
-| 3 | 国际化扩展 | 低 | 中 | 当前只有 4 种语言，files.gallery 有 30 种 |
-| 4 | 诊断页面 | 低 | 高 | frontend diagnostics page for ?action=tests |
-| 5 | Google Docs 查看器 | 低 | 中 | Office 文件 (doc/xls/ppt) 在线预览，当前仅用 Google Docs Viewer iframe |
-| 6 | 全局音频播放器 | 低 | 高 | 迷你模式/跨页面播放 |
-| 7 | CSS 自定义 | 低 | 中 | 注入自定义 CSS |
-| 8 | 批量复制链接 | 中 | 低 | 选中多个文件后一键复制所有链接 |
+| 1 | 国际化扩展 | 低 | 高 | 当前只有 4 种语言，files.gallery 有 30 种 |
+| 2 | Google Docs 查看器 | 低 | 中 | Office 文件 (doc/xls/ppt) 在线预览，当前仅用 Google Docs Viewer iframe |
+| 3 | 全局音频播放器 | 低 | 高 | 迷你模式/跨页面播放（已有 AudioPlayer 组件，但无迷你跨页模式） |
+| 4 | HEIC/PSD/TIFF/DNG 转换 | 低 | 高 | 需要 WASM (libvips/libheif) 编译到 Worker |
+| 5 | 视频/PDF 缩略图 | 低 | 高 | 需要 ffmpeg WASM 或外部服务 |
 
 ## 建议优先处理
 
-1. **批量复制链接** — 选中最直接的小功能，select mode 已有基础 (selected Set)，只需在底部栏加按钮
-2. **文件夹排序** — FileList/FileGrid 等组件中让文件夹也响应 sortOrder
+1. **国际化扩展** — 提取硬编码字符串到 i18n 文件，增加中/英/日/韩以外语言
+2. **HEIC/PSD/TIFF/DNG 转换** — 浏览器端 WASM 或 Worker 端转换

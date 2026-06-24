@@ -205,7 +205,7 @@ webdav.delete('/webdav/*', webdavAuth, async (c) => {
     await db.deleteFileMetadata(database, path);
   }
 
-  return c.text('No Content', 204);
+  return c.body(null, 204);
 });
 
 // MKCOL — create directory

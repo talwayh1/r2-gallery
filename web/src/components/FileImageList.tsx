@@ -21,9 +21,9 @@ interface Props {
   onDelete?: (paths: string[]) => void;
   onRename?: (path: string, name: string) => void;
   onMove?: () => void;
+  onLoadMore?: () => void;
   selected?: Set<string>;
   onSelect?: (path: string) => void;
-  onLoadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
   sortBy?: string;
@@ -69,7 +69,7 @@ function VideoListThumb({ path, mtime }: { path: string; mtime?: number }) {
   );
 }
 
-export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, sortBy: sortByProp, sortOrder: sortOrderProp, search }: Props) {
+export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, onLoadMore, selected: externalSelected, onSelect, hasMore, loadingMore, sortBy: sortByProp, sortOrder: sortOrderProp, search }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
@@ -77,6 +77,10 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
   const menuFocusIndex = useRef<number>(0);
   const [shareDialog, setShareDialog] = useState<{ path: string; name: string } | null>(null);
   const [folderPicker, setFolderPicker] = useState<{ mode: 'move' | 'copy'; path: string } | null>(null);
+
+  // Keyboard navigation state
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const selected = externalSelected ?? internalSelected;
   const isSelectionMode = selected.size > 0;
@@ -159,6 +163,55 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
     });
   }, [dirs, files, currentDir, sortKey, sortDir, dirMtimes]);
 
+  // Keyboard navigation for FileImageList
+  const itemsLength = sortedItems.length;
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore when the inline rename input is active
+      if (renaming) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setFocusedIndex((prev) => {
+          const next = Math.min(prev + 1, itemsLength - 1);
+          return prev < 0 ? 0 : next;
+        });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setFocusedIndex((prev) => Math.max(prev - 1, 0));
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        setFocusedIndex(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        setFocusedIndex(itemsLength - 1);
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        if (focusedIndex >= 0 && focusedIndex < itemsLength) {
+          e.preventDefault();
+          const item = sortedItems[focusedIndex];
+          if (item) {
+            item.type === 'directory' ? onNavigate(item.path) : onOpen(item.path, item.mime);
+          }
+        }
+      }
+    };
+
+    el.addEventListener('keydown', handleKeyDown);
+    return () => el.removeEventListener('keydown', handleKeyDown);
+  }, [sortedItems, focusedIndex, renaming, itemsLength, onNavigate, onOpen]);
+
+  // Auto-scroll focused item into view
+  useEffect(() => {
+    if (focusedIndex < 0 || !containerRef.current) return;
+    const el = containerRef.current.querySelector(`[data-item-index="${focusedIndex}"]`);
+    if (el) {
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [focusedIndex]);
+
   const handleToggleSelect = (path: string) => {
     if (onSelect) { onSelect(path); return; }
     setInternalSelected((prev) => {
@@ -231,8 +284,8 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
 
   return (
     <>
-      <div className="space-y-2">
-        {sortedItems.map((item) => {
+      <div ref={containerRef} tabIndex={0} className="space-y-2 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 rounded-lg" onMouseMove={() => focusedIndex >= 0 && setFocusedIndex(-1)}>
+        {sortedItems.map((item, index) => {
           const isDir = item.type === 'directory';
           const isSelected = selected.has(item.path);
           const isImage = item.mime.startsWith('image/');
@@ -241,8 +294,9 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
           return (
             <div
               key={item.path}
+              data-item-index={index}
               className={`flex items-center gap-4 p-3 rounded-lg cursor-pointer transition-colors render-optimized ${
-                isSelected ? 'bg-blue-50 dark:bg-blue-900/30 ring-1 ring-blue-500' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                isSelected ? 'bg-blue-50 dark:bg-blue-900/30 ring-1 ring-blue-500' : focusedIndex === index ? 'bg-blue-50/50 dark:bg-blue-900/20 ring-1 ring-blue-300' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
               }`}
               onClick={() => isDir ? onNavigate(item.path) : onOpen(item.path, item.mime)}
               onContextMenu={(e) => handleContextMenu(e, item.path, item.name, isDir)}

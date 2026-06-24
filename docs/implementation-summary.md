@@ -111,21 +111,30 @@
 - `docs/files-gallery-gap-analysis.md` — 详细功能差距分析
 - `docs/implementation-plan.md` — 实现计划
 
+### 类型修复完成 (2026-06-24)
+后端 TypeScript 类型检查已彻底修复（22+ errors → 0 errors）：
+- **`src/types.ts`** — `AppBindings` 接口补充 `CDN_DOMAIN` 和 `R2_BUCKET_NAME` 绑定声明
+- **`src/services/db.ts`** — `addToTrash`, `logActivity`, `logTraffic`, `createDraft` 函数签名将 `user?` 形参从 `string` 放宽为 `string \| number`，解决 `c.get('userId')`（返回 number）传给需要 string 的函数时的类型冲突
+- **`src/routes/webdav.ts`** — `DELETE` 路由将 `c.text('No Content', 204)` 改为 `c.body(null, 204)`，修复 Hono 的 `ContentfulStatusCode` 重载不兼容问题
+
 ---
 
 ## 剩余待实现功能
 
-### P2 - 增强功能
-- 图片格式转换（HEIC/PSD/TIFF/DNG）
-- 视频/PDF 缩略图生成
-- 设置编辑器完善
-- 诊断页面 UI
+### P2 - 增强功能（需 WASM / 外部服务）
+- 图片格式转换（HEIC/PSD/TIFF/DNG）— 需 WASM (libvips/libheif)
+- 视频/PDF 缩略图生成 — 需 ffmpeg WASM 或外部服务
 
 ### P3 - 锦上添花
-- 国际化完善（提取硬编码字符串）
-- CSS 自定义主题
-- 批量复制链接
-- 文件类型/大小上传限制配置 UI
+- 国际化完善（提取硬编码到 i18n 文件，增加更多语言）
+
+### 已下线状态
+以下功能已实现（从 gap 列表中移除）：
+- ✅ 设置编辑器完善 → SettingsPanel 完整 UI
+- ✅ 诊断页面 UI → SettingsPanel 诊断标签页
+- ✅ CSS 自定义主题 → SettingsPanel 自定义 CSS 输入
+- ✅ 批量复制链接 → BulkActions 组件
+- ✅ 文件类型/大小上传限制配置 UI → SettingsPanel 上传限制标签
 
 ---
 
