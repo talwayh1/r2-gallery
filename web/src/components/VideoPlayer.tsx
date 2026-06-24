@@ -1,7 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { getFileUrl, getThumbUrl } from '../api';
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+const SEEK_STEP = 10;
+const VOLUME_STEP = 0.1;
+const DOUBLE_TAP_THRESHOLD_MS = 300;
+const DOUBLE_TAP_MAX_DIST_PX = 40;
 
 interface Props {
   path: string;
@@ -14,6 +18,7 @@ interface Props {
 export default function VideoPlayer({ path, name, autoplay = true, loop = false, onEnded }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -32,8 +37,6 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
   const [pipActive, setPipActive] = useState(false);
   const [speedMenuOpen, setSpeedMenuOpen] = useState(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
-  const lastSeekDirectionRef = useRef<'left' | 'right' | null>(null);
   const [seekHint, setSeekHint] = useState<'left' | 'right' | null>(null);
   const seekHintTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const [showShortcutHint, setShowShortcutHint] = useState(() => {
@@ -41,6 +44,51 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
   });
   const SHORTCUT_HINT_DURATION = 4000;
   const url = getFileUrl(path);
+
+  // --- Double-tap seek state (YouTube-style) ---
+  const lastTapRef = useRef<{ time: number; x: number } | null>(null);
+  const [doubleTapSeekDir, setDoubleTapSeekDir] = useState<'left' | 'right' | null>(null);
+  const doubleTapAnimTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // --- Progress bar drag state ---
+  const isDraggingProgress = useRef(false);
+
+  // --- Seek helpers ---
+  const doSeek = useCallback((delta: number) => {
+    const video = videoRef.current;
+    if (!video || !duration) return;
+    video.currentTime = Math.max(0, Math.min(duration, video.currentTime + delta));
+    showControlsWithTimer();
+  }, [duration]);
+
+  const seekToRatio = useCallback((ratio: number) => {
+    const video = videoRef.current;
+    if (!video || !duration) return;
+    const target = Math.max(0, Math.min(duration, ratio * duration));
+    video.currentTime = target;
+  }, [duration]);
+
+  // --- Double-tap seek handler (mobile) ---
+  const handleDoubleTapSeek = useCallback((clientX: number) => {
+    const container = containerRef.current;
+    if (!container || !duration) return;
+    const rect = container.getBoundingClientRect();
+    const relX = (clientX - rect.left) / rect.width;
+    let dir: 'left' | 'right';
+    if (relX < 0.3) {
+      dir = 'left';
+      doSeek(-SEEK_STEP);
+    } else if (relX > 0.7) {
+      dir = 'right';
+      doSeek(SEEK_STEP);
+    } else {
+      return; // center tap — not a seek zone
+    }
+    // Animate overlay
+    setDoubleTapSeekDir(dir);
+    if (doubleTapAnimTimerRef.current) clearTimeout(doubleTapAnimTimerRef.current);
+    doubleTapAnimTimerRef.current = setTimeout(() => setDoubleTapSeekDir(null), 400);
+  }, [duration, doSeek]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -108,11 +156,6 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
   }, [showShortcutHint]);
 
   const togglePlay = () => {
-    // Suppress play/pause toggle when a tap-to-seek was just performed
-    if (lastSeekDirectionRef.current) {
-      lastSeekDirectionRef.current = null;
-      return;
-    }
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) video.play();
@@ -186,47 +229,65 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
     }, 3000);
   };
 
+  // --- Touch handlers for video container (double-tap seek + tap-to-toggle) ---
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
-    touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+    const now = Date.now();
+    const last = lastTapRef.current;
+
+    // Check for double tap
+    if (
+      last &&
+      now - last.time < DOUBLE_TAP_THRESHOLD_MS &&
+      Math.abs(touch.clientX - last.x) < DOUBLE_TAP_MAX_DIST_PX
+    ) {
+      // Double tap detected — seek at current position
+      e.preventDefault();
+      handleDoubleTapSeek(touch.clientX);
+      lastTapRef.current = null; // consume so no triple-tap
+      return;
+    }
+
+    // Store first tap
+    lastTapRef.current = { time: now, x: touch.clientX };
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    const startPos = touchStartPosRef.current;
-    touchStartPosRef.current = null;
-    if (!startPos) return;
-    const touch = e.changedTouches[0];
-    const dx = Math.abs(touch.clientX - startPos.x);
-    const dy = Math.abs(touch.clientY - startPos.y);
-    // Only treat as a tap if finger moved less than 15px (ignore swipes/scrolling)
-    if (dx < 15 && dy < 15) {
-      const container = containerRef.current;
-      const video = videoRef.current;
-      if (container && video && duration) {
-        const rect = container.getBoundingClientRect();
-        const relX = (touch.clientX - rect.left) / rect.width;
-        if (relX < 0.3) {
-          // Left 30% — seek backward
-          lastSeekDirectionRef.current = 'left';
-          video.currentTime = Math.max(0, video.currentTime - 10);
-          setSeekHint('left');
-          clearTimeout(seekHintTimerRef.current);
-          seekHintTimerRef.current = setTimeout(() => setSeekHint(null), 600);
-        } else if (relX > 0.7) {
-          // Right 30% — seek forward
-          lastSeekDirectionRef.current = 'right';
-          video.currentTime = Math.min(duration, video.currentTime + 10);
-          setSeekHint('right');
-          clearTimeout(seekHintTimerRef.current);
-          seekHintTimerRef.current = setTimeout(() => setSeekHint(null), 600);
-        }
-      }
-      showControlsWithTimer();
-    }
+    showControlsWithTimer();
   };
 
-  const SEEK_STEP = 10;
-  const VOLUME_STEP = 0.1;
+  // --- Touch-draggable progress bar ---
+  const getTouchRatio = (clientX: number): number => {
+    const bar = progressBarRef.current;
+    if (!bar) return 0;
+    const rect = bar.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  };
+
+  const handleProgressTouchStart = (e: React.TouchEvent) => {
+    e.stopPropagation();
+    isDraggingProgress.current = true;
+    const ratio = getTouchRatio(e.touches[0].clientX);
+    seekToRatio(ratio);
+    showControlsWithTimer();
+  };
+
+  const handleProgressTouchMove = (e: React.TouchEvent) => {
+    if (!isDraggingProgress.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const ratio = getTouchRatio(e.touches[0].clientX);
+    seekToRatio(ratio);
+  };
+
+  const handleProgressTouchEnd = (e: React.TouchEvent) => {
+    if (!isDraggingProgress.current) return;
+    isDraggingProgress.current = false;
+    e.stopPropagation();
+    const ratio = getTouchRatio(e.changedTouches[0].clientX);
+    seekToRatio(ratio);
+    showControlsWithTimer();
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const video = videoRef.current;
@@ -281,6 +342,9 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
 
+  const progressPct = duration ? (currentTime / duration) * 100 : 0;
+  const bufferedPct = duration ? (buffered / duration) * 100 : 0;
+
   return (
     <div
       ref={containerRef}
@@ -303,6 +367,55 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
         preload="metadata"
         onClick={togglePlay}
       />
+
+      {/* YouTube-style double-tap seek overlay */}
+      <div
+        className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+      >
+        {/* Left seek zone */}
+        {doubleTapSeekDir && (
+          <div className="absolute inset-y-0 left-0 w-[30%] flex items-center justify-center">
+            <div className={`transition-all duration-300 ${
+              doubleTapSeekDir === 'left'
+                ? 'opacity-100 scale-100'
+                : 'opacity-0 scale-50'
+            }`}>
+              <div className="relative flex flex-col items-center gap-1">
+                <div className="bg-black/60 backdrop-blur-sm rounded-full w-16 h-16 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                  </svg>
+                </div>
+                <span className="text-white font-bold text-sm bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                  -{SEEK_STEP}s
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Right seek zone */}
+        {doubleTapSeekDir && (
+          <div className="absolute inset-y-0 right-0 w-[30%] flex items-center justify-center">
+            <div className={`transition-all duration-300 ${
+              doubleTapSeekDir === 'right'
+                ? 'opacity-100 scale-100'
+                : 'opacity-0 scale-50'
+            }`}>
+              <div className="relative flex flex-col items-center gap-1">
+                <div className="bg-black/60 backdrop-blur-sm rounded-full w-16 h-16 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                  </svg>
+                </div>
+                <span className="text-white font-bold text-sm bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                  +{SEEK_STEP}s
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Seek hint overlay — brief arrow indicating tap-to-seek direction with seconds */}
       <div
@@ -340,21 +453,29 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
 
       {/* Controls bar */}
       <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-4 pb-3 pt-8 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-        {/* Progress bar */}
-        <div className="relative h-1.5 bg-white/20 rounded-full cursor-pointer group/progress mb-3" onClick={seek}>
+        {/* Progress bar — supports both click and touch drag */}
+        <div
+          ref={progressBarRef}
+          className="relative h-1.5 bg-white/20 rounded-full cursor-pointer group/progress mb-3 touch-pan-y"
+          onClick={seek}
+          onTouchStart={handleProgressTouchStart}
+          onTouchMove={handleProgressTouchMove}
+          onTouchEnd={handleProgressTouchEnd}
+        >
           {/* Buffered */}
           <div
             className="absolute h-full bg-white/20 rounded-full"
-            style={{ width: `${duration ? (buffered / duration) * 100 : 0}%` }}
+            style={{ width: `${bufferedPct}%` }}
           />
           {/* Progress */}
           <div
             className="absolute h-full bg-blue-500 rounded-full"
-            style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
+            style={{ width: `${progressPct}%` }}
           />
-          {/* Hover indicator */}
-          <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-blue-500 opacity-0 group-hover/progress:opacity-100 progress-thumb-touch transition-opacity shadow-md"
-            style={{ left: `calc(${duration ? (currentTime / duration) * 100 : 0}% - 6px)` }}
+          {/* Draggable thumb — always visible on touch, hover on desktop */}
+          <div
+            className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-blue-500 opacity-0 group-hover/progress:opacity-100 progress-thumb-touch transition-opacity shadow-md"
+            style={{ left: `calc(${progressPct}% - 6px)` }}
           />
         </div>
 
