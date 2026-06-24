@@ -63,6 +63,7 @@ const shortcuts: { category: string; items: Shortcut[] }[] = [
       { keys: ['End'], description: '跳转到最后一张' },
       { keys: ['Esc'], description: '关闭面板/关闭灯箱' },
       { keys: ['I'], description: '切换文件信息面板' },
+      { keys: ['C'], description: '复制图片到剪贴板' },
       { keys: ['D'], description: '下载当前文件' },
       { keys: ['d'], description: '切换更多工具面板' },
       { keys: ['Space', 'S'], description: '播放/暂停幻灯片' },

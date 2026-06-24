@@ -129,6 +129,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     goPrev: () => {},
     goNext: () => {},
     handleCopyFileName: () => {},
+    handleCopyImage: () => {},
     goPrev10: () => {},
     goNext10: () => {},
     goFirst: () => {},
@@ -562,6 +563,22 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     } catch { /* silent */ }
   }, [name]);
 
+  const handleCopyImage = async () => {
+    if (!current?.mime.startsWith('image/')) return;
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Fetch failed');
+      const blob = await response.blob();
+      const mime = blob.type.startsWith('image/') ? blob.type : 'image/png';
+      const clipBlob = mime !== blob.type ? new Blob([blob], { type: 'image/png' }) : blob;
+      await navigator.clipboard.write([new ClipboardItem({ [mime]: clipBlob })]);
+      setImageCopied(true);
+      setTimeout(() => setImageCopied(false), 2000);
+    } catch {
+      toast('error', '复制图片失败');
+    }
+  };
+
   const handleCopyPath = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(current.path);
@@ -829,6 +846,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     goPrev,
     goNext,
     handleCopyFileName,
+    handleCopyImage,
     goPrev10,
     goNext10,
     goFirst,
@@ -920,6 +938,11 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       } else if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
         kb.handleCopyFileName();
+      } else if (e.key === 'c' || e.key === 'C') {
+        if (kb.isImage) {
+          e.preventDefault();
+          kb.handleCopyImage();
+        }
       } else if (e.key === 'd' || e.key === 'D') {
         if (!kb.isZoomed) {
           e.preventDefault();
@@ -1205,22 +1228,6 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       document.body.removeChild(input);
       setDirectUrlCopied(true);
       setTimeout(() => setDirectUrlCopied(false), 2000);
-    }
-  };
-
-  const handleCopyImage = async () => {
-    if (!current?.mime.startsWith('image/')) return;
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Fetch failed');
-      const blob = await response.blob();
-      const mime = blob.type.startsWith('image/') ? blob.type : 'image/png';
-      const clipBlob = mime !== blob.type ? new Blob([blob], { type: 'image/png' }) : blob;
-      await navigator.clipboard.write([new ClipboardItem({ [mime]: clipBlob })]);
-      setImageCopied(true);
-      setTimeout(() => setImageCopied(false), 2000);
-    } catch {
-      toast('error', '复制图片失败');
     }
   };
 
@@ -2457,22 +2464,6 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         onMouseDown={handleMouseDown}
         style={{ cursor: isZoomed ? 'grab' : 'default' }}
       >
-        {/* Skeleton gradient background — animated placeholder while image loads */}
-        {isImage && !imageLoaded && (
-          <div className={`absolute inset-0 bg-gradient-to-br from-gray-800/70 via-gray-900/80 to-gray-800/70 ${prefersReducedMotion ? '' : 'animate-pulse'} rounded-lg`} />
-        )}
-
-        {/* Loading spinner */}
-        {isImage && !imageLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            {prefersReducedMotion ? (
-              <div className="w-6 h-6 rounded-full border-2 border-white/30" />
-            ) : (
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white/50" />
-            )}
-          </div>
-        )}
-
         {isImage ? (
           <>
             {/* Blurred thumbnail placeholder — fades out smoothly when full image loads */}
