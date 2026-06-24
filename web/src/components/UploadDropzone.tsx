@@ -246,21 +246,29 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
     openDirectoryDialog: () => folderInputRef.current?.click(),
   }), []);
 
-  // Clipboard paste — extract images from clipboard and upload
+  // Clipboard paste — extract images/files from clipboard and upload
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
       const items = Array.from(e.clipboardData?.items || []);
+      if (items.length === 0) return;
+
+      // First pass: check for image items (screenshots, copied images)
       const imageItems = items.filter(item => item.type.startsWith('image/'));
-      if (imageItems.length === 0) return;
+      // Second pass: check for file items from file manager (kind === 'file' with empty/generic type)
+      const fileItems = items.filter(item => item.kind === 'file' && !item.type.startsWith('image/'));
+
+      const totalFiles = imageItems.length + fileItems.length;
+      if (totalFiles === 0) return;
 
       e.preventDefault();
       e.stopPropagation();
 
       const files: { file: File; relativePath?: string }[] = [];
+
+      // Handle image blobs (screenshots, copied images from browser)
       for (const item of imageItems) {
         const blob = item.getAsFile();
         if (blob) {
-          // Derive a sensible filename
           const ext = blob.type.split('/')[1] || 'png';
           const name = `pasted_${Date.now()}.${ext}`;
           const file = new File([blob], name, { type: blob.type });
@@ -268,8 +276,26 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
         }
       }
 
+      // Handle file items (files copied from file manager / Explorer / Finder)
+      for (const item of fileItems) {
+        const file = item.getAsFile();
+        if (file) {
+          files.push({ file, relativePath: file.name || `pasted_file_${Date.now()}` });
+        }
+      }
+
       if (files.length > 0) {
-        toast('info', `检测到 ${files.length} 个剪贴板图片，开始上传`);
+        const hasImages = imageItems.length > 0;
+        const hasFiles = fileItems.length > 0;
+        let msg = '';
+        if (hasImages && hasFiles) {
+          msg = `检测到 ${imageItems.length} 个图片和 ${fileItems.length} 个文件，开始上传`;
+        } else if (hasImages) {
+          msg = `检测到 ${files.length} 个剪贴板图片，开始上传`;
+        } else {
+          msg = `检测到 ${files.length} 个剪贴板文件，开始上传`;
+        }
+        toast('info', msg);
         handleUpload(files);
       }
     };
