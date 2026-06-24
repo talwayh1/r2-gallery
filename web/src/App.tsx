@@ -103,6 +103,7 @@ export default function App() {
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [hasMore, setHasMore] = useState(false);
 
@@ -131,6 +132,7 @@ export default function App() {
     abortRef.current = controller;
 
     setLoading(true);
+    if (!append) setLoadError(null);
     try {
       const params: ListFilesParams = { sort: sortBy, order: sortOrder, type: typeFilter };
       // Use cursorRef to avoid stale closure — ref always has latest value
@@ -160,6 +162,7 @@ export default function App() {
       // Only show toast for non-Abort errors — AbortError is handled above
       toast('error', `加载文件失败: ${msg}`);
       if (append) setLoadMoreError(msg);
+      else setLoadError(msg);
     } finally {
       if (controller === abortRef.current) {
         setLoading(false);
@@ -426,6 +429,15 @@ export default function App() {
         } else if (search) {
           e.preventDefault();
           setSearch('');
+        } else if (showCreateFolder) {
+          e.preventDefault();
+          setShowCreateFolder(false);
+        } else if (showMoveDialog) {
+          e.preventDefault();
+          setShowMoveDialog(false);
+        } else if (showBatchRename) {
+          e.preventDefault();
+          setShowBatchRename(false);
         } else if (showStats) {
           e.preventDefault();
           setShowStats(false);
@@ -1187,6 +1199,24 @@ export default function App() {
               onChange={setTypeFilter}
             />
           </div>
+
+          {/* Inline load error banner with retry */}
+          {loadError && !loading && (
+            <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center gap-2 min-w-0">
+                <svg className="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <span className="text-sm text-red-700 dark:text-red-300 truncate">{loadError}</span>
+              </div>
+              <button
+                onClick={() => loadFiles(dir)}
+                className="text-sm px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shrink-0 font-medium"
+              >
+                重试
+              </button>
+            </div>
+          )}
 
           {loading && !loadingMore ? (
             <div className="py-4">
