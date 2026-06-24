@@ -62,6 +62,10 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const [pathCopied, setPathCopied] = useState(false);
   const [exifData, setExifData] = useState<ExifData | null>(null);
   const [exifLoading, setExifLoading] = useState(false);
+  // Swipe-to-dismiss state for mobile info panel
+  const infoPanelRef = useRef<HTMLDivElement>(null);
+  const infoPanelSwipeStartY = useRef(0);
+  const infoPanelSwipeOffset = useRef(0);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [autoRetrying, setAutoRetrying] = useState(false);
@@ -726,6 +730,45 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       el.removeEventListener('touchend', handleTouchEnd);
     };
   }, [current, zoomAtPoint, resetZoom]);
+
+  // === Info panel swipe-to-dismiss (mobile) ===
+  const handleInfoPanelTouchStart = useCallback((e: React.TouchEvent) => {
+    infoPanelSwipeStartY.current = e.touches[0].clientY;
+    infoPanelSwipeOffset.current = 0;
+    const el = infoPanelRef.current;
+    if (el) {
+      el.style.transition = 'none';
+    }
+  }, []);
+
+  const handleInfoPanelTouchMove = useCallback((e: React.TouchEvent) => {
+    const el = infoPanelRef.current;
+    if (!el || infoPanelSwipeStartY.current === 0) return;
+    const dy = e.touches[0].clientY - infoPanelSwipeStartY.current;
+    if (dy > 0) {
+      infoPanelSwipeOffset.current = dy;
+      el.style.transform = `translateY(${dy}px)`;
+      el.style.opacity = String(Math.max(0, 1 - dy / 200));
+    }
+  }, []);
+
+  const handleInfoPanelTouchEnd = useCallback((e: React.TouchEvent) => {
+    const el = infoPanelRef.current;
+    if (!el) return;
+    el.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+    if (infoPanelSwipeOffset.current > 100) {
+      // Dismiss — animate off-screen then close
+      el.style.transform = 'translateY(100%)';
+      el.style.opacity = '0';
+      setTimeout(() => setShowInfo(false), 200);
+    } else {
+      // Snap back
+      el.style.transform = '';
+      el.style.opacity = '';
+    }
+    infoPanelSwipeStartY.current = 0;
+    infoPanelSwipeOffset.current = 0;
+  }, []);
 
   // === Mouse drag when zoomed ===
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -2150,24 +2193,36 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         <div
           className={`${
             isMobile
-              ? 'fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-md border-t border-white/10 rounded-t-xl p-4 z-20 max-h-[60vh] overflow-y-auto text-sm'
+              ? 'fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-md border-t border-white/10 rounded-t-xl p-4 z-20 max-h-[60vh] overflow-y-auto text-sm transition-transform duration-200'
               : 'absolute top-16 right-4 bg-gray-900/95 backdrop-blur-md border border-white/10 rounded-xl p-4 z-10 min-w-[260px] text-sm'
           }`}
           onClick={(e) => e.stopPropagation()}
+          ref={isMobile ? infoPanelRef : undefined}
         >
-          {/* Close button on mobile */}
+          {/* Drag handle + close button on mobile */}
           {isMobile && (
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-white font-medium">文件信息</h4>
-              <button
-                onClick={() => setShowInfo(false)}
-                className="p-1 text-white/50 hover:text-white"
+            <>
+              {/* Drag handle bar for swipe-down-to-dismiss */}
+              <div
+                className="flex justify-center mb-2 cursor-grab active:cursor-grabbing touch-none select-none"
+                onTouchStart={handleInfoPanelTouchStart}
+                onTouchMove={handleInfoPanelTouchMove}
+                onTouchEnd={handleInfoPanelTouchEnd}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+                <div className="w-10 h-1 rounded-full bg-white/30" />
+              </div>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-white font-medium">文件信息</h4>
+                <button
+                  onClick={() => setShowInfo(false)}
+                  className="p-1 text-white/50 hover:text-white"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </>
           )}
           {!isMobile && <h4 className="text-white font-medium mb-3">文件信息</h4>}
           <div className="space-y-2 text-white/70">
@@ -2345,6 +2400,45 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 </>
               )}
             </button>
+
+            {/* Copy Image (image only) */}
+            {current?.mime.startsWith('image/') && (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleCopyImage(); }}
+                className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors text-xs ${
+                  imageCopied ? 'bg-green-500/20 text-green-400' : 'bg-white/5 hover:bg-white/10 text-white/50'
+                }`}
+              >
+                {imageCopied ? (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    已复制!
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 11l5 5 5-5M12 4v12" />
+                    </svg>
+                    复制图片
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* Download */}
+            <a
+              href={url + '&download=1'}
+              download={name}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors text-xs bg-white/5 hover:bg-white/10 text-white/50"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              下载文件
+            </a>
           </div>
         </div>
       )}
