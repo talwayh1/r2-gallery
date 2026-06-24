@@ -246,7 +246,7 @@ export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavig
                     )}
                   </div>
                 ) : isImage ? (
-                  <SafeThumb path={item.path} priority={priorityPaths.has(item.path)} />
+                  <SafeThumb path={item.path} mtime={item.mtime} priority={priorityPaths.has(item.path)} />
                 ) : isVideo ? (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                     <svg className="w-12 h-12 text-white/60" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>

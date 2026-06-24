@@ -145,7 +145,7 @@ export default function MemoriesPage({ onClose, onNavigate, onOpenFile }: Props)
                       <>
                         {!isLoaded && <div className="shimmer w-full aspect-square" />}
                         <img
-                          src={getThumbUrl(file.path)}
+                          src={getThumbUrl(file.path, file.mtime)}
                           alt={file.name}
                           loading="lazy"
                           className={`w-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0 absolute'}`}

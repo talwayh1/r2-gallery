@@ -36,9 +36,9 @@ interface Props {
  * Video thumbnail for list views — loads poster image from /api/thumb.
  * Falls back to a play icon if the poster fails to load.
  */
-function VideoListThumb({ path }: { path: string }) {
+function VideoListThumb({ path, mtime }: { path: string; mtime?: number }) {
   const [posterFailed, setPosterFailed] = useState(false);
-  const posterUrl = getThumbUrl(path);
+  const posterUrl = getThumbUrl(path, mtime);
 
   if (posterFailed) {
     return (
@@ -268,9 +268,9 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
                 {isDir ? (
                   <FileTypeIcon mime="folder" className="w-8 h-8" isDir={true} />
                 ) : isImage ? (
-                  <SafeThumb path={item.path} />
+                  <SafeThumb path={item.path} mtime={item.mtime} />
                 ) : isVideo ? (
-                  <VideoListThumb path={item.path} />
+                  <VideoListThumb path={item.path} mtime={item.mtime} />
                 ) : (
                   <FileTypeIcon mime="application/octet-stream" className="w-8 h-8" />
                 )}

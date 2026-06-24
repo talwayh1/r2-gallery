@@ -262,7 +262,7 @@ export default function FileList({ files, dirs, dirMtimes, currentDir, onNavigat
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-lg">
                         {isDir ? <FileTypeIcon mime="folder" className="w-5 h-5" isDir={true} /> : isImage || isVideo ? (
-                          <SafeThumb path={item.path} />
+                          <SafeThumb path={item.path} mtime={item.mtime} />
                         ) : (
                           <FileTypeIcon mime="application/octet-stream" className="w-5 h-5" />
                         )}

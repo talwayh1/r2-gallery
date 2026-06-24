@@ -228,7 +228,7 @@ function ImageThumbnail({ src, alt, priority }: { src: string; alt: string; prio
  * Video thumbnail with hover-to-preview.
  * Shows a poster image (from /thumb) if available; on hover, loads and plays the video muted.
  */
-function VideoThumbnail({ src, path, isFirstRow }: { src: string; path: string; isFirstRow?: boolean }) {
+function VideoThumbnail({ src, path, mtime, isFirstRow }: { src: string; path: string; mtime?: number; isFirstRow?: boolean }) {
   const [hovering, setHovering] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [posterLoaded, setPosterLoaded] = useState(false);
@@ -236,7 +236,7 @@ function VideoThumbnail({ src, path, isFirstRow }: { src: string; path: string; 
   const [touchPreview, setTouchPreview] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const posterUrl = getThumbUrl(path);
+  const posterUrl = getThumbUrl(path, mtime);
 
   useEffect(() => {
     if ((hovering || touchPreview) && videoRef.current) {
@@ -559,7 +559,7 @@ function VirtualFileGrid({
               <div className={`w-full flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-xl overflow-hidden relative ${localStorage.getItem('previewRatio') || 'aspect-square'}`}>
                 {isImage ? (
                   <ImageThumbnail
-                    src={getThumbUrl(file.path)}
+                    src={getThumbUrl(file.path, file.mtime)}
                     alt={file.name}
                     priority={idx < columns}
                   />
@@ -567,6 +567,7 @@ function VirtualFileGrid({
                   <VideoThumbnail
                     src={getFileUrl(file.path)}
                     path={file.path}
+                    mtime={file.mtime}
                     isFirstRow={idx < columns}
                   />
                 ) : (
@@ -696,7 +697,7 @@ function VirtualFileGrid({
         >
           <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 bg-black">
             <img
-              src={getThumbUrl(preview.file.path)}
+              src={getThumbUrl(preview.file.path, preview.file.mtime)}
               alt={preview.file.name}
               className="w-full h-full object-contain"
               loading="lazy"

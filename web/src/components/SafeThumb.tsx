@@ -3,6 +3,9 @@ import { useSafeImage } from '../hooks/useSafeImage';
 
 interface Props {
   path: string;
+  /** File mtime for thumbnail cache-busting — when a file is replaced (same name), a
+   *  fresh mtime ensures the new thumbnail loads instead of the stale cached version. */
+  mtime?: number;
   /** Optional extra className for the img element */
   className?: string;
   /** Size class of the parent container — used for the fallback icon size */
@@ -38,7 +41,7 @@ const ShimmerSkeleton = () => (
   </div>
 );
 
-export default function SafeThumb({ path, className = 'w-full h-full object-cover', containerSize = 'md', priority = false }: Props) {
+export default function SafeThumb({ path, mtime, className = 'w-full h-full object-cover', containerSize = 'md', priority = false }: Props) {
   const { failed, loaded, handleLoad, handleError, imgClasses } = useSafeImage(path);
 
   if (failed) {
@@ -57,7 +60,7 @@ export default function SafeThumb({ path, className = 'w-full h-full object-cove
       </div>
       <img
         key={path}
-        src={getThumbUrl(path)}
+        src={getThumbUrl(path, mtime)}
         alt=""
         className={`${className} ${imgClasses}`}
         loading={priority ? undefined : 'lazy'}

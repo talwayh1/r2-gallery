@@ -115,10 +115,13 @@ export function getFileUrl(path: string) {
   return token ? `${base}&token=${encodeURIComponent(token)}` : base;
 }
 
-export function getThumbUrl(path: string) {
+export function getThumbUrl(path: string, mtime?: number) {
   // 缩略图始终走 Worker 端生成（300x300 WebP），不走 CDN（CDN 只缓存原图）
   const token = localStorage.getItem('token');
-  const base = `${API_BASE}/thumb?path=${encodeURIComponent(path)}`;
+  let base = `${API_BASE}/thumb?path=${encodeURIComponent(path)}`;
+  // When mtime is available, append it as a cache-busting param so replaced files
+  // (same path, new content) don't show stale thumbnails from browser cache
+  if (mtime) base += `&t=${mtime}`;
   return token ? `${base}&token=${encodeURIComponent(token)}` : base;
 }
 

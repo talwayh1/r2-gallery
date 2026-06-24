@@ -371,7 +371,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
                   {/* Thumbnail or icon */}
                   {r.mime.startsWith('image/') ? (
                     <div className="w-10 h-10 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
-                      <SafeThumb path={r.path} containerSize="sm" />
+                      <SafeThumb path={r.path} mtime={r.mtime} containerSize="sm" />
                     </div>
                   ) : (
                     <span className="w-10 h-10 flex items-center justify-center shrink-0"><FileTypeIcon mime={r.mime} className="w-8 h-8" /></span>

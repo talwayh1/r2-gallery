@@ -413,6 +413,12 @@ export default function App() {
         e.preventDefault();
         const filteredKeys = Object.keys(filteredFiles);
         setSelected(new Set(filteredKeys));
+      } else if (e.key === 'n' || e.key === 'N') {
+        // N — create new folder (requires login)
+        if (!e.ctrlKey && !e.metaKey && user) {
+          e.preventDefault();
+          setShowCreateFolder(true);
+        }
       } else if (e.key === 'Escape') {
         if (selected.size > 0) {
           e.preventDefault();

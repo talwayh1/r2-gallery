@@ -171,7 +171,7 @@ export default function FileColumns({ files, dirs, dirMtimes, currentDir, onNavi
                 </div>
               ) : isImage ? (
                 <div className="w-full aspect-auto">
-                  <SafeThumb path={item.path} />
+                  <SafeThumb path={item.path} mtime={item.mtime} />
                 </div>
               ) : isVideo ? (
                 <div className="w-full aspect-video relative bg-black">
