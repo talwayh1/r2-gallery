@@ -213,6 +213,35 @@ export default function FileList({ files, dirs, dirMtimes, currentDir, onNavigat
     });
   };
 
+  // Ctrl+A — select all items; Escape — clear selection
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Ctrl+A / Cmd+A — select all
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+        e.preventDefault();
+        const allPaths = sorted.map(item => item.path);
+        if (onSelect) {
+          allPaths.forEach(p => onSelect(p));
+        } else {
+          setInternalSelected(new Set(allPaths));
+        }
+        return;
+      }
+      // Escape — clear selection
+      if (e.key === 'Escape' && selected.size > 0) {
+        if (contextMenu) return;
+        if (onSelect) {
+          selected.forEach(p => onSelect(p));
+        } else {
+          setInternalSelected(new Set());
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [sorted, selected, onSelect, contextMenu]);
+
   return (
     <>
       <div className="overflow-x-auto">
@@ -321,6 +350,25 @@ export default function FileList({ files, dirs, dirMtimes, currentDir, onNavigat
             aria-label="右键菜单"
             className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 min-w-[180px]"
           >
+            {/* Toggle selection — useful on mobile where checkbox is small */}
+            <button
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              onClick={() => { handleToggleSelect(contextMenu.path); setContextMenu(null); }}
+            >
+              {(() => {
+                const isSel = selected.has(contextMenu.path);
+                const iconPath = isSel
+                  ? 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4'
+                  : 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2';
+                return (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={iconPath} />
+                  </svg>
+                );
+              })()}
+              {selected.has(contextMenu.path) ? '取消选择' : '选择'}
+            </button>
+            <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
             {!contextMenu.isDir && (
               <button
                 className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
