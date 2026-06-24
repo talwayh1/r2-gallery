@@ -31,7 +31,8 @@ interface VirtualGridResult {
 /**
  * Lightweight virtual grid hook — zero dependencies.
  * Only renders visible rows + overscan buffer for large file grids.
- * Inspired by Immich's virtual scroll implementation.
+ * Uses requestAnimationFrame to batch scroll updates and avoid
+ * unnecessary re-renders on every scroll pixel.
  */
 export function useVirtualGrid({
   itemCount,
@@ -46,6 +47,7 @@ export function useVirtualGrid({
     containerHeight: 0,
     containerWidth: 0,
   });
+  const rafRef = useRef<number | null>(null);
 
   // Measure container on mount and resize
   useEffect(() => {
@@ -53,6 +55,11 @@ export function useVirtualGrid({
     if (!el) return;
 
     const measure = () => {
+      // Cancel any pending RAF to avoid a stale update racing the sync measure
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
       setState(prev => ({
         ...prev,
         containerHeight: el.clientHeight,
@@ -65,15 +72,26 @@ export function useVirtualGrid({
     const ro = new ResizeObserver(measure);
     ro.observe(el);
 
-    // Also listen to scroll
+    // Listen to scroll — batch via requestAnimationFrame to avoid
+    // re-rendering on every scroll pixel (common with smooth-scroll mice/trackpads)
+    let scheduled = false;
     const handleScroll = () => {
-      setState(prev => ({ ...prev, scrollTop: el.scrollTop }));
+      if (scheduled) return;
+      scheduled = true;
+      rafRef.current = requestAnimationFrame(() => {
+        scheduled = false;
+        rafRef.current = null;
+        setState(prev => ({ ...prev, scrollTop: el.scrollTop }));
+      });
     };
     el.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
       ro.disconnect();
       el.removeEventListener('scroll', handleScroll);
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
     };
   }, []);
 

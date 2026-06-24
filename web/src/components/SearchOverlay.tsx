@@ -45,6 +45,8 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
   const [total, setTotal] = useState(0);
   const [recentSearches, setRecentSearches] = useState<string[]>(getRecentSearches);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const typeFilterRef = useRef(typeFilter);
+  typeFilterRef.current = typeFilter;
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -132,7 +134,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (value.length >= 2) {
       debounceRef.current = setTimeout(() => {
-        doSearch(value, undefined, typeFilter);
+        doSearch(value, undefined, typeFilterRef.current);
       }, 300);
     } else {
       setResults([]);
@@ -292,16 +294,6 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
             </svg>
           </button>
         </div>
-
-        {/* Result count */}
-        {total > 0 && results.length > 0 && (
-          <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700/50">
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              找到 <strong className="text-gray-700 dark:text-gray-200">{total}</strong> 个结果
-              {hasMore && <span className="text-xs ml-1">(显示前 {results.length} 个)</span>}
-            </span>
-          </div>
-        )}
 
         {/* Type filter chips — only show when there are results */}
         {results.length > 0 && (
