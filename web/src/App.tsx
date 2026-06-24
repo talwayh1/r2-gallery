@@ -121,6 +121,7 @@ export default function App() {
   const lightboxHistoryPushedRef = useRef(false);
   // Refs for mobile sidebar edge swipe gesture (swipe right from left edge to open)
   const edgeSwipeStartXRef = useRef<number | null>(null);
+  const edgeSwipeStartYRef = useRef<number>(0);
   const edgeSwipeStartTimeRef = useRef<number>(0);
   // Ref for main scroll container — wired to ScrollToTop so the "back to top" button works on mobile
   const mainRef = useRef<HTMLElement>(null);
@@ -527,21 +528,28 @@ export default function App() {
             loadFiles(dir);
           })();
         }
-      } else if (e.key === 'd' && (e.ctrlKey || e.metaKey)) {
-        // Ctrl+D — duplicate first selected file
-        if (selected.size === 1 && user) {
+      } else if (e.key === 'd' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+        // Ctrl+Shift+D — duplicate selected file(s)
+        if (selected.size > 0 && user) {
           e.preventDefault();
-          const path = Array.from(selected)[0];
           (async () => {
-            try {
-              const result = await duplicateFile(path);
-              if (result.success) {
-                toast('success', `已复制到 ${result.newPath}`);
-                loadFiles(dir);
+            const paths = Array.from(selected);
+            let success = 0;
+            for (const path of paths) {
+              try {
+                const result = await duplicateFile(path);
+                if (result.success) success++;
+              } catch (err) {
+                console.error(`Duplicate failed for "${path}":`, err);
               }
-            } catch (err) {
-              toast('error', `复制失败: ${(err as Error).message}`);
             }
+            const total = paths.length;
+            if (success === total) {
+              toast('success', `已复制 ${total} 个项目`);
+            } else {
+              toast('warning', `已复制 ${success}/${total} 个项目（${total - success} 个失败）`);
+            }
+            loadFiles(dir);
           })();
         }
       } else if (e.key === 'd' && e.shiftKey && !e.ctrlKey && !e.metaKey) {
@@ -1148,19 +1156,22 @@ export default function App() {
         className="flex flex-1 overflow-hidden relative touch-pan-y"
         onTouchStart={(e) => {
           if (!isMobile || sidebarOpen) return;
-          const touchX = e.touches[0].clientX;
+          const touch = e.touches[0];
           // Only react to swipes starting from the left edge (within 30px)
-          if (touchX < 30) {
-            edgeSwipeStartXRef.current = touchX;
+          if (touch.clientX < 30) {
+            edgeSwipeStartXRef.current = touch.clientX;
+            edgeSwipeStartYRef.current = touch.clientY;
             edgeSwipeStartTimeRef.current = Date.now();
           }
         }}
         onTouchMove={(e) => {
           if (!isMobile || sidebarOpen || edgeSwipeStartXRef.current === null) return;
-          const dx = e.touches[0].clientX - edgeSwipeStartXRef.current;
+          const touch = e.touches[0];
+          const dx = touch.clientX - edgeSwipeStartXRef.current;
+          const dy = Math.abs(touch.clientY - edgeSwipeStartYRef.current);
           const dt = Date.now() - edgeSwipeStartTimeRef.current;
-          // Quick swipe right (60px+ within 300ms) from left edge opens sidebar
-          if (dx > 60 && dt < 350) {
+          // Must be a quick swipe right (60px+ within 350ms) AND primarily horizontal (2× vertical)
+          if (dx > 60 && dy < dx * 0.5 && dt < 350) {
             edgeSwipeStartXRef.current = null;
             setSidebarOpen(true);
           }
