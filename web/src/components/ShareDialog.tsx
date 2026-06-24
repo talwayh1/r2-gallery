@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createShare } from '../api';
 import { toast } from '../hooks/useToast';
 
@@ -9,6 +9,14 @@ interface ShareDialogProps {
 }
 
 export default function ShareDialog({ filePath, fileName, onClose }: ShareDialogProps) {
+  // Close on Escape key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
   const [password, setPassword] = useState('');
   const [expiresIn, setExpiresIn] = useState<number | null>(null);
   const [shareUrl, setShareUrl] = useState('');

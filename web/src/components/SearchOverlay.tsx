@@ -293,6 +293,16 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
           </button>
         </div>
 
+        {/* Result count */}
+        {total > 0 && results.length > 0 && (
+          <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700/50">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              找到 <strong className="text-gray-700 dark:text-gray-200">{total}</strong> 个结果
+              {hasMore && <span className="text-xs ml-1">(显示前 {results.length} 个)</span>}
+            </span>
+          </div>
+        )}
+
         {/* Type filter chips — only show when there are results */}
         {results.length > 0 && (
           <div className="flex items-center gap-1.5 px-4 py-2 border-b border-gray-100 dark:border-gray-700/50 overflow-x-auto scrollbar-hide">

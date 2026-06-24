@@ -8,6 +8,14 @@ interface Props {
 }
 
 export default function FolderPicker({ title, onSelect, onClose }: Props) {
+  // Close on Escape key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
   const [dirs, setDirs] = useState<{ name: string; path: string; children: any[] }[]>([]);
   const [selected, setSelected] = useState('');
   const [loading, setLoading] = useState(true);
