@@ -52,6 +52,9 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
   const abortRef = useRef<AbortController | null>(null);
   const resultsContainerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  // Refs for IntersectionObserver guards — avoids stale-closure re-fire after each page load
+  const loadingMoreRef = useRef(loadingMore);
+  loadingMoreRef.current = loadingMore;
 
   // Per-type counts for the filter chips
   const typeCounts = useMemo(() => ({
@@ -157,7 +160,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
-        if (entry.isIntersecting && hasMore && !loadingMore) {
+        if (entry.isIntersecting && !loadingMoreRef.current) {
           doSearch(query, results.length, typeFilter);
         }
       },
@@ -166,7 +169,12 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, loadingMore, loading, query, results.length, typeFilter, doSearch]);
+  // Intentionally omit loadingMore and results.length from deps:
+  // - loadingMore would cause observer re-creation on every append, triggering
+  //   an immediate callback (stale closure) that fires doSearch a second time.
+  // - results.length is derived from appends and doesn't affect observer config.
+  // Refs inside the callback always read the latest values instead.
+  }, [hasMore, loading, query, typeFilter, doSearch]);
 
   const handleSearchSubmit = () => {
     if (query.length >= 2) {

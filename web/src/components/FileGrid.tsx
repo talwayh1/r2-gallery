@@ -386,6 +386,10 @@ function VirtualFileGrid({
   const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   const gridRef = useRef<HTMLDivElement>(null);
+  // Ref-based onLoadMore avoids stale-closure observer re-creation when parent's
+  // loadingMore state changes (which causes onLoadMore identity to change via useCallback)
+  const onLoadMoreRef = useRef(onLoadMore);
+  onLoadMoreRef.current = onLoadMore;
 
   // Track visible file paths for keyboard navigation
   const visibleFiles = useMemo(() => files.slice(visibleRange.start, visibleRange.end), [files, visibleRange.start, visibleRange.end]);
@@ -493,18 +497,21 @@ function VirtualFileGrid({
   // Infinite scroll sentinel — inside scroll container for proper IntersectionObserver behaviour
   const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!sentinelRef.current || !onLoadMore || !hasMore || loadMoreError) return;
+    if (!sentinelRef.current || !onLoadMoreRef.current || !hasMore || loadMoreError) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          onLoadMore();
+          onLoadMoreRef.current?.();
         }
       },
       { rootMargin: '400px' }
     );
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [onLoadMore, hasMore, loadMoreError]);
+  // Intentionally omit onLoadMore from deps — parent's loadMore identity changes on
+  // loadingMore transitions, causing observer re-creation and an immediate callback
+  // that triggers a duplicate page load. The ref always has the latest callback.
+  }, [hasMore, loadMoreError]);
 
   return (
     <div
