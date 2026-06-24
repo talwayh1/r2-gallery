@@ -5,6 +5,9 @@
 
 import type { R2Object, R2Objects, R2Bucket, R2ListOptions, R2HTTPMetadata } from '@cloudflare/workers-types';
 
+/** Custom metadata key-value pairs (max 2048 bytes total) */
+export type CustomMetadata = Record<string, string>;
+
 /** Result of listing objects: separated directories and files */
 export interface ListResult {
   directories: string[];
@@ -55,15 +58,19 @@ export async function getObject(
 
 /**
  * Upload an object to R2.
+ * Accepts optional HTTP metadata (content-type, content-disposition, etc.)
+ * and optional custom metadata (up to 2048 bytes total).
  */
 export async function putObject(
   bucket: R2Bucket,
   key: string,
   body: ReadableStream | ArrayBuffer | string | null,
-  httpMetadata?: R2HTTPMetadata
+  httpMetadata?: R2HTTPMetadata,
+  customMetadata?: CustomMetadata
 ): Promise<R2Object> {
   return bucket.put(key, body, {
     ...(httpMetadata ? { httpMetadata } : {}),
+    ...(customMetadata ? { customMetadata } : {}),
   });
 }
 

@@ -1244,7 +1244,14 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
-    console.error('Lightbox image load error:', current?.path, img.src);
+    const isUnsupported = BROWSER_UNSUPPORTED_IMAGE_MIMES.has(current?.mime ?? '');
+    console.error('Lightbox image load error:', current?.path, img.src, isUnsupported ? '(unsupported browser format)' : '');
+    // Skip retry for formats browsers can't display natively
+    if (isUnsupported) {
+      setImageError(true);
+      setImageLoaded(false);
+      return;
+    }
     retryCountRef.current += 1;
     // Auto-retry once on first error (catches transient blips)
     if (retryCountRef.current === 1) {
@@ -1280,6 +1287,13 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     current.mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
     current.mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
     current.mime === 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+
+  // Image formats browsers cannot natively render in an <img> tag
+  const BROWSER_UNSUPPORTED_IMAGE_MIMES = new Set([
+    'image/tiff', 'image/vnd.adobe.photoshop',
+    'image/x-adobe-dng', 'image/heic', 'image/heif',
+  ]);
+  const isBrowserUnsupportedImage = isImage && BROWSER_UNSUPPORTED_IMAGE_MIMES.has(current.mime);
 
   // Audio playlist — collect all audio items for the AudioPlayer
   const audioTracks = useMemo(() => {
@@ -2545,7 +2559,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 </div>
               </div>
             )}
-            {imageError && (
+            {imageError && !isBrowserUnsupportedImage && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 rounded-lg bg-black/60 backdrop-blur-sm z-10 p-6">
                 <svg className="w-12 h-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -2581,6 +2595,29 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                     重试
                   </button>
                 )}
+              </div>
+            )}
+            {/* Unsupported image format (TIFF/PSD/DNG/HEIC) — browser can't render it natively */}
+            {imageError && isBrowserUnsupportedImage && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 rounded-lg bg-black/60 backdrop-blur-sm z-10 p-6">
+                <svg className="w-14 h-14 text-amber-400/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <div className="text-center">
+                  <p className="text-white/70 text-sm font-medium">此格式无法在浏览器中直接预览</p>
+                  <p className="text-white/40 text-xs mt-1 truncate max-w-[250px]">{name}</p>
+                  <p className="text-white/30 text-xs mt-1">TIFF / PSD / DNG / HEIC</p>
+                </div>
+                <a
+                  href={url + '&download=1'}
+                  download={name}
+                  className="px-5 py-2 bg-white/10 hover:bg-white/20 text-white/80 rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  下载原文件
+                </a>
               </div>
             )}
           </>
