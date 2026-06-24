@@ -35,6 +35,8 @@ export interface UploadTask {
 interface InternalTask extends UploadTask {
   run: (ctx: UploadRunnerContext) => Promise<void>;
   controller?: AbortController;
+  /** Number of times this task has been auto-retried after failure */
+  retryCount: number;
 }
 
 export interface UploadQueueInput {
@@ -62,6 +64,8 @@ interface UploadQueueValue {
 }
 
 const MAX_CONCURRENT = 3;
+/** How many times to auto-retry a failed upload before giving up */
+const MAX_UPLOAD_RETRIES = 2;
 const UploadQueueContext = createContext<UploadQueueValue | null>(null);
 
 function isActive(s: UploadTaskStatus) {
@@ -149,14 +153,28 @@ export function UploadQueueProvider({ children }: { children: ReactNode }) {
           loaded: task.total,
           speed: 0,
           etaSeconds: null,
+          error: undefined, // Clear any previous retry message
         });
       }).catch((err) => {
-        updateTask(task.id, {
-          status: controller.signal.aborted ? 'cancelled' : 'failed',
-          error: err instanceof Error ? err.message : String(err),
-          speed: 0,
-          etaSeconds: null,
-        });
+        const isAborted = controller.signal.aborted;
+        if (!isAborted && task.retryCount < MAX_UPLOAD_RETRIES) {
+          // Auto-retry on transient failure (network blip, server hiccup, etc.)
+          task.retryCount += 1;
+          updateTask(task.id, {
+            status: 'queued',
+            error: `Retry ${task.retryCount}/${MAX_UPLOAD_RETRIES}: ${err instanceof Error ? err.message : String(err)}`,
+            loaded: 0,
+            speed: 0,
+            etaSeconds: null,
+          });
+        } else {
+          updateTask(task.id, {
+            status: isAborted ? 'cancelled' : 'failed',
+            error: err instanceof Error ? err.message : String(err),
+            speed: 0,
+            etaSeconds: null,
+          });
+        }
       }).finally(() => {
         task.controller = undefined;
         settleBatches();
@@ -179,6 +197,7 @@ export function UploadQueueProvider({ children }: { children: ReactNode }) {
       etaSeconds: null,
       previewUrl: item.previewUrl,
       run: item.run,
+      retryCount: 0,
     }));
     tasksRef.current = [...tasksRef.current, ...newTasks];
     if (onBatchComplete) {
@@ -222,6 +241,7 @@ export function UploadQueueProvider({ children }: { children: ReactNode }) {
     task.etaSeconds = null;
     task.error = undefined;
     task.controller = undefined;
+    task.retryCount = 0; // Reset auto-retry counter for fresh manual attempt
     publish();
     maybeStartNext();
   }, [publish, maybeStartNext]);

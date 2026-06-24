@@ -261,6 +261,26 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     setImageLoaded(false);
   }, [current?.path]);
 
+  // Preload adjacent images so navigating feels instant
+  useEffect(() => {
+    if (!isImage || items.length <= 1) return;
+
+    const prevIdx = index === 0 ? items.length - 1 : index - 1;
+    const nextIdx = index === items.length - 1 ? 0 : index + 1;
+
+    const preload = (item: MediaItem) => {
+      if (item?.mime.startsWith('image/')) {
+        const img = new Image();
+        img.decoding = 'async';
+        img.fetchPriority = 'low';
+        img.src = getFileUrl(item.path);
+      }
+    };
+
+    preload(items[prevIdx]);
+    preload(items[nextIdx]);
+  }, [current?.path, isImage, index, items]);
+
   // Compute derived values
   const url = current ? getFileUrl(current.path) : '';
   const name = current ? (current.path.split('/').pop() || '') : '';
