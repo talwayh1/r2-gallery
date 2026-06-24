@@ -50,6 +50,8 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const current = items[index];
   const hasPrev = items.length > 1;
   const hasNext = items.length > 1;
+  const isImage = current.mime.startsWith('image/');
+  const isVideo = current.mime.startsWith('video/');
   const [copied, setCopied] = useState(false);
   const [directUrlCopied, setDirectUrlCopied] = useState(false);
   const [imageCopied, setImageCopied] = useState(false);
@@ -140,7 +142,10 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     url: '',
     name: '',
     isZoomed: false,
+    isImage: false,
+    isVideo: false,
     current: null as any,
+    uiVisible: true,
     showMoreTools: false,
     showInfo: false,
     showSlideshowMenu: false,
@@ -785,6 +790,20 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     // Single click in center area — toggle UI visibility on mobile
     if (isMobile) {
       setUiVisible((v) => !v);
+      // Auto-hide after 5s when showing UI on mobile (for images/videos, not when panels open)
+      const kb = keyboardRef.current;
+      if (kb.uiVisible) {
+        // Hiding — cancel any pending timer
+        if (uiTimerRef.current) clearTimeout(uiTimerRef.current);
+      } else {
+        // Showing — start auto-hide timer
+        if (uiTimerRef.current) clearTimeout(uiTimerRef.current);
+        if ((kb.isImage || kb.isVideo) && !kb.showInfo && !kb.showSlideshowMenu && !kb.showKeyboardHelp && !kb.showMoreTools) {
+          uiTimerRef.current = setTimeout(() => {
+            setUiVisible(false);
+          }, 5000);
+        }
+      }
     }
   }, [isZoomed, isMobile, zoomAtPoint, resetZoom, hasPrev, hasNext, index, onNavigate, items.length]);
 
@@ -823,7 +842,10 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     url: url ?? '',
     name: name ?? '',
     isZoomed,
+    isImage,
+    isVideo,
     current,
+    uiVisible,
     showMoreTools,
     showInfo,
     showSlideshowMenu,
@@ -1247,8 +1269,6 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     setImageLoaded(false);
   };
 
-  const isImage = current.mime.startsWith('image/');
-  const isVideo = current.mime.startsWith('video/');
   const isAudio = current.mime.startsWith('audio/');
   const isPdf = current.mime === 'application/pdf';
   const isText = isTextMime(current.mime);
@@ -1310,7 +1330,9 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
           if (uiTimerRef.current) clearTimeout(uiTimerRef.current);
           uiTimerRef.current = setTimeout(() => {
             // Only auto-hide for images/videos (not text/audio)
-            if (isImage || isVideo) {
+            // Don't auto-hide while user is interacting with panels/menus
+            const kb = keyboardRef.current;
+            if ((kb.isImage || kb.isVideo) && !kb.showInfo && !kb.showSlideshowMenu && !kb.showKeyboardHelp && !kb.showMoreTools) {
               setUiVisible(false);
             }
           }, UI_AUTO_HIDE_DELAY);
