@@ -28,6 +28,11 @@ const shortcuts: { category: string; items: Shortcut[] }[] = [
       { keys: ['5'], description: '块布局' },
       { keys: ['6'], description: '行布局' },
       { keys: ['T'], description: '切换亮色/暗色主题' },
+      { keys: ['Alt', '0'], description: '全局搜索：全部类型' },
+      { keys: ['Alt', '1'], description: '全局搜索：图片' },
+      { keys: ['Alt', '2'], description: '全局搜索：视频' },
+      { keys: ['Alt', '3'], description: '全局搜索：音频' },
+      { keys: ['Alt', '4'], description: '全局搜索：文档' },
     ],
   },
   {
@@ -43,6 +48,8 @@ const shortcuts: { category: string; items: Shortcut[] }[] = [
       { keys: ['F2'], description: '重命名选中文件' },
       { keys: ['Esc'], description: '取消选择' },
       { keys: ['Ctrl', 'Shift', 'C'], description: '复制选中文件的分享链接' },
+      { keys: ['Ctrl', 'Shift', 'A'], description: '取消全选' },
+      { keys: ['Ctrl', 'S'], description: '保存代码/编辑中的文件' },
     ],
   },
   {
