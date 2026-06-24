@@ -57,6 +57,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [nameCopied, setNameCopied] = useState(false);
+  const [pathCopied, setPathCopied] = useState(false);
   const [exifData, setExifData] = useState<ExifData | null>(null);
   const [exifLoading, setExifLoading] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -555,6 +556,14 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       setTimeout(() => setNameCopied(false), 2000);
     } catch { /* silent */ }
   }, [name]);
+
+  const handleCopyPath = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(current.path);
+      setPathCopied(true);
+      setTimeout(() => setPathCopied(false), 2000);
+    } catch { /* silent */ }
+  }, [current.path]);
 
   // Wrapper — sets wasSwiping ref to prevent the browser's synthesized
   // click event from closing the lightbox immediately after a swipe gesture
@@ -2153,7 +2162,20 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
             )}
             <div className="flex justify-between gap-4">
               <span className="text-white/40">路径</span>
-              <span className="text-right break-all text-xs">{current.path}</span>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleCopyPath(); }}
+                className={`text-right break-all text-xs transition-colors cursor-pointer hover:text-blue-400 ${pathCopied ? 'text-green-400' : 'text-white/70'}`}
+                title={pathCopied ? '已复制!' : '点击复制路径'}
+              >
+                {pathCopied ? (
+                  <span className="inline-flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    已复制
+                  </span>
+                ) : current.path}
+              </button>
             </div>
           </div>
 
