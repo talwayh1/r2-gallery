@@ -263,26 +263,6 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     setImageLoaded(false);
   }, [current?.path]);
 
-  // Preload adjacent images so navigating feels instant
-  useEffect(() => {
-    if (!isImage || items.length <= 1) return;
-
-    const prevIdx = index === 0 ? items.length - 1 : index - 1;
-    const nextIdx = index === items.length - 1 ? 0 : index + 1;
-
-    const preload = (item: MediaItem) => {
-      if (item?.mime.startsWith('image/')) {
-        const img = new Image();
-        img.decoding = 'async';
-        img.fetchPriority = 'low';
-        img.src = getFileUrl(item.path);
-      }
-    };
-
-    preload(items[prevIdx]);
-    preload(items[nextIdx]);
-  }, [current?.path, isImage, index, items]);
-
   // Compute derived values
   const url = current ? getFileUrl(current.path) : '';
   const name = current ? (current.path.split('/').pop() || '') : '';
@@ -1107,28 +1087,43 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
   // Preload adjacent items: full-size originals for ±1, thumbnails for ±2
   // Skips preload in huge collections (>200) to avoid burst network requests
+  // Supports wrap-around for immediate neighbors: navigating from first→last or last→first
+  // feels just as fast as sequential navigation
   useEffect(() => {
     if (!current?.mime.startsWith('image/')) return;
     if (items.length > 200) return;
 
-    const preloadIndices = [index - 2, index - 1, index + 1, index + 2];
+    const len = items.length;
+    const seen = new Set<number>();
     const preloaded: HTMLImageElement[] = [];
-    for (const i of preloadIndices) {
-      if (i >= 0 && i < items.length && items[i]?.mime.startsWith('image/')) {
-        const distance = Math.abs(i - index);
-        const img = new Image();
-        img.referrerPolicy = 'no-referrer';
-        img.fetchPriority = distance <= 1 ? 'high' : 'low';
-        if (distance <= 1) {
-          // Preload full-size original for immediate neighbors (smooth navigation)
-          img.src = getFileUrl(items[i].path);
-        } else {
-          // Preload thumbnail for farther neighbors (quick preview)
-          img.src = getThumbUrl(items[i].path);
-        }
-        preloaded.push(img);
-      }
+
+    // Immediate neighbors with wrap-around (±1) — ensures last↔first navigation is instant
+    const prev1 = (index - 1 + len) % len;
+    const next1 = (index + 1) % len;
+    for (const i of [prev1, next1]) {
+      if (seen.has(i)) continue;
+      seen.add(i);
+      if (!items[i]?.mime.startsWith('image/')) continue;
+      const img = new Image();
+      img.referrerPolicy = 'no-referrer';
+      img.fetchPriority = 'high';
+      img.src = getFileUrl(items[i].path); // full-size original for instant nav
+      preloaded.push(img);
     }
+
+    // Farther neighbors with bounds check only (±2) — no wrap for 2+ away
+    for (const i of [index - 2, index + 2]) {
+      if (i < 0 || i >= len) continue;
+      if (seen.has(i)) continue;
+      seen.add(i);
+      if (!items[i]?.mime.startsWith('image/')) continue;
+      const img = new Image();
+      img.referrerPolicy = 'no-referrer';
+      img.fetchPriority = 'low';
+      img.src = getThumbUrl(items[i].path); // thumbnail for quick preview
+      preloaded.push(img);
+    }
+
     return () => {
       for (const img of preloaded) {
         img.src = '';
@@ -2990,7 +2985,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         <div className="absolute bottom-0 left-0 right-0 z-20 flex justify-center pointer-events-none pb-1 bg-gradient-to-t from-black/40 to-transparent">
           <div
             ref={thumbStripRef}
-            className="flex items-center gap-1.5 overflow-x-auto px-4 py-2 max-w-[90vw] scrollbar-thin pointer-events-auto gap-1"
+            className="flex items-center gap-1 overflow-x-auto px-4 py-2 max-w-[90vw] scrollbar-thin pointer-events-auto"
             style={{ scrollbarWidth: 'thin', scrollSnapType: 'x mandatory' }}
             onClick={(e) => e.stopPropagation()}
           >
