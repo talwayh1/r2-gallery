@@ -1,25 +1,20 @@
 /**
  * ActivityPage — view operation history and traffic stats.
  * Inspired by ZPan's activity logging.
+ *
+ * Uses centralized API helpers (request from api.ts) for consistent
+ * retry logic, auth headers, and error handling.
  */
 
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { getActivity, getTrafficStats, type ActivityItem } from '../api';
+import type { TrafficDay } from '../api';
 import { formatSize } from '../utils';
-
-interface ActivityItem {
-  id: number;
-  action: string;
-  path: string;
-  new_path: string | null;
-  user: string | null;
-  details: string | null;
-  created_at: string;
-}
 
 interface TrafficStats {
   totalBytes: number;
   requestCount: number;
-  byDay: { date: string; bytes: number; count: number }[];
+  byDay: TrafficDay[];
   days: number;
 }
 
@@ -54,6 +49,7 @@ export default function ActivityPage({ onClose }: Props) {
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const loadingRef = useRef(false); // prevent concurrent loads
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadActivity = useCallback(async (currentOffset: number = 0) => {
     if (loadingRef.current) return;
@@ -64,16 +60,15 @@ export default function ActivityPage({ onClose }: Props) {
     else setLoadingMore(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await fetch(`/api/activity?limit=${PAGE_SIZE}&offset=${currentOffset}`, { headers });
-      const data = await res.json();
+      const data = await getActivity(PAGE_SIZE, currentOffset);
       if (isInitial) setActivities(data.items || []);
       else setActivities(prev => [...prev, ...(data.items || [])]);
       setHasMore(data.hasMore);
       setOffset(currentOffset + (data.items?.length || 0));
+      setLoadError(null);
     } catch (err) {
       console.error('Failed to load activity:', err);
+      setLoadError('加载活动记录失败，请稍后重试');
     } finally {
       loadingRef.current = false;
       setLoading(false);
@@ -83,11 +78,8 @@ export default function ActivityPage({ onClose }: Props) {
 
   const loadTraffic = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await fetch('/api/stats/traffic?days=30', { headers });
-      const data = await res.json();
-      setTraffic(data);
+      const data = await getTrafficStats(30);
+      setTraffic({ ...data, byDay: data.byDay || [] });
     } catch (err) {
       console.error('Failed to load traffic:', err);
     }
@@ -112,7 +104,7 @@ export default function ActivityPage({ onClose }: Props) {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && !loadingRef.current && hasMore) {
-          setTimeout(() => loadActivity(offset), 100);
+          loadActivity(offset);
         }
       },
       { rootMargin: '400px' }
@@ -120,6 +112,10 @@ export default function ActivityPage({ onClose }: Props) {
     observer.observe(el);
     return () => observer.disconnect();
   }, [hasMore, offset, loadActivity, tab]);
+
+  const maxTrafficBytes = traffic && traffic.byDay.length > 0
+    ? Math.max(...traffic.byDay.map(d => d.bytes), 1)
+    : 1;
 
   return (
     <div className="fixed inset-0 z-40 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
@@ -156,13 +152,12 @@ export default function ActivityPage({ onClose }: Props) {
                 <p className="text-xs text-gray-400 mb-3">每日流量</p>
                 <div className="space-y-1">
                   {traffic.byDay.map(day => {
-                    const maxBytes = Math.max(...traffic.byDay.map(d => d.bytes), 1);
-                    const pct = (day.bytes / maxBytes) * 100;
+                    const pct = (day.bytes / maxTrafficBytes) * 100;
                     return (
                       <div key={day.date} className="flex items-center gap-2 text-xs">
                         <span className="w-16 text-gray-400">{day.date.slice(5)}</span>
                         <div className="flex-1 h-4 bg-gray-100 dark:bg-gray-700 rounded overflow-hidden">
-                          <div className="h-full bg-blue-500 rounded" style={{ width: `${pct}%` }} />
+                          <div className="h-full bg-blue-500 rounded transition-all" style={{ width: `${pct}%` }} />
                         </div>
                         <span className="w-20 text-right">{formatSize(day.bytes)}</span>
                         <span className="w-12 text-right text-gray-400">{day.count}次</span>
@@ -175,15 +170,34 @@ export default function ActivityPage({ onClose }: Props) {
           </div>
         )}
 
+        {/* Traffic loading state */}
+        {tab === 'traffic' && !traffic && !loadError && (
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+          </div>
+        )}
+
         {tab === 'activity' && (
           <>
+            {loadError && (
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center justify-between">
+                <span className="text-sm text-red-600 dark:text-red-400">{loadError}</span>
+                <button
+                  onClick={() => loadActivity(0)}
+                  className="text-sm text-red-600 dark:text-red-400 underline hover:no-underline"
+                >
+                  重试
+                </button>
+              </div>
+            )}
+
             {loading && activities.length === 0 && (
               <div className="flex items-center justify-center h-32">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
               </div>
             )}
 
-            {activities.length === 0 && !loading && (
+            {activities.length === 0 && !loading && !loadError && (
               <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                 <p className="text-lg font-medium">暂无活动记录</p>
                 <p className="text-sm">操作文件后会在这里显示</p>

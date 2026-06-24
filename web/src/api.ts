@@ -21,7 +21,7 @@ function isRetryable(err: unknown): boolean {
   return false;
 }
 
-async function request(path: string, options: RequestInit = {}) {
+export async function request(path: string, options: RequestInit = {}) {
   const maxRetries = 2;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const token = localStorage.getItem('token');
