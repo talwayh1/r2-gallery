@@ -807,6 +807,14 @@ export default function App() {
     }
   };
 
+  const handleLightboxLocate = useCallback((path: string) => {
+    const lastSlash = path.lastIndexOf('/');
+    const parentDir = lastSlash >= 0 ? path.substring(0, lastSlash) : '';
+    lightboxHistoryPushedRef.current = false;
+    setLightbox(null);
+    navigate(parentDir);
+  }, [navigate]);
+
   const handleDelete = async (paths: string[]) => {
     const names = paths.map(p => p.split('/').pop() || p).join(', ');
     const confirmed = await confirm({
@@ -1320,6 +1328,7 @@ export default function App() {
             onNavigate={handleLightboxNavigate}
             onDelete={user ? handleLightboxDelete : undefined}
             onDuplicate={user ? handleLightboxDuplicate : undefined}
+            onLocate={handleLightboxLocate}
           />
         </Suspense></ErrorBoundary>
       )}

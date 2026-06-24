@@ -27,6 +27,8 @@ interface Props {
   /** Called when user wants to delete the current file */
   onDelete?: (path: string) => void;
   onDuplicate?: (path: string) => void;
+  /** Called when user wants to locate the file in its parent folder */
+  onLocate?: (path: string) => void;
   closing?: boolean;
 }
 
@@ -46,7 +48,7 @@ function isTextMime(mime: string): boolean {
          mime === 'application/yaml';
 }
 
-export default function Lightbox({ items, index, onClose, onNavigate, onDelete, onDuplicate, closing }: Props) {
+export default function Lightbox({ items, index, onClose, onNavigate, onDelete, onDuplicate, onLocate, closing }: Props) {
   const current = items[index];
   const hasPrev = items.length > 1;
   const hasNext = items.length > 1;
@@ -1305,6 +1307,12 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     });
   };
 
+  const handleLocate = () => {
+    if (onLocate && current.path) {
+      onLocate(current.path);
+    }
+  };
+
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
     setImageDimensions({ w: img.naturalWidth, h: img.naturalHeight });
@@ -1753,6 +1761,16 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                 <span>打开</span>
               </button>
+              {onLocate && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleLocate(); setShowMoreTools(false); }}
+                  className="flex items-center gap-1.5 px-3 py-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors text-xs shrink-0"
+                  title="定位到所在文件夹"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                  <span>所在文件夹</span>
+                </button>
+              )}
               <button
                 onClick={(e) => { e.stopPropagation(); handleCopyFileName(); }}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors text-xs shrink-0 ${nameCopied ? 'text-green-400' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
