@@ -308,7 +308,7 @@ export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavig
           <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} />
           <div
             ref={contextMenuRef}
-            className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 min-w-[180px]"
+            className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 min-w-[180px] max-h-[85vh] overflow-y-auto"
             role="menu"
             aria-label="右键菜单"
           >
@@ -380,7 +380,7 @@ export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavig
                 setContextMenu(null);
               }}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
               复制路径
             </button>
             {!contextMenu.isDir && (
