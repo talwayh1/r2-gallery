@@ -517,6 +517,7 @@ function VirtualFileGrid({
     <div
       ref={containerRef}
       className="overflow-auto min-h-0"
+      style={{ scrollbarGutter: 'stable' }}
     >
       {/* Top spacer — maintains scroll position */}
       <div style={{ height: offsetY }} />

@@ -7,6 +7,7 @@ import FileTypeIcon from './FileTypeIcon';
 import EmptyState from './EmptyState';
 import { formatSize, formatDate, getKindOrder } from '../utils';
 import HighlightText from './HighlightText';
+import { useVirtualList } from '../hooks/useVirtualList';
 
 const FolderPicker = lazy(() => import('./FolderPicker'));
 const ShareDialog = lazy(() => import('./ShareDialog'));
@@ -80,7 +81,6 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
 
   // Keyboard navigation state
   const [focusedIndex, setFocusedIndex] = useState(-1);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const selected = externalSelected ?? internalSelected;
   const isSelectionMode = selected.size > 0;
@@ -162,6 +162,13 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
       return sortDir === 'desc' ? -cmp : cmp;
     });
   }, [dirs, files, currentDir, sortKey, sortDir, dirMtimes]);
+
+  // Virtual scrolling — only render visible items in list view
+  // Must be declared after sortedItems to avoid TDZ
+  const { containerRef, visibleRange, totalHeight, offsetY } = useVirtualList({
+    itemCount: sortedItems.length,
+    rowHeight: 96,
+  });
 
   // Keyboard navigation for FileImageList
   const itemsLength = sortedItems.length;
@@ -284,86 +291,97 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
 
   return (
     <>
-      <div ref={containerRef} tabIndex={0} className="space-y-2 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 rounded-lg" onMouseMove={() => focusedIndex >= 0 && setFocusedIndex(-1)}>
-        {sortedItems.map((item, index) => {
-          const isDir = item.type === 'directory';
-          const isSelected = selected.has(item.path);
-          const isImage = item.mime.startsWith('image/');
-          const isVideo = item.mime.startsWith('video/');
+      <div
+        ref={containerRef}
+        tabIndex={0}
+        className="overflow-y-auto outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 rounded-lg"
+        style={{ position: 'relative', height: '100%', scrollbarGutter: 'stable' }}
+        onMouseMove={() => focusedIndex >= 0 && setFocusedIndex(-1)}
+      >
+        <div style={{ height: totalHeight, position: 'relative' }}>
+          <div style={{ transform: `translateY(${offsetY}px)`, willChange: 'transform' }}>
+            {sortedItems.slice(visibleRange.start, visibleRange.end).map((item, virtualIndex) => {
+              const index = visibleRange.start + virtualIndex;
+              const isDir = item.type === 'directory';
+              const isSelected = selected.has(item.path);
+              const isImage = item.mime.startsWith('image/');
+              const isVideo = item.mime.startsWith('video/');
 
-          return (
-            <div
-              key={item.path}
-              data-item-index={index}
-              className={`flex items-center gap-4 p-3 rounded-lg cursor-pointer transition-colors render-optimized ${
-                isSelected ? 'bg-blue-50 dark:bg-blue-900/30 ring-1 ring-blue-500' : focusedIndex === index ? 'bg-blue-50/50 dark:bg-blue-900/20 ring-1 ring-blue-300' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-              }`}
-              onClick={() => isDir ? onNavigate(item.path) : onOpen(item.path, item.mime)}
-              onContextMenu={(e) => handleContextMenu(e, item.path, item.name, isDir)}
-              onTouchStart={(e) => handleTouchStart(e, item.path, item.name, isDir)}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-            >
-              <div
-                className="flex-shrink-0"
-                onClick={(e) => { e.stopPropagation(); handleToggleSelect(item.path); }}
-              >
-                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
-                  isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300 dark:border-gray-600'
-                }`}>
-                  {isSelected && (
-                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-              </div>
-              <div className="w-16 h-16 flex-shrink-0 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-                {isDir ? (
-                  <FileTypeIcon mime="folder" className="w-8 h-8" isDir={true} />
-                ) : isImage ? (
-                  <SafeThumb path={item.path} mtime={item.mtime} />
-                ) : isVideo ? (
-                  <VideoListThumb path={item.path} mtime={item.mtime} />
-                ) : (
-                  <FileTypeIcon mime="application/octet-stream" className="w-8 h-8" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                {renaming?.path === item.path ? (
-                  <input
-                    autoFocus
-                    defaultValue={renaming.name}
-                    className="w-full text-sm px-2 py-1 rounded border border-blue-500 outline-none"
-                    onBlur={(e) => {
-                      if (e.target.value && e.target.value !== renaming.name) onRename?.(item.path, e.target.value);
-                      setRenaming(null);
-                    }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setRenaming(null); }}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                ) : (
-                  <div className="font-medium text-sm truncate">
-                    <HighlightText text={item.name.endsWith('.url') ? item.name.slice(0, -4) : item.name} searchTerm={search} />
+              return (
+                <div
+                  key={item.path}
+                  data-item-index={index}
+                  className={`flex items-center gap-4 p-3 rounded-lg cursor-pointer transition-colors render-optimized ${
+                    isSelected ? 'bg-blue-50 dark:bg-blue-900/30 ring-1 ring-blue-500' : focusedIndex === index ? 'bg-blue-50/50 dark:bg-blue-900/20 ring-1 ring-blue-300' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                  onClick={() => isDir ? onNavigate(item.path) : onOpen(item.path, item.mime)}
+                  onContextMenu={(e) => handleContextMenu(e, item.path, item.name, isDir)}
+                  onTouchStart={(e) => handleTouchStart(e, item.path, item.name, isDir)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                >
+                  <div
+                    className="flex-shrink-0"
+                    onClick={(e) => { e.stopPropagation(); handleToggleSelect(item.path); }}
+                  >
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                      isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}>
+                      {isSelected && (
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
                   </div>
-                )}
-                <div className="text-xs text-gray-500">
-                  {isDir ? '文件夹' : formatSize(item.size)}
+                  <div className="w-16 h-16 flex-shrink-0 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
+                    {isDir ? (
+                      <FileTypeIcon mime="folder" className="w-8 h-8" isDir={true} />
+                    ) : isImage ? (
+                      <SafeThumb path={item.path} mtime={item.mtime} />
+                    ) : isVideo ? (
+                      <VideoListThumb path={item.path} mtime={item.mtime} />
+                    ) : (
+                      <FileTypeIcon mime="application/octet-stream" className="w-8 h-8" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {renaming?.path === item.path ? (
+                      <input
+                        autoFocus
+                        defaultValue={renaming.name}
+                        className="w-full text-sm px-2 py-1 rounded border border-blue-500 outline-none"
+                        onBlur={(e) => {
+                          if (e.target.value && e.target.value !== renaming.name) onRename?.(item.path, e.target.value);
+                          setRenaming(null);
+                        }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setRenaming(null); }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <div className="font-medium text-sm truncate">
+                        <HighlightText text={item.name.endsWith('.url') ? item.name.slice(0, -4) : item.name} searchTerm={search} />
+                      </div>
+                    )}
+                    <div className="text-xs text-gray-500">
+                      {isDir ? '文件夹' : formatSize(item.size)}
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-400 flex-shrink-0">
+                    {formatDate(item.mtime)}
+                  </div>
                 </div>
-              </div>
-              <div className="text-xs text-gray-400 flex-shrink-0">
-                {formatDate(item.mtime)}
-              </div>
+              );
+            })}
+          </div>
+          {/* Infinite scroll sentinel — inside scroll container so it triggers correctly */}
+          {hasMore && (
+            <div ref={sentinelRef} className="flex items-center justify-center py-8">
+              {loadingMore ? <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" /> : <span className="text-sm text-gray-400">滚动加载更多…</span>}
             </div>
-          );
-        })}
-      </div>
-
-      {hasMore && (
-        <div ref={sentinelRef} className="flex items-center justify-center py-8">
-          {loadingMore ? <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" /> : <span className="text-sm text-gray-400">滚动加载更多…</span>}
+          )}
         </div>
-      )}
+      </div>
 
       {sortedItems.length === 0 && (
         <EmptyState type="directory" />
@@ -498,26 +516,6 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
                 下载为 ZIP
               </button>
             )}
-            {/* Unzip */}
-            {!contextMenu.isDir && contextMenu.name.endsWith('.zip') && (
-              <button
-                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                onClick={async () => {
-                  toast('info', '正在解压...');
-                  try {
-                    const { unzipFile } = await import('../api');
-                    const result = await unzipFile(contextMenu.path, currentDir);
-                    toast('success', `已解压 ${result.extracted} 个文件到 ${result.dir}`);
-                    onMove?.();
-                  } catch (e) { toast('error', `解压失败: ${(e as Error).message}`); }
-                  setContextMenu(null);
-                }}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-                解压到...
-              </button>
-            )}
-            <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
             <button
               className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
               onClick={() => { setRenaming({ path: contextMenu.path, name: contextMenu.name }); setContextMenu(null); }}
@@ -525,22 +523,22 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
               重命名
             </button>
-            {!contextMenu.isDir && (
+            {onDelete && (
               <button
-                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                onClick={() => { setShareDialog({ path: contextMenu.path, name: contextMenu.name }); setContextMenu(null); }}
+                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-red-500"
+                onClick={async () => {
+                  const confirmed = window.confirm(`确定要删除「${contextMenu.name}」吗？`);
+                  if (confirmed) {
+                    try { await onDelete([contextMenu.path]); toast('success', '已删除'); setContextMenu(null); onMove?.(); }
+                    catch (e) { toast('error', `删除失败: ${(e as Error).message}`); }
+                  }
+                  setContextMenu(null);
+                }}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                分享
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                删除
               </button>
             )}
-            <button
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-500 flex items-center gap-2"
-              onClick={() => { onDelete?.([contextMenu.path]); setContextMenu(null); }}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-              删除
-            </button>
           </div>
         </>
       )}
@@ -550,12 +548,11 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
           <ShareDialog filePath={shareDialog.path} fileName={shareDialog.name} onClose={() => setShareDialog(null)} />
         </Suspense>
       )}
-
       {folderPicker && (
         <Suspense fallback={null}>
           <FolderPicker
             title={folderPicker.mode === 'move' ? '移动到' : '复制到'}
-            onSelect={async (target) => {
+            onSelect={async (target: string) => {
               try {
                 if (folderPicker.mode === 'move') {
                   await moveItem(folderPicker.path, target);
