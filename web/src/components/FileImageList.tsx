@@ -122,15 +122,20 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
   const handleTouchEnd = () => { longPressCancelled.current = true; clearLongPress(); };
 
   const sentinelRef = useRef<HTMLDivElement>(null);
+  // Use a ref for onLoadMore to avoid observer re-creation when the parent's
+  // loadingMore state toggles (which changes onLoadMore's identity via useCallback).
+  // Pattern from FileGrid — keeps the observer stable and prevents duplicate API calls.
+  const onLoadMoreRef = useRef(onLoadMore);
+  onLoadMoreRef.current = onLoadMore;
   useEffect(() => {
-    if (!sentinelRef.current || !onLoadMore || !hasMore) return;
+    if (!sentinelRef.current || !onLoadMoreRef.current || !hasMore) return;
     const observer = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting) onLoadMore(); },
+      (entries) => { if (entries[0].isIntersecting) onLoadMoreRef.current?.(); },
       { rootMargin: '400px' }
     );
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [onLoadMore, hasMore]);
+  }, [hasMore]); // Intentionally omit onLoadMore — ref avoids observer re-creation
 
   // Client-side sort
   const sortKey: 'name' | 'size' | 'mtime' | 'kind' | 'shuffle' = (sortByProp as any) || 'name';
@@ -170,8 +175,16 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
     rowHeight: 96,
   });
 
-  // Keyboard navigation for FileImageList
-  const itemsLength = sortedItems.length;
+  // Keyboard navigation for FileImageList — refs avoid stale closures and
+  // unnecessary event listener re-registration on every keypress (focusedIndex
+  // changes on every arrow press; sortedItems changes on every API response).
+  const focusedIndexRef = useRef(focusedIndex);
+  focusedIndexRef.current = focusedIndex;
+  const sortedItemsRef = useRef(sortedItems);
+  sortedItemsRef.current = sortedItems;
+  const itemsLengthRef = useRef(sortedItems.length);
+  itemsLengthRef.current = sortedItems.length;
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -180,10 +193,12 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
       // Ignore when the inline rename input is active
       if (renaming) return;
 
+      const len = itemsLengthRef.current;
+
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setFocusedIndex((prev) => {
-          const next = Math.min(prev + 1, itemsLength - 1);
+          const next = Math.min(prev + 1, len - 1);
           return prev < 0 ? 0 : next;
         });
       } else if (e.key === 'ArrowUp') {
@@ -194,11 +209,12 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
         setFocusedIndex(0);
       } else if (e.key === 'End') {
         e.preventDefault();
-        setFocusedIndex(itemsLength - 1);
+        setFocusedIndex(len - 1);
       } else if (e.key === 'Enter' || e.key === ' ') {
-        if (focusedIndex >= 0 && focusedIndex < itemsLength) {
+        const fi = focusedIndexRef.current;
+        if (fi >= 0 && fi < len) {
           e.preventDefault();
-          const item = sortedItems[focusedIndex];
+          const item = sortedItemsRef.current[fi];
           if (item) {
             item.type === 'directory' ? onNavigate(item.path) : onOpen(item.path, item.mime);
           }
@@ -208,7 +224,7 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
 
     el.addEventListener('keydown', handleKeyDown);
     return () => el.removeEventListener('keydown', handleKeyDown);
-  }, [sortedItems, focusedIndex, renaming, itemsLength, onNavigate, onOpen]);
+  }, [renaming, onNavigate, onOpen]);
 
   // Auto-scroll focused item into view
   useEffect(() => {
