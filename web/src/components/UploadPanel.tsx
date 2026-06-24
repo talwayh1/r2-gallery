@@ -12,6 +12,7 @@
 import { useRef, useEffect } from 'react';
 import { useUploadQueue, formatEta, formatSpeed, type UploadTask, type UploadTaskStatus } from '../hooks/useUploadQueue';
 import { formatSize } from '../utils';
+import { toast } from '../hooks/useToast';
 
 function StatusIcon({ status }: { status: UploadTaskStatus }) {
   if (status === 'completed') {
@@ -90,6 +91,7 @@ function TaskRow({ task, onCancel, onRetry }: { task: UploadTask; onCancel: () =
 export default function UploadPanel() {
   const { tasks, isOpen, setOpen, cancel, cancelAll, retry, dismissCompleted, hasActiveUploads, activeCount, completedCount, failedCount } = useUploadQueue();
   const listRef = useRef<HTMLDivElement>(null);
+  const autoDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-scroll to the latest task when new ones arrive (newest at bottom)
   useEffect(() => {
@@ -97,6 +99,45 @@ export default function UploadPanel() {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, [isOpen, tasks.length]);
+
+  // Auto-dismiss panel after all uploads complete (3s delay)
+  const prevActiveRef = useRef(hasActiveUploads);
+  useEffect(() => {
+    // Transition from active to idle
+    if (prevActiveRef.current && !hasActiveUploads && tasks.length > 0 && isOpen) {
+      // Clear any existing timer
+      if (autoDismissTimerRef.current) {
+        clearTimeout(autoDismissTimerRef.current);
+      }
+      autoDismissTimerRef.current = setTimeout(() => {
+        const total = tasks.length;
+        const done = tasks.filter(t => t.status === 'completed').length;
+        const failed = tasks.filter(t => t.status === 'failed').length;
+        const cancelled = tasks.filter(t => t.status === 'cancelled').length;
+        // Show summary toast
+        if (done === total) {
+          toast('success', `全部 ${total} 个文件上传完成`);
+        } else if (failed === total) {
+          toast('error', `全部 ${total} 个文件上传失败`);
+        } else if (failed > 0) {
+          toast('info', `上传完成：${done} 个成功，${failed} 个失败${cancelled > 0 ? `，${cancelled} 个取消` : ''}`);
+        } else {
+          toast('info', `上传完成（${total} 个${done > 0 ? `，${done} 个成功` : ''}${cancelled > 0 ? `，${cancelled} 个取消` : ''}）`);
+        }
+        // Auto-dismiss panel
+        setOpen(false);
+        autoDismissTimerRef.current = null;
+      }, 3000);
+    }
+    prevActiveRef.current = hasActiveUploads;
+
+    return () => {
+      if (autoDismissTimerRef.current) {
+        clearTimeout(autoDismissTimerRef.current);
+        autoDismissTimerRef.current = null;
+      }
+    };
+  }, [hasActiveUploads, tasks, isOpen, setOpen]);
 
   // Determine if we have any terminal tasks that could be cleared
   const terminalCount = tasks.filter(t =>

@@ -33,14 +33,57 @@ function touchListCache(key: string): boolean {
   return true;
 }
 
+/**
+ * Invalidate list cache entries for a specific directory and its subdirectories.
+ * Cache key format: `${dir}:${sort}:${order}:${typeFilter}`
+ * When dir is undefined, only the root directory cache is cleared (not subdirectories).
+ * This is significantly smarter than listCache.clear() which nukes the entire cache.
+ */
+function invalidateListCacheForDir(dir?: string): void {
+  if (dir === undefined) {
+    // Unknown dir — only clear root cache entries (':name:asc:all' etc.)
+    const rootPrefix = ':';
+    for (const [key] of listCache) {
+      if (key.startsWith(rootPrefix)) {
+        listCache.delete(key);
+      }
+    }
+    return;
+  }
+  // Clear the directory itself and all its subdirectories
+  const dirPrefix = dir ? `${dir}:` : ':';
+  const subPrefix = dir ? `${dir}/` : '';
+  for (const [key] of listCache) {
+    if (key.startsWith(dirPrefix) || (subPrefix && key.startsWith(subPrefix))) {
+      listCache.delete(key);
+    }
+  }
+}
+
 // Demo mode middleware - blocks write operations
 const demoModeCheck = async (c: any, next: any) => {
   if (c.env.DEMO_MODE === 'true') {
     return c.json({ error: '操作在演示模式下被禁用' }, 403);
   }
   await next();
-  // Invalidate list cache after any successful write operation
-  listCache.clear();
+  // Smart cache invalidation: determine affected directory from request params
+  // This preserves caches for unrelated directories (much better than full clear)
+  const pathParam = c.req.query('path');
+  const dirParam = c.req.query('dir');
+  if (pathParam) {
+    // e.g., PUT /api/file?path=photos/vacation/photo.jpg → dir=photos/vacation
+    const parentDir = pathParam.split('/').slice(0, -1).join('/');
+    invalidateListCacheForDir(parentDir);
+    // Also clear root (file count/tree may change)
+    if (parentDir !== '') invalidateListCacheForDir('');
+  } else if (dirParam) {
+    invalidateListCacheForDir(dirParam);
+    if (dirParam !== '') invalidateListCacheForDir('');
+  } else {
+    // POST routes: path is in JSON body (already consumed by the handler)
+    // Best effort fallback: only clear root cache entries, not unrelated subdirs
+    invalidateListCacheForDir('');
+  }
 };
 
 // Public: file browsing (GET /files, GET /file, GET /dirs)
