@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 
 interface PanoramaViewerProps {
   src: string;
@@ -8,8 +8,9 @@ interface PanoramaViewerProps {
 export default function PanoramaViewer({ src, onClose }: PanoramaViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
+  const startXRef = useRef(0);
+  const scrollLeftRef = useRef(0);
+  const isDraggingRef = useRef(false);
   const [zoom, setZoom] = useState(1);
 
   useEffect(() => {
@@ -23,24 +24,73 @@ export default function PanoramaViewer({ src, onClose }: PanoramaViewerProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  // Shared drag start — works for both mouse and touch
+  const dragStart = useCallback((clientX: number) => {
     setIsDragging(true);
-    setStartX(e.pageX - (containerRef.current?.offsetLeft || 0));
-    setScrollLeft(containerRef.current?.scrollLeft || 0);
+    isDraggingRef.current = true;
+    startXRef.current = clientX - (containerRef.current?.getBoundingClientRect().left || 0);
+    scrollLeftRef.current = containerRef.current?.scrollLeft || 0;
+  }, []);
+
+  // Shared drag move — works for both mouse and touch
+  const dragMove = useCallback((clientX: number, e: Event) => {
+    if (!isDraggingRef.current) return;
+    e.preventDefault();
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = clientX - rect.left;
+    const walk = (x - startXRef.current) * 2;
+    if (containerRef.current) {
+      containerRef.current.scrollLeft = scrollLeftRef.current - walk;
+    }
+  }, []);
+
+  // Shared drag end
+  const dragEnd = useCallback(() => {
+    setIsDragging(false);
+    isDraggingRef.current = false;
+  }, []);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    dragStart(e.pageX);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
+    if (!isDraggingRef.current) return;
     e.preventDefault();
-    const x = e.pageX - (containerRef.current?.offsetLeft || 0);
-    const walk = (x - startX) * 2;
+    const x = e.pageX - (containerRef.current?.getBoundingClientRect().left || 0);
+    const walk = (x - startXRef.current) * 2;
     if (containerRef.current) {
-      containerRef.current.scrollLeft = scrollLeft - walk;
+      containerRef.current.scrollLeft = scrollLeftRef.current - walk;
     }
   };
 
   const handleMouseUp = () => {
-    setIsDragging(false);
+    dragEnd();
+  };
+
+  // Touch drag for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      dragStart(e.touches[0].pageX);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 1 && isDraggingRef.current) {
+      e.preventDefault();
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const x = e.touches[0].pageX - rect.left;
+      const walk = (x - startXRef.current) * 2;
+      if (containerRef.current) {
+        containerRef.current.scrollLeft = scrollLeftRef.current - walk;
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    dragEnd();
   };
 
   const handleWheel = (e: React.WheelEvent) => {
@@ -85,7 +135,7 @@ export default function PanoramaViewer({ src, onClose }: PanoramaViewerProps) {
       </div>
 
       {/* Help text */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 text-white/50 text-sm">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 text-white/50 text-sm pointer-events-none">
         拖拽平移 · Ctrl+滚轮缩放 · +/- 缩放 · 0 重置 · ESC 关闭
       </div>
 
@@ -97,6 +147,9 @@ export default function PanoramaViewer({ src, onClose }: PanoramaViewerProps) {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         onWheel={handleWheel}
       >
         <img
