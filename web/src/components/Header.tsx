@@ -546,7 +546,7 @@ export default function Header({
             {canInstall && (
               <button
                 onClick={async () => {
-                  const accepted = await (window as any).installPWA();
+                  const accepted = await window.installPWA?.() ?? false;
                   if (accepted) setCanInstall(false);
                 }}
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
@@ -786,7 +786,7 @@ export default function Header({
                   <span>🌐</span><span>语言</span>
                 </button>
                 {canInstall && (
-                  <button onClick={async () => { const accepted = await (window as any).installPWA(); if (accepted) setCanInstall(false); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <button onClick={async () => { const accepted = await window.installPWA?.() ?? false; if (accepted) setCanInstall(false); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
                     <span>📲</span><span>安装应用</span>
                   </button>
                 )}

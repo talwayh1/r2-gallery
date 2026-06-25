@@ -88,7 +88,7 @@ export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavig
   }, [onLoadMore, hasMore]);
 
   // Client-side sort
-  const sortKey: 'name' | 'size' | 'mtime' | 'kind' | 'shuffle' = (sortByProp as any) || 'name';
+  const sortKey: 'name' | 'size' | 'mtime' | 'kind' | 'shuffle' = (['name', 'size', 'mtime', 'kind', 'shuffle'].includes(sortByProp ?? '') ? sortByProp! : 'name') as 'name' | 'size' | 'mtime' | 'kind' | 'shuffle';
   const sortDir: 'asc' | 'desc' = sortOrderProp || 'asc';
 
   const sortedItems = useMemo(() => {

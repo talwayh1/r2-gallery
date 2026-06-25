@@ -85,7 +85,7 @@ export default function FileColumns({ files, dirs, dirMtimes, currentDir, onNavi
   const selected = externalSelected ?? internalSelected;
   const isSelectionMode = selected.size > 0;
 
-  const sortKey: 'name' | 'size' | 'mtime' | 'kind' | 'shuffle' = (sortByProp as any) || 'name';
+  const sortKey: 'name' | 'size' | 'mtime' | 'kind' | 'shuffle' = (['name', 'size', 'mtime', 'kind', 'shuffle'].includes(sortByProp ?? '') ? sortByProp! : 'name') as 'name' | 'size' | 'mtime' | 'kind' | 'shuffle';
   const sortDir: 'asc' | 'desc' = sortOrderProp || 'asc';
 
   const sortedItems = useMemo(() => {

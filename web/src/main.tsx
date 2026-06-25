@@ -39,7 +39,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Global handler to apply SW update when user confirms
-(window as any).applySWUpdate = async () => {
+window.applySWUpdate = async () => {
   const reg = await navigator.serviceWorker.getRegistration();
   if (!reg?.waiting) return false;
   reg.waiting.postMessage('skipWaiting');
@@ -58,7 +58,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 
 // Expose install function globally
-(window as any).installPWA = async () => {
+window.installPWA = async () => {
   if (!deferredPrompt) return false;
   deferredPrompt.prompt();
   const { outcome } = await deferredPrompt.userChoice;

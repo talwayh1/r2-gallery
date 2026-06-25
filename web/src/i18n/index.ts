@@ -457,7 +457,7 @@ const resources = {
 
 // Detect browser language
 const getBrowserLang = (): string => {
-  const lang = navigator.language || (navigator as any).userLanguage || '';
+  const lang = (navigator.language ?? navigator.userLanguage) || '';
   const short = lang.split('-')[0];
   if (['zh', 'en', 'ja', 'ko'].includes(short)) {
     return short === 'zh' ? 'zh-CN' : short;

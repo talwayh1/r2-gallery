@@ -162,7 +162,7 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
     const allFiles: { file: File; relativePath: string }[] = [];
 
     for (const item of items) {
-      const entry = (item as any).webkitGetAsEntry?.() as WebKitEntry | null;
+      const entry = (item as DataTransferItem & { webkitGetAsEntry?: () => WebKitEntry | null }).webkitGetAsEntry?.() as WebKitEntry | null;
       if (entry) {
         const results = await readDirectory(entry);
         allFiles.push(...results);
@@ -185,7 +185,7 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
     // Build a preview of what's being dragged
     if (items.length > 0) {
       const hasFolder = items.some(item => {
-        const entry = (item as any).webkitGetAsEntry?.() as WebKitEntry | null;
+        const entry = (item as DataTransferItem & { webkitGetAsEntry?: () => WebKitEntry | null }).webkitGetAsEntry?.() as WebKitEntry | null;
         return entry?.isDirectory;
       });
       setDragHasFolder(hasFolder);
@@ -194,7 +194,7 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
       const preview = [];
       for (let i = 0; i < Math.min(count, 5); i++) {
         const item = items[i];
-        const entry = (item as any).webkitGetAsEntry?.() as WebKitEntry | null;
+        const entry = (item as DataTransferItem & { webkitGetAsEntry?: () => WebKitEntry | null }).webkitGetAsEntry?.() as WebKitEntry | null;
         if (entry) {
           preview.push({ file: new File([], entry.name), relativePath: entry.fullPath });
         } else {
@@ -232,7 +232,7 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
 
     const files = Array.from(fileList).map(f => {
       // webkitRelativePath is set when using folder picker
-      const relativePath = (f as any).webkitRelativePath as string | undefined;
+      const relativePath = (f as File & { webkitRelativePath?: string }).webkitRelativePath;
       return { file: f, relativePath: relativePath || f.name };
     });
 
@@ -387,7 +387,7 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
         type="file"
         multiple
         className="hidden"
-        // @ts-ignore — webkitdirectory is non-standard but widely supported
+        // webkitdirectory is non-standard but widely supported — typed via global.d.ts
         webkitdirectory=""
         directory=""
         onChange={handleFileInputChange}

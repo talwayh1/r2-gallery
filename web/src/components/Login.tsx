@@ -32,7 +32,7 @@ export default function Login({ onLogin, onTelegramLogin, onClose, telegramBotUs
     telegramRef.current.appendChild(script);
 
     // Define global callback
-    (window as any).onTelegramAuth = (user: Record<string, string>) => {
+    window.onTelegramAuth = (user: Record<string, string>) => {
       if (onTelegramLogin) {
         setLoading(true);
         setError('');
@@ -43,7 +43,7 @@ export default function Login({ onLogin, onTelegramLogin, onClose, telegramBotUs
     };
 
     return () => {
-      delete (window as any).onTelegramAuth;
+      delete window.onTelegramAuth;
     };
   }, [telegramBotUsername, onTelegramLogin]);
 

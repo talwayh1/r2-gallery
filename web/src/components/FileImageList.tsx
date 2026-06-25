@@ -138,7 +138,7 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
   }, [hasMore]); // Intentionally omit onLoadMore — ref avoids observer re-creation
 
   // Client-side sort
-  const sortKey: 'name' | 'size' | 'mtime' | 'kind' | 'shuffle' = (sortByProp as any) || 'name';
+  const sortKey: 'name' | 'size' | 'mtime' | 'kind' | 'shuffle' = (['name', 'size', 'mtime', 'kind', 'shuffle'].includes(sortByProp ?? '') ? sortByProp! : 'name') as 'name' | 'size' | 'mtime' | 'kind' | 'shuffle';
   const sortDir: 'asc' | 'desc' = sortOrderProp || 'asc';
 
   const sortedItems = useMemo(() => {

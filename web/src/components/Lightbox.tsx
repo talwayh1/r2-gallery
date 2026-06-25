@@ -14,6 +14,7 @@ const MarkdownEditor = lazy(() => import('./MarkdownEditor'));
 const HlsPlayer = lazy(() => import('./HlsPlayer'));
 const PanoramaViewer = lazy(() => import('./PanoramaViewer'));
 import { formatSize, getAspectRatio } from '../utils';
+import type { FileItem } from '../types';
 const KeyboardShortcutsLightbox = lazy(() => import('./KeyboardShortcuts'));
 
 interface MediaItem {
@@ -155,7 +156,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     isZoomed: false,
     isImage: false,
     isVideo: false,
-    current: null as any,
+    current: null as MediaItem | null,
     uiVisible: true,
     showMoreTools: false,
     showInfo: false,
@@ -1069,7 +1070,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         kb.handleClose();
       } else if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D') && kb.onDuplicate) {
         e.preventDefault();
-        kb.onDuplicate(kb.current?.path);
+        kb.onDuplicate(kb.current?.path ?? '');
       } else if (e.key === ']' || e.key === '[') {
         // Slideshow speed shortcuts — only active when slideshow is playing
         if (!kb.slideshowTimerRef.current) return;

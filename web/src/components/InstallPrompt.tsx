@@ -65,7 +65,7 @@ export default function InstallPrompt() {
 
   const handleUpdate = async () => {
     setUpdateAvailable(false);
-    await (window as any).applySWUpdate?.();
+    await window.applySWUpdate?.();
   };
 
   // === Update Available Banner ===
