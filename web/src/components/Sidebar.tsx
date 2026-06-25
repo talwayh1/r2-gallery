@@ -51,6 +51,21 @@ let dirTreeCache: DirNode[] | null = null;
 let dirTreeCacheTime = 0;
 const DIR_TREE_CACHE_TTL = 30_000; // 30 seconds
 
+/** Flatten the visible tree into a list of paths for keyboard navigation */
+function getFlatPaths(nodes: DirNode[], expanded: Set<string>): string[] {
+  const result: string[] = [];
+  function walk(items: DirNode[]) {
+    for (const node of items) {
+      result.push(node.path);
+      if (node.children && expanded.has(node.path)) {
+        walk(node.children);
+      }
+    }
+  }
+  walk(nodes);
+  return result;
+}
+
 /** Sidebar loading skeleton — matches the tree item layout for minimal layout shift */
 const SidebarSkeleton = () => (
   <div className="px-2 pb-3 space-y-0.5">
@@ -73,8 +88,10 @@ export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts, op
   );
   const [maxDepth] = useState(MAX_DEPTH);
   const [filterText, setFilterText] = useState('');
+  const [focusedPath, setFocusedPath] = useState('');
   const sidebarRef = useRef<HTMLDivElement>(null);
   const filterInputRef = useRef<HTMLInputElement>(null);
+  const treeRef = useRef<HTMLDivElement>(null);
 
   // Auto-focus filter input when sidebar opens (desktop keyboard users)
   useEffect(() => {
@@ -162,27 +179,146 @@ export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts, op
     }, []);
   }
 
+  // Flatten visible paths for keyboard navigation
+  const sortedTree = sortNodes(tree, sort);
+  const filteredTree = useMemo(() => filterNodes(sortedTree, filterText), [sortedTree, filterText]);
+  const showFiltered = filterText.trim().length > 0;
+  const visibleTree = showFiltered ? filteredTree : sortedTree;
+  const flatPaths = useMemo(() => getFlatPaths(visibleTree, expanded), [visibleTree, expanded]);
+
+  // Find parent path for a given child path
+  const getParentPath = useCallback((childPath: string): string | null => {
+    const lastSlash = childPath.lastIndexOf('/');
+    return lastSlash > 0 ? childPath.substring(0, lastSlash) : '';
+  }, []);
+
+  // Keyboard navigation handler
+  const handleTreeKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const currentIndex = flatPaths.indexOf(focusedPath);
+    const currentIdx = currentIndex >= 0 ? currentIndex : 0;
+
+    const findInTree = (nodes: DirNode[], path: string): DirNode | null => {
+      for (const n of nodes) {
+        if (n.path === path) return n;
+        if (n.children) {
+          const found = findInTree(n.children, path);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const findNode = (path: string) => findInTree(visibleTree, path);
+
+    switch (e.key) {
+      case 'ArrowDown': {
+        e.preventDefault();
+        const nextIdx = Math.min(currentIdx + 1, flatPaths.length - 1);
+        if (nextIdx !== currentIdx) {
+          const nextPath = flatPaths[nextIdx];
+          setFocusedPath(nextPath);
+          // Focus the actual button element
+          const el = sidebarRef.current?.querySelector(`[data-path="${CSS.escape(nextPath)}"]`) as HTMLElement;
+          el?.focus();
+        }
+        break;
+      }
+      case 'ArrowUp': {
+        e.preventDefault();
+        const prevIdx = Math.max(currentIdx - 1, 0);
+        if (prevIdx !== currentIdx) {
+          const prevPath = flatPaths[prevIdx];
+          setFocusedPath(prevPath);
+          const el = sidebarRef.current?.querySelector(`[data-path="${CSS.escape(prevPath)}"]`) as HTMLElement;
+          el?.focus();
+        }
+        break;
+      }
+      case 'ArrowRight': {
+        const node = findNode(focusedPath);
+        if (node?.children && node.children.length > 0) {
+          if (!expanded.has(focusedPath)) {
+            // Collapsed — expand it
+            e.preventDefault();
+            toggle(focusedPath);
+          } else {
+            // Already expanded — focus first child
+            e.preventDefault();
+            const firstChildPath = node.children[0].path;
+            setFocusedPath(firstChildPath);
+            const el = sidebarRef.current?.querySelector(`[data-path="${CSS.escape(firstChildPath)}"]`) as HTMLElement;
+            el?.focus();
+          }
+        }
+        break;
+      }
+      case 'ArrowLeft': {
+        const node = findNode(focusedPath);
+        if (node?.children && node.children.length > 0 && expanded.has(focusedPath)) {
+          // Expanded folder — collapse it
+          e.preventDefault();
+          toggle(focusedPath);
+        } else {
+          // Leaf node or collapsed folder — focus parent
+          const parentPath = getParentPath(focusedPath);
+          if (parentPath !== null) {
+            e.preventDefault();
+            setFocusedPath(parentPath);
+            const el = sidebarRef.current?.querySelector(`[data-path="${CSS.escape(parentPath)}"]`) as HTMLElement;
+            el?.focus();
+          }
+        }
+        break;
+      }
+      case 'Home': {
+        if (flatPaths.length > 0) {
+          e.preventDefault();
+          const firstPath = flatPaths[0];
+          setFocusedPath(firstPath);
+          const el = sidebarRef.current?.querySelector(`[data-path="${CSS.escape(firstPath)}"]`) as HTMLElement;
+          el?.focus();
+        }
+        break;
+      }
+      case 'End': {
+        if (flatPaths.length > 0) {
+          e.preventDefault();
+          const lastPath = flatPaths[flatPaths.length - 1];
+          setFocusedPath(lastPath);
+          const el = sidebarRef.current?.querySelector(`[data-path="${CSS.escape(lastPath)}"]`) as HTMLElement;
+          el?.focus();
+        }
+        break;
+      }
+    }
+  }, [flatPaths, focusedPath, expanded, visibleTree, toggle, getParentPath]);
+
   const renderNode = (node: DirNode, depth: number = 0) => {
     if (depth >= maxDepth) return null;
     
     const hasChildren = node.children && node.children.length > 0;
     const isOpen = (showFiltered || expanded.has(node.path)) && hasChildren;
     const isActive = currentDir === node.path;
+    const isFocused = focusedPath === node.path;
 
     return (
       <div key={node.path}>
         <button
           onClick={() => onNavigate(node.path)}
           data-path={node.path}
+          tabIndex={0}
+          onFocus={() => setFocusedPath(node.path)}
           className={`w-full flex items-center gap-1 px-2 py-1.5 text-sm rounded-lg transition-colors ${
             isActive
               ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-              : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+              : isFocused
+                ? 'ring-2 ring-blue-400 dark:ring-blue-500 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700'
+                : 'hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
         >
           {hasChildren && (
-            <span onClick={(e) => { e.stopPropagation(); toggle(node.path); }} className="w-4">
+            <span onClick={(e) => { e.stopPropagation(); toggle(node.path); }} className="w-4 cursor-pointer">
               <svg className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-90' : ''}`} fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" />
               </svg>
@@ -200,10 +336,6 @@ export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts, op
       </div>
     );
   };
-
-  const sortedTree = sortNodes(tree, sort);
-  const filteredTree = useMemo(() => filterNodes(sortedTree, filterText), [sortedTree, filterText]);
-  const showFiltered = filterText.trim().length > 0;
 
   return (
     <aside ref={sidebarRef} className="w-60 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col shrink-0">
@@ -271,10 +403,14 @@ export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts, op
         </div>
       </div>
       {/* Scrollable tree area */}
-      <div className="flex-1 overflow-y-auto overscroll-contain">
+      <div
+        ref={treeRef}
+        className="flex-1 overflow-y-auto overscroll-contain"
+        onKeyDown={handleTreeKeyDown}
+      >
         {loading ? <SidebarSkeleton /> : (
           <div className="px-2 pb-3 space-y-0.5">
-            {(showFiltered ? filteredTree : sortedTree).map((node) => renderNode(node))}
+            {visibleTree.map((node) => renderNode(node))}
           </div>
         )}
       </div>

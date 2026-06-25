@@ -125,6 +125,17 @@ const resources = {
       'error.copyFailed': '复制失败',
       'error.moveFailed': '移动失败',
 
+      // Error boundary
+      'error.boundary.title': '出了点问题',
+      'error.boundary.message': '应用遇到了意外错误。请尝试恢复或刷新页面。',
+      'error.boundary.details': '错误详情',
+      'error.boundary.copyError': '复制错误',
+      'error.boundary.copied': '已复制',
+      'error.boundary.retry': '重试',
+      'error.boundary.reload': '刷新页面',
+      'error.chunkError.title': '应用需要更新',
+      'error.chunkError.message': '应用版本已更新，请刷新页面以加载最新版本。',
+
       // Upload panel
       'upload.status.completed': '完成',
       'upload.status.failed': '失败',
@@ -341,6 +352,17 @@ const resources = {
       'error.copyFailed': 'Copy failed',
       'error.moveFailed': 'Move failed',
 
+      // Error boundary
+      'error.boundary.title': 'Something went wrong',
+      'error.boundary.message': 'The application encountered an unexpected error. Try to recover or refresh the page.',
+      'error.boundary.details': 'Error Details',
+      'error.boundary.copyError': 'Copy Error',
+      'error.boundary.copied': 'Copied',
+      'error.boundary.retry': 'Retry',
+      'error.boundary.reload': 'Refresh Page',
+      'error.chunkError.title': 'Update Available',
+      'error.chunkError.message': 'The application has been updated. Please refresh to load the latest version.',
+
       // Upload panel
       'upload.status.completed': 'Completed',
       'upload.status.failed': 'Failed',
@@ -554,6 +576,17 @@ const resources = {
       'error.copyFailed': 'コピーに失敗しました',
       'error.moveFailed': '移動に失敗しました',
 
+      // Error boundary
+      'error.boundary.title': '問題が発生しました',
+      'error.boundary.message': 'アプリケーションで予期しないエラーが発生しました。回復するか、ページを更新してください。',
+      'error.boundary.details': 'エラー詳細',
+      'error.boundary.copyError': 'エラーをコピー',
+      'error.boundary.copied': 'コピーしました',
+      'error.boundary.retry': '再試行',
+      'error.boundary.reload': 'ページを更新',
+      'error.chunkError.title': 'アップデートが必要です',
+      'error.chunkError.message': 'アプリケーションが更新されました。最新バージョンを読み込むにはページを更新してください。',
+
       // Upload panel
       'upload.status.completed': '完了',
       'upload.status.failed': '失敗',
@@ -766,6 +799,17 @@ const resources = {
       'error.renameFailed': '이름 변경 실패',
       'error.copyFailed': '복사 실패',
       'error.moveFailed': '이동 실패',
+
+      // Error boundary
+      'error.boundary.title': '문제가 발생했습니다',
+      'error.boundary.message': '애플리케이션에서 예기치 않은 오류가 발생했습니다. 복구하거나 페이지를 새로고침해주세요.',
+      'error.boundary.details': '오류 상세',
+      'error.boundary.copyError': '오류 복사',
+      'error.boundary.copied': '복사됨',
+      'error.boundary.retry': '재시도',
+      'error.boundary.reload': '페이지 새로고침',
+      'error.chunkError.title': '업데이트 필요',
+      'error.chunkError.message': '애플리케이션이 업데이트되었습니다. 최신 버전을 불러오려면 페이지를 새로고침해주세요.',
 
       // Upload panel
       'upload.status.completed': '완료',

@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { withTranslation, type WithTranslation } from 'react-i18next';
 
-interface Props {
+interface Props extends WithTranslation {
   children: ReactNode;
 }
 
@@ -9,7 +10,7 @@ interface State {
   error: Error | null;
 }
 
-export default class ErrorBoundary extends Component<Props, State> {
+class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -32,6 +33,8 @@ export default class ErrorBoundary extends Component<Props, State> {
   };
 
   render() {
+    const { t } = this.props;
+
     if (this.state.hasError) {
       const isChunkError =
         this.state.error?.message?.includes('Loading chunk') ||
@@ -52,19 +55,19 @@ export default class ErrorBoundary extends Component<Props, State> {
             </div>
 
             <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              {isChunkError ? '应用需要更新' : '出了点问题'}
+              {isChunkError ? t('error.chunkError.title') : t('error.boundary.title')}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
               {isChunkError
-                ? '应用版本已更新，请刷新页面以加载最新版本。'
-                : '应用遇到了意外错误。请尝试恢复或刷新页面。'}
+                ? t('error.chunkError.message')
+                : t('error.boundary.message')}
             </p>
 
             {/* Error detail (collapsible) */}
             {this.state.error && !isChunkError && (
               <details className="mb-6 text-left">
                 <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600 dark:hover:text-gray-300 select-none">
-                  错误详情
+                  {t('error.boundary.details')}
                 </summary>
                 <pre className="mt-2 p-3 bg-gray-100 dark:bg-gray-900 rounded-lg text-xs text-red-600 dark:text-red-400 overflow-auto max-h-32 whitespace-pre-wrap break-all">
                   {this.state.error.message}
@@ -79,7 +82,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                       const btn = document.activeElement as HTMLElement;
                       if (btn) {
                         const orig = btn.textContent;
-                        btn.textContent = '已复制';
+                        btn.textContent = t('error.boundary.copied');
                         setTimeout(() => { btn.textContent = orig; }, 1500);
                       }
                     } catch {
@@ -99,7 +102,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
-                  复制错误
+                  {t('error.boundary.copyError')}
                 </button>
               </details>
             )}
@@ -110,14 +113,14 @@ export default class ErrorBoundary extends Component<Props, State> {
                   onClick={this.handleReset}
                   className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors"
                 >
-                  重试
+                  {t('error.boundary.retry')}
                 </button>
               )}
               <button
                 onClick={this.handleReload}
                 className="px-5 py-2.5 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-xl transition-colors"
               >
-                {isChunkError ? '刷新页面' : '刷新页面'}
+                {t('error.boundary.reload')}
               </button>
             </div>
           </div>
@@ -128,3 +131,5 @@ export default class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
+
+export default withTranslation()(ErrorBoundary);
