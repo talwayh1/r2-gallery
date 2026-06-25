@@ -267,7 +267,7 @@ export async function getTrafficByDay(db: D1Database, days: number = 7): Promise
   const result = await db.prepare(
     "SELECT DATE(created_at) as date, SUM(bytes) as bytes, COUNT(*) as count FROM traffic_log WHERE created_at >= datetime('now', ?) GROUP BY DATE(created_at) ORDER BY date DESC"
   ).bind(`-${days} days`).all();
-  return result.results as any[];
+  return result.results as { date: string; bytes: number; count: number }[];
 }
 
 // === Upload Drafts ===

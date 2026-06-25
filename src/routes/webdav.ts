@@ -149,7 +149,7 @@ webdav.get('/webdav/*', webdavAuth, async (c) => {
       const end = match[2] ? parseInt(match[2], 10) : Math.min(start + 1024 * 1024 - 1, obj.size - 1);
       const rangeObj = await bucket.get(path, { range: { offset: start, length: end - start + 1 } });
       if (!rangeObj) return c.text('Range Not Satisfiable', 416);
-      return new Response((rangeObj as any).body, {
+      return new Response(rangeObj.body!, {
         status: 206,
         headers: {
           'Content-Type': getMimeType(path),
@@ -160,7 +160,7 @@ webdav.get('/webdav/*', webdavAuth, async (c) => {
     }
   }
 
-  return new Response((obj as any).body, {
+  return new Response(obj.body!, {
     headers: {
       'Content-Type': getMimeType(path),
       'Content-Length': String(obj.size),

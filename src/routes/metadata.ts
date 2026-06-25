@@ -58,7 +58,7 @@ metadata.get('/exif', async (c) => {
 
   try {
     // Read body as Uint8Array (Workers-compatible)
-    const body = (obj as any).body as ReadableStream;
+    const body = obj.body!;
     const bytes = await readBody(body);
 
     // Dynamic import exifr
@@ -326,7 +326,7 @@ metadata.get('/id3', async (c) => {
   if (!obj) return c.json({ error: 'File not found' }, 404);
 
   try {
-    const body = (obj as any).body as ReadableStream;
+    const body = obj.body!;
     const bytes = await readBody(body);
 
     // Dynamic import jsmediatags

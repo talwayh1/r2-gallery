@@ -3,7 +3,7 @@
  * Provides async wrappers around R2Bucket binding methods.
  */
 
-import type { R2Object, R2Objects, R2Bucket, R2ListOptions, R2HTTPMetadata } from '@cloudflare/workers-types';
+import type { R2Object, R2ObjectBody, R2Objects, R2Bucket, R2ListOptions, R2HTTPMetadata } from '@cloudflare/workers-types';
 
 /** Custom metadata key-value pairs (max 2048 bytes total) */
 export type CustomMetadata = Record<string, string>;
@@ -52,7 +52,7 @@ export async function listObjects(
 export async function getObject(
   bucket: R2Bucket,
   key: string
-): Promise<R2Object | null> {
+): Promise<R2ObjectBody | null> {
   return bucket.get(key);
 }
 

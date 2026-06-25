@@ -292,7 +292,7 @@ files.get('/file', async (c) => {
   if (!obj) return c.json({ error: 'File not found' }, 404);
 
   const totalSize = obj.size;
-  const etag = `"${totalSize}-${(obj as any).uploaded?.getTime?.() || 0}"`;
+  const etag = `"${totalSize}-${obj.uploaded.getTime()}"`;
   if (c.req.header('If-None-Match') === etag) return new Response(null, { status: 304 });
 
   const contentType = getMimeType(path);
@@ -323,7 +323,7 @@ files.get('/file', async (c) => {
       // Log traffic
       try { await db.logTraffic(c.env.DB, path, length, c.get('userId')); } catch {}
 
-      return new Response((rangeObj as any).body, { status: 206, headers });
+      return new Response(rangeObj.body!, { status: 206, headers });
     }
   }
 
@@ -343,7 +343,7 @@ files.get('/file', async (c) => {
   // Log traffic
   try { await db.logTraffic(c.env.DB, path, totalSize, c.get('userId')); } catch {}
 
-  return new Response((obj as any).body, { headers });
+  return new Response(obj.body!, { headers });
 });
 
 // GET /api/thumb?path=photos/image.jpg
@@ -359,7 +359,7 @@ files.get('/thumb', async (c) => {
   try {
     const cachedThumb = await r2.getObject(bucket, thumbKey);
     if (cachedThumb) {
-      const etag = `"${cachedThumb.size}-${(cachedThumb as any).uploaded?.getTime?.() || 0}"`;
+      const etag = `"${cachedThumb.size}-${cachedThumb.uploaded.getTime()}"`;
       if (c.req.header('If-None-Match') === etag) return new Response(null, { status: 304 });
       const headers = new Headers();
       headers.set('Content-Type', 'image/webp');
@@ -367,7 +367,7 @@ files.get('/thumb', async (c) => {
       headers.set('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
       headers.set('ETag', etag);
       headers.set('X-Content-Type-Options', 'nosniff');
-      return new Response((cachedThumb as any).body, { headers });
+      return new Response(cachedThumb.body!, { headers });
     }
   } catch {}
 
@@ -376,11 +376,11 @@ files.get('/thumb', async (c) => {
   if (!original) return c.json({ error: 'File not found' }, 404);
 
   // ETag from original object for conditional requests
-  const origEtag = `"orig-${original.size}-${(original as any).uploaded?.getTime?.() || 0}"`;
+  const origEtag = `"orig-${original.size}-${original.uploaded.getTime()}"`;
   if (c.req.header('If-None-Match') === origEtag) return new Response(null, { status: 304 });
 
   const mime = getMimeType(path);
-  const arrayBuffer = await (original as any).arrayBuffer();
+  const arrayBuffer = await original.arrayBuffer();
 
   // SVG: serve directly (browser renders natively, no WASM decode needed)
   if (isSvg(mime)) {
@@ -417,7 +417,7 @@ files.get('/url-content', async (c) => {
   const bucket = c.env.R2_BUCKET;
   const obj = await r2.getObject(bucket, path);
   if (!obj) return c.json({ error: 'File not found' }, 404);
-  const text = await (obj as any).text();
+  const text = await obj.text();
   return c.json({ url: text.trim() });
 });
 
@@ -675,7 +675,7 @@ files.post('/delete', authMiddleware, demoModeCheck, async (c) => {
       await db.addToTrash(database, {
         original_path: item,
         name: item.split('/').pop() || item,
-        mime: (directObj as any).httpMetadata?.contentType || 'application/octet-stream',
+        mime: directObj.httpMetadata?.contentType || 'application/octet-stream',
         size: directObj.size,
         is_dir: false,
         deleted_by: user,
@@ -707,7 +707,7 @@ files.post('/delete', authMiddleware, demoModeCheck, async (c) => {
         await db.addToTrash(database, {
           original_path: key,
           name: key.split('/').pop() || key,
-          mime: (childObj as any).httpMetadata?.contentType || 'application/octet-stream',
+          mime: childObj.httpMetadata?.contentType || 'application/octet-stream',
           size: childObj.size,
           is_dir: false,
           deleted_by: user,
@@ -824,7 +824,7 @@ files.post('/move', authMiddleware, demoModeCheck, async (c) => {
       await db.upsertFileMetadata(database, {
         path: key.replace(from, destDir).replace(/\/$/, ''),
         size: obj.size,
-        mime: (obj as any).httpMetadata?.contentType || getMimeType(key),
+        mime: obj.httpMetadata?.contentType || getMimeType(key),
         mtime: Math.floor(Date.now() / 1000),
         created_at: new Date().toISOString(),
       });

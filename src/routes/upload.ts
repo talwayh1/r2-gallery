@@ -5,7 +5,7 @@ import * as db from '../services/db';
 import { authMiddleware } from '../auth';
 import { generateThumbnail, getThumbKey, isSupportedImageType } from '../services/thumbnail';
 import { getMimeType } from '../utils/mime';
-import { nanoid } from '../utils/nanoid';
+import type { ExecutionContext } from '@cloudflare/workers-types';
 
 const upload = new Hono<{ Bindings: AppBindings; Variables: Variables }>();
 
@@ -66,7 +66,7 @@ upload.post('/upload', authMiddleware, demoModeCheck, async (c) => {
 
   const formData = await c.req.formData();
   const dir = (formData.get('dir') as string) || '';
-  const allFiles = formData.getAll('file') as any[];
+  const allFiles = formData.getAll('file') as unknown as File[];
   const files = allFiles.filter((f: any) => f && typeof f === 'object' && 'arrayBuffer' in f) as File[];
 
   if (!files.length) {
@@ -137,8 +137,9 @@ upload.post('/upload', authMiddleware, demoModeCheck, async (c) => {
     })();
 
     // Use waitUntil if available (Workers), otherwise fire-and-forget
-    if ((c as any).executionCtx?.waitUntil) {
-      (c as any).executionCtx.waitUntil(thumbPromise);
+    const ctx = c.executionCtx as ExecutionContext | undefined;
+    if (ctx?.waitUntil) {
+      ctx.waitUntil(thumbPromise);
     } else {
       thumbPromise.catch(() => {});
     }

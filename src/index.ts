@@ -153,8 +153,8 @@ app.get('/cdn/*', async (c) => {
   const obj = await c.env.R2_BUCKET.get(key);
   if (!obj) return c.text('Not Found', 404);
 
-  const mime = (obj as any).httpMetadata?.contentType || getContentType(key);
-  return new Response((obj as any).body, {
+  const mime = obj.httpMetadata?.contentType || getContentType(key);
+  return new Response(obj.body!, {
     headers: {
       'Content-Type': mime,
       'Content-Length': String(obj.size),
@@ -269,8 +269,8 @@ app.get('/api/share/:id/file', async (c) => {
   const bucket = c.env.R2_BUCKET;
   const obj = await bucket.get(share.path);
   if (!obj) return c.json({ error: 'File not found' }, 404);
-  const mime = (obj as any).httpMetadata?.contentType || 'application/octet-stream';
-  return new Response((obj as any).body, { headers: { 'Content-Type': mime, 'Content-Length': String(obj.size) } });
+  const mime = obj.httpMetadata?.contentType || 'application/octet-stream';
+  return new Response(obj.body!, { headers: { 'Content-Type': mime, 'Content-Length': String(obj.size) } });
 });
 
 app.post('/api/share/:id/verify', async (c) => {

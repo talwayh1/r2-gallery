@@ -151,7 +151,7 @@ shares.get('/share/:id/file', async (c) => {
     headers.set('Content-Disposition', `attachment; filename="${share.path.split('/').pop()}"`);
   }
 
-  return new Response((obj as any).body, { headers });
+  return new Response(obj.body!, { headers });
 });
 
 export default shares;

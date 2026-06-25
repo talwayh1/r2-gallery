@@ -39,6 +39,13 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const [seekHint, setSeekHint] = useState<'left' | 'right' | null>(null);
   const seekHintTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const showSeekHint = useCallback((dir: 'left' | 'right') => {
+    setSeekHint(dir);
+    if (seekHintTimerRef.current) clearTimeout(seekHintTimerRef.current);
+    seekHintTimerRef.current = setTimeout(() => setSeekHint(null), 500);
+  }, []);
+
   const [showShortcutHint, setShowShortcutHint] = useState(() => {
     return typeof window !== 'undefined' && !localStorage.getItem('videoShortcutHintDismissed');
   });
@@ -299,11 +306,13 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
       case 'ArrowLeft':
         e.preventDefault();
         video.currentTime = Math.max(0, video.currentTime - SEEK_STEP);
+        showSeekHint('left');
         showControlsWithTimer();
         break;
       case 'ArrowRight':
         e.preventDefault();
         video.currentTime = Math.min(duration, video.currentTime + SEEK_STEP);
+        showSeekHint('right');
         showControlsWithTimer();
         break;
       case 'ArrowUp':
