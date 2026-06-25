@@ -409,15 +409,6 @@ html {
   contain-intrinsic-size: auto 200px;
 }
 
-/* Hide scrollbar utility (keep scrolling functional) */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
 /* Horizontal scroll fade indicator (used on mobile Lightbox toolbar) */
 .scroll-fade-right {
   position: relative;
