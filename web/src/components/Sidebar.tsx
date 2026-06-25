@@ -6,6 +6,7 @@ interface Props {
   onNavigate: (path: string) => void;
   onClose?: () => void;
   dirCounts?: Record<string, number>;
+  open?: boolean;
 }
 
 interface DirNode {
@@ -63,7 +64,7 @@ const SidebarSkeleton = () => (
   </div>
 );
 
-export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts }: Props) {
+export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts, open }: Props) {
   const [tree, setTree] = useState<DirNode[]>(dirTreeCache || []);
   const [loading, setLoading] = useState(dirTreeCache === null);
   const [expanded, setExpanded] = useState<Set<string>>(loadExpanded);
@@ -73,6 +74,15 @@ export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts }: 
   const [maxDepth] = useState(MAX_DEPTH);
   const [filterText, setFilterText] = useState('');
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const filterInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus filter input when sidebar opens (desktop keyboard users)
+  useEffect(() => {
+    if (open) {
+      const timer = setTimeout(() => filterInputRef.current?.focus(), 150);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
 
   useEffect(() => {
     // Use cache if fresh
@@ -240,6 +250,7 @@ export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts }: 
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
+              ref={filterInputRef}
               type="text"
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}

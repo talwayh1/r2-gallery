@@ -319,8 +319,8 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
 
       {/* Drag overlay — rendered via React state instead of imperative style.display */}
       {showOverlay && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-500/10 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-4 p-8 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border-2 border-dashed border-blue-500">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-500/10 backdrop-blur-sm animate-fade-in">
+          <div className="flex flex-col items-center gap-4 p-8 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border-2 border-dashed border-blue-500 animate-scale-in">
             <svg className="w-16 h-16 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
