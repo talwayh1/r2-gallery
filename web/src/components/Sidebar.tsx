@@ -304,7 +304,7 @@ export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts, op
     return (
       <div key={node.path}>
         <button
-          onClick={() => onNavigate(node.path)}
+          onClick={() => { onNavigate(node.path); onClose?.(); }}
           data-path={node.path}
           tabIndex={0}
           onFocus={() => setFocusedPath(node.path)}
@@ -344,7 +344,7 @@ export default function Sidebar({ currentDir, onNavigate, onClose, dirCounts, op
         <div className="p-3">
           <div className="flex items-center justify-between mb-2">
             <button
-              onClick={() => onNavigate('')}
+              onClick={() => { onNavigate(''); onClose?.(); }}
               className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors ${
                 !currentDir
                   ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'

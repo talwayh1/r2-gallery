@@ -360,8 +360,8 @@ export default function App() {
         setShowShortcuts((s) => !s);
       } else if (e.key === '/' && !e.shiftKey) {
         e.preventDefault();
-        // Focus inline search filter input by placeholder attribute
-        const input = document.querySelector<HTMLInputElement>('input[placeholder*="过滤器"]');
+        // Focus inline search filter input by name attribute
+        const input = document.querySelector<HTMLInputElement>('input[name="file-filter"]');
         if (input) {
           input.focus();
           input.select();
@@ -373,7 +373,7 @@ export default function App() {
         setShowSearch(true);
       } else if ((e.key === 'f' || e.key === 'F') && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
-        const input = document.querySelector<HTMLInputElement>('input[placeholder*="过滤器"]');
+        const input = document.querySelector<HTMLInputElement>('input[name="file-filter"]');
         if (input) {
           input.focus();
           input.select();
