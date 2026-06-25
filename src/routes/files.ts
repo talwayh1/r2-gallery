@@ -265,7 +265,8 @@ files.get('/files', async (c) => {
   } as FileListResponse;
 
   // Cache result for quick navigation (only first page, no cursor)
-  if (!cursor) {
+  // Skip cache for shuffle — random order should give different results each time
+  if (!cursor && sort !== 'shuffle') {
     listCache.set(cacheKey, { data: responseData, ts: Date.now() });
   }
 

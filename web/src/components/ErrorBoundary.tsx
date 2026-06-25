@@ -35,7 +35,11 @@ export default class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       const isChunkError =
         this.state.error?.message?.includes('Loading chunk') ||
-        this.state.error?.message?.includes('ChunkLoadError');
+        this.state.error?.message?.includes('ChunkLoadError') ||
+        this.state.error?.message?.includes('Loading CSS chunk') ||
+        this.state.error?.message?.includes('dynamically imported') ||
+        (this.state.error?.message?.includes('Failed to fetch') &&
+         this.state.error?.message?.includes('import'));
 
       return (
         <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
