@@ -15,6 +15,8 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
   const [newPassword, setNewPassword] = useState('');
   const [diagnostics, setDiagnostics] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [copySeparator, setCopySeparator] = useState(() => localStorage.getItem('copyLinksSeparator') || '\n');
+  const [refreshInterval, setRefreshInterval] = useState(() => localStorage.getItem('refreshInterval') || '0');
   const confirm = useConfirm();
 
   useEffect(() => {
@@ -316,8 +318,8 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
               <div>
                 <label className="block text-sm mb-1">复制链接分隔符</label>
                 <select
-                  value={localStorage.getItem('copyLinksSeparator') || '\n'}
-                  onChange={(e) => { localStorage.setItem('copyLinksSeparator', e.target.value); setSettings({ ...settings }); }}
+                  value={copySeparator}
+                  onChange={(e) => { const v = e.target.value; localStorage.setItem('copyLinksSeparator', v); setCopySeparator(v); }}
                   className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
                 >
                   <option value={'\n'}>换行符</option>
@@ -335,8 +337,8 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
               <div>
                 <label className="block text-sm mb-1">自动刷新间隔</label>
                 <select
-                  value={localStorage.getItem('refreshInterval') || '0'}
-                  onChange={(e) => { localStorage.setItem('refreshInterval', e.target.value); setSettings({ ...settings }); }}
+                  value={refreshInterval}
+                  onChange={(e) => { const v = e.target.value; localStorage.setItem('refreshInterval', v); setRefreshInterval(v); }}
                   className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
                 >
                   <option value="0">从不自动刷新</option>

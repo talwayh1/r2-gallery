@@ -1546,6 +1546,12 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
             {imageDimensions.w} × {imageDimensions.h}
           </span>
         )}
+        {/* Rotation badge */}
+        {isImage && rotation !== 0 && (
+          <span className={`text-xs font-mono ${isMobile ? 'px-1.5 py-0.5 bg-blue-500/20 text-blue-300 rounded' : 'text-blue-400'} ml-1`}>
+            {rotation}°
+          </span>
+        )}
       </div>
 
       {/* Action buttons - top bar on desktop, bottom bar on mobile */}
