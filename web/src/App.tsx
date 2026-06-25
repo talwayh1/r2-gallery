@@ -1295,7 +1295,7 @@ export default function App() {
           {isMobile && <PullToRefreshIndicator pullDistance={ptr.pullDistance} refreshing={ptr.refreshing} />}
 
           {/* Type filter bar - mobile: horizontal scroll, desktop: normal */}
-          <div className={`mb-3 ${isMobile ? 'overflow-x-auto scrollbar-none -mx-2 px-2' : 'hidden sm:block'}`}>
+          <div className={`mb-3 ${isMobile ? 'overflow-x-auto scrollbar-none scroll-fade-mask -mx-2 px-2' : 'hidden sm:block'}`}>
             <TypeFilter
               files={files}
               active={typeFilter}
