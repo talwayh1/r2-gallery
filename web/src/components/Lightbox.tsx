@@ -208,10 +208,13 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     }
   }, []);
 
-  // === Crossfade transition state ===
+  // === Crossfade / slide transition state ===
   // Holds the previous image URL to render while fading out during navigation
   const prevImageUrlRef = useRef<string>('');
   const [crossfadeUrl, setCrossfadeUrl] = useState<string | null>(null);
+  // Navigation direction for directional slide animation: 'left' = next, 'right' = prev
+  const navDirectionRef = useRef<'left' | 'right' | null>(null);
+  const [crossfadeDirection, setCrossfadeDirection] = useState<'left' | 'right' | null>(null);
 
   // Mobile detection
   const [isMobile, setIsMobile] = useState(false);
@@ -354,6 +357,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
   const goPrev = useCallback(() => {
     if (hasPrev) {
+      navDirectionRef.current = 'right';
       resetZoom();
       onNavigate(index === 0 ? items.length - 1 : index - 1);
       setSwipeHint('right');
@@ -363,6 +367,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
   const goNext = useCallback(() => {
     if (hasNext) {
+      navDirectionRef.current = 'left';
       resetZoom();
       onNavigate(index === items.length - 1 ? 0 : index + 1);
       setSwipeHint('left');
@@ -373,6 +378,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const goPrev10 = useCallback(() => {
     if (items.length <= 1) return;
     const target = Math.max(0, index - 10);
+    navDirectionRef.current = 'right';
     resetZoom();
     onNavigate(target);
     setSwipeHint('right');
@@ -382,6 +388,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const goNext10 = useCallback(() => {
     if (items.length <= 1) return;
     const target = Math.min(items.length - 1, index + 10);
+    navDirectionRef.current = 'left';
     resetZoom();
     onNavigate(target);
     setSwipeHint('left');
@@ -1113,13 +1120,19 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     }
   }, [index, resetZoom]);
 
-  // Crossfade transition — smoothly fades the previous image out as the new one loads
+  // Crossfade transition — smoothly slides the previous image out as the new one loads
+  // Uses navDirectionRef to determine slide direction (left=next, right=prev)
   useEffect(() => {
     const oldUrl = prevImageUrlRef.current;
+    const oldDirection = navDirectionRef.current;
     prevImageUrlRef.current = url;
     if (!oldUrl || oldUrl === url || !current?.mime.startsWith('image/')) return;
     setCrossfadeUrl(oldUrl);
-    const timer = setTimeout(() => setCrossfadeUrl(null), 350);
+    setCrossfadeDirection(oldDirection);
+    const timer = setTimeout(() => {
+      setCrossfadeUrl(null);
+      setCrossfadeDirection(null);
+    }, 350);
     return () => clearTimeout(timer);
   }, [url]);
 
@@ -2700,7 +2713,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 className="absolute inset-0 max-w-full max-h-[90vh] object-contain rounded-lg pointer-events-none"
                 style={{
                   zIndex: 2,
-                  animation: 'crossfade-out 0.35s ease-out forwards',
+                  animation: `${crossfadeDirection === 'right' ? 'slide-out-right' : 'slide-out-left'} 0.35s ease-out forwards`,
                 }}
                 onAnimationEnd={() => setCrossfadeUrl(null)}
                 draggable={false}
@@ -3159,7 +3172,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
           </div>
         </div>
       )}
-      <style>{`@keyframes crossfade-out{from{opacity:1}to{opacity:0}}@media (prefers-reduced-motion:reduce){@keyframes crossfade-out{from{opacity:1}to{opacity:1}}}`}</style>
+      <style>{`@keyframes slide-out-left{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(-60px)}}@keyframes slide-out-right{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(60px)}}@media (prefers-reduced-motion:reduce){@keyframes slide-out-left{from{opacity:1}to{opacity:1}}@keyframes slide-out-right{from{opacity:1}to{opacity:1}}}`}</style>
     </div>
   );
 }

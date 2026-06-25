@@ -96,6 +96,7 @@ export default function App() {
   const [selectMode, setSelectMode] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [sidebarDragX, setSidebarDragX] = useState(0);
   const [showTrash, setShowTrash] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -116,6 +117,7 @@ export default function App() {
   const uploadDropzoneRef = useRef<UploadDropzoneHandle>(null);
   const sidebarTouchXRef = useRef<number>(0);
   const sidebarTouchActiveRef = useRef<boolean>(false);
+  const sidebarDragActiveRef = useRef(false);
   // Abort controller for cancelling stale in-flight requests
   const abortRef = useRef<AbortController | null>(null);
   // Ref-based cursor avoids stale closure in loadFiles when append-loading
@@ -125,7 +127,6 @@ export default function App() {
   // Refs for mobile sidebar edge swipe gesture (swipe right from left edge to open)
   const edgeSwipeStartXRef = useRef<number | null>(null);
   const edgeSwipeStartYRef = useRef<number>(0);
-  const edgeSwipeStartTimeRef = useRef<number>(0);
   // Ref for main scroll container — wired to ScrollToTop so the "back to top" button works on mobile
   const mainRef = useRef<HTMLElement>(null);
 
@@ -1170,7 +1171,7 @@ export default function App() {
           if (touch.clientX < 30) {
             edgeSwipeStartXRef.current = touch.clientX;
             edgeSwipeStartYRef.current = touch.clientY;
-            edgeSwipeStartTimeRef.current = Date.now();
+            sidebarDragActiveRef.current = true;
           }
         }}
         onTouchMove={(e) => {
@@ -1178,14 +1179,27 @@ export default function App() {
           const touch = e.touches[0];
           const dx = touch.clientX - edgeSwipeStartXRef.current;
           const dy = Math.abs(touch.clientY - edgeSwipeStartYRef.current);
-          const dt = Date.now() - edgeSwipeStartTimeRef.current;
-          // Must be a quick swipe right (60px+ within 350ms) AND primarily horizontal (2× vertical)
-          if (dx > 60 && dy < dx * 0.5 && dt < 350) {
+          // Cancel if swiping primarily vertical
+          if (dx < 5 && dy > dx * 0.5) return;
+          if (dy > dx && dx > 5) {
             edgeSwipeStartXRef.current = null;
-            setSidebarOpen(true);
+            sidebarDragActiveRef.current = false;
+            setSidebarDragX(0);
+            return;
           }
+          if (dx < 0) return;
+          // Track drag progress — sidebar follows finger smoothly
+          sidebarDragActiveRef.current = true;
+          setSidebarDragX(Math.min(240, dx));
         }}
         onTouchEnd={() => {
+          if (sidebarDragActiveRef.current) {
+            sidebarDragActiveRef.current = false;
+            if (sidebarDragX > 60) {
+              setSidebarOpen(true);
+            }
+            setSidebarDragX(0);
+          }
           edgeSwipeStartXRef.current = null;
         }}
       >
@@ -1209,27 +1223,51 @@ export default function App() {
         {/* Sidebar */}
         <div
           onTouchStart={(e) => {
+            if (!sidebarOpen) return;
             sidebarTouchXRef.current = e.touches[0].clientX;
             sidebarTouchActiveRef.current = true;
+            sidebarDragActiveRef.current = true;
           }}
           onTouchMove={(e) => {
             if (!sidebarTouchActiveRef.current) return;
             const dx = sidebarTouchXRef.current - e.touches[0].clientX;
-            // Swipe left 80px+ to close sidebar
+            // Track close drag: sidebar follows finger, revealing content beneath
+            if (dx > 0) {
+              setSidebarDragX(Math.max(0, 240 - dx));
+            }
+            // Commit close when dragged far enough
             if (dx > 80) {
               sidebarTouchActiveRef.current = false;
+              sidebarDragActiveRef.current = false;
+              setSidebarDragX(0);
               setSidebarOpen(false);
             }
           }}
           onTouchEnd={() => {
             sidebarTouchActiveRef.current = false;
+            if (sidebarDragActiveRef.current) {
+              sidebarDragActiveRef.current = false;
+              // Snap closed if more than half hidden, else snap back open
+              if (sidebarDragX < 120) {
+                setSidebarOpen(false);
+              }
+              setSidebarDragX(0);
+            }
           }}
           className={`${isMobile
-            ? `fixed left-0 top-14 bottom-0 z-40 shadow-xl transition-transform duration-300 ease-out ${
-                sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-              }`
+            ? 'fixed left-0 top-14 bottom-0 z-40 shadow-xl'
             : `transition-transform duration-300 ${sidebarOpen ? 'block' : 'hidden'}`
           }`}
+          style={isMobile ? {
+            transform: sidebarOpen && sidebarDragX > 0
+              ? `translateX(calc(-100% + ${sidebarDragX}px))`
+              : !sidebarOpen && sidebarDragX > 0
+                ? `translateX(calc(-100% + ${sidebarDragX}px))`
+                : sidebarOpen
+                  ? 'translateX(0)'
+                  : 'translateX(-100%)',
+            transition: sidebarDragActiveRef.current ? 'none' : 'transform 0.3s ease-out',
+          } : undefined}
         >
           <Sidebar open={sidebarOpen} currentDir={dir} onNavigate={navigate} onClose={isMobile ? () => setSidebarOpen(false) : undefined} dirCounts={dirCounts} />
         </div>
