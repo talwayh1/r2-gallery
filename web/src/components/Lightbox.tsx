@@ -1,11 +1,14 @@
 import { useEffect, useCallback, useState, useRef, useMemo, lazy, Suspense } from 'react';
 import { getFileUrl, getThumbUrl, getExif, saveFile, uploadCustomThumb, getId3, type ExifData, type Id3Data } from '../api';
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
-import VideoPlayer from './VideoPlayer';
-import CodeEditor from './CodeEditor';
-import MarkdownEditor from './MarkdownEditor';
-import AudioPlayer from './AudioPlayer';
 import { toast } from '../hooks/useToast';
+
+// Lazy-load media/text editors — most Lightbox sessions are for images only,
+// so defer these until the user actually navigates to a video/audio/text file.
+const VideoPlayer = lazy(() => import('./VideoPlayer'));
+const AudioPlayer = lazy(() => import('./AudioPlayer'));
+const CodeEditor = lazy(() => import('./CodeEditor'));
+const MarkdownEditor = lazy(() => import('./MarkdownEditor'));
 
 // Lazy-load heavy components (hls.js is ~400KB)
 const HlsPlayer = lazy(() => import('./HlsPlayer'));
@@ -2798,27 +2801,31 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
           </div>
         ) : isVideo ? (
           <div className="relative" onClick={(e) => e.stopPropagation()}>
-            <VideoPlayer
-              key={current.path}
-              path={current.path}
-              name={name}
-              autoplay={true}
-              loop={true}
-              onEnded={goNext}
-            />
+            <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/50" /></div>}>
+              <VideoPlayer
+                key={current.path}
+                path={current.path}
+                name={name}
+                autoplay={true}
+                loop={true}
+                onEnded={goNext}
+              />
+            </Suspense>
           </div>
         ) : isAudio ? (
           <div className="flex items-center justify-center w-full h-full" onClick={(e) => e.stopPropagation()}>
-            <AudioPlayer
-              tracks={audioTracks}
-              currentIndex={audioIndex >= 0 ? audioIndex : 0}
-              onTrackChange={(i) => {
-                const audioItem = items.filter(it => it.mime.startsWith('audio/'))[i];
-                const absoluteIdx = items.findIndex(it => it.path === audioItem?.path);
-                if (absoluteIdx >= 0) onNavigate(absoluteIdx);
-              }}
-              onClose={handleClose}
-            />
+            <Suspense fallback={<div className="flex items-center justify-center h-32"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/50" /></div>}>
+              <AudioPlayer
+                tracks={audioTracks}
+                currentIndex={audioIndex >= 0 ? audioIndex : 0}
+                onTrackChange={(i) => {
+                  const audioItem = items.filter(it => it.mime.startsWith('audio/'))[i];
+                  const absoluteIdx = items.findIndex(it => it.path === audioItem?.path);
+                  if (absoluteIdx >= 0) onNavigate(absoluteIdx);
+                }}
+                onClose={handleClose}
+              />
+            </Suspense>
           </div>
         ) : isPdf ? (
           <div
@@ -2906,48 +2913,52 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
               </div>
             ) : textContent !== null ? (
               isMarkdown ? (
-                <MarkdownEditor
-                  content={textContent}
-                  fileName={name}
-                  saving={textSaving}
-                  onSave={async (newContent: string) => {
-                    if (!current) return;
-                    setTextSaving(true);
-                    try {
-                      await saveFile(current.path, newContent);
-                      setTextContent(newContent);
-                      toast('success', '文件已保存');
-                    } catch (e) {
-                      console.error('Save failed:', e);
-                      toast('error', '保存失败: ' + (e instanceof Error ? e.message : String(e)));
-                    } finally {
-                      setTextSaving(false);
-                    }
-                  }}
-                />
+                <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/50" /></div>}>
+                  <MarkdownEditor
+                    content={textContent}
+                    fileName={name}
+                    saving={textSaving}
+                    onSave={async (newContent: string) => {
+                      if (!current) return;
+                      setTextSaving(true);
+                      try {
+                        await saveFile(current.path, newContent);
+                        setTextContent(newContent);
+                        toast('success', '文件已保存');
+                      } catch (e) {
+                        console.error('Save failed:', e);
+                        toast('error', '保存失败: ' + (e instanceof Error ? e.message : String(e)));
+                      } finally {
+                        setTextSaving(false);
+                      }
+                    }}
+                  />
+                </Suspense>
               ) : (
-                <CodeEditor
-                  content={textContent}
-                  fileName={name}
-                  language={ext || 'text'}
-                  saving={textSaving}
-                  embedded
-                  onSave={async (newContent: string) => {
-                    if (!current) return;
-                    setTextSaving(true);
-                    try {
-                      await saveFile(current.path, newContent);
-                      setTextContent(newContent);
-                      toast('success', '文件已保存');
-                    } catch (e) {
-                      console.error('Save failed:', e);
-                      toast('error', '保存失败: ' + (e instanceof Error ? e.message : String(e)));
-                    } finally {
-                      setTextSaving(false);
-                    }
-                  }}
-                  onClose={() => {}} // Lightbox handles close via backdrop click
-                />
+                <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/50" /></div>}>
+                  <CodeEditor
+                    content={textContent}
+                    fileName={name}
+                    language={ext || 'text'}
+                    saving={textSaving}
+                    embedded
+                    onSave={async (newContent: string) => {
+                      if (!current) return;
+                      setTextSaving(true);
+                      try {
+                        await saveFile(current.path, newContent);
+                        setTextContent(newContent);
+                        toast('success', '文件已保存');
+                      } catch (e) {
+                        console.error('Save failed:', e);
+                        toast('error', '保存失败: ' + (e instanceof Error ? e.message : String(e)));
+                      } finally {
+                        setTextSaving(false);
+                      }
+                    }}
+                    onClose={() => {}} // Lightbox handles close via backdrop click
+                  />
+                </Suspense>
               )
             ) : textError === 'too-large' ? (
               <div className="flex items-center justify-center h-full text-white/50 px-8">
