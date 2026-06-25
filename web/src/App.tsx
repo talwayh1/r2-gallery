@@ -554,6 +554,20 @@ export default function App() {
             loadFiles(dir);
           })();
         }
+      } else if (e.key === 'PageDown') {
+        // PageDown — scroll file list down one viewport height
+        e.preventDefault();
+        const el = mainRef.current;
+        if (el) {
+          el.scrollBy({ top: el.clientHeight * 0.9, behavior: 'smooth' });
+        }
+      } else if (e.key === 'PageUp') {
+        // PageUp — scroll file list up one viewport height
+        e.preventDefault();
+        const el = mainRef.current;
+        if (el) {
+          el.scrollBy({ top: -(el.clientHeight * 0.9), behavior: 'smooth' });
+        }
       } else if (e.key === 'd' && e.shiftKey && !e.ctrlKey && !e.metaKey) {
         // Shift+D — download selected files
         if (selected.size > 0) {
