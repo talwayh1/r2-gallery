@@ -55,6 +55,8 @@ interface UploadQueueValue {
   cancelAll: () => void;
   /** Retry a failed or cancelled upload */
   retry: (id: string) => void;
+  /** Retry all failed/cancelled uploads at once */
+  retryAllFailed: () => void;
   /** Remove all completed/failed/cancelled tasks from the list */
   dismissCompleted: () => void;
   hasActiveUploads: boolean;
@@ -246,6 +248,26 @@ export function UploadQueueProvider({ children }: { children: ReactNode }) {
     maybeStartNext();
   }, [publish, maybeStartNext]);
 
+  const retryAllFailed = useCallback(() => {
+    let hasRetries = false;
+    for (const task of tasksRef.current) {
+      if (task.status === 'failed' || task.status === 'cancelled') {
+        task.status = 'queued';
+        task.loaded = 0;
+        task.speed = 0;
+        task.etaSeconds = null;
+        task.error = undefined;
+        task.controller = undefined;
+        task.retryCount = 0;
+        hasRetries = true;
+      }
+    }
+    if (hasRetries) {
+      publish();
+      maybeStartNext();
+    }
+  }, [publish, maybeStartNext]);
+
   const dismissCompleted = useCallback(() => {
     // Revoke object URLs for dismissed tasks to avoid memory leaks
     for (const t of tasksRef.current) {
@@ -284,9 +306,9 @@ export function UploadQueueProvider({ children }: { children: ReactNode }) {
   }, [cancelAll, hasActiveUploads]);
 
   const value = useMemo(() => ({
-    tasks, isOpen, setOpen, enqueue, cancel, cancelAll, retry, dismissCompleted,
+    tasks, isOpen, setOpen, enqueue, cancel, cancelAll, retry, retryAllFailed, dismissCompleted,
     hasActiveUploads, activeCount, completedCount, failedCount,
-  }), [tasks, isOpen, setOpen, enqueue, cancel, cancelAll, retry, dismissCompleted, hasActiveUploads, activeCount, completedCount, failedCount]);
+  }), [tasks, isOpen, setOpen, enqueue, cancel, cancelAll, retry, retryAllFailed, dismissCompleted, hasActiveUploads, activeCount, completedCount, failedCount]);
 
   return <UploadQueueContext.Provider value={value}>{children}</UploadQueueContext.Provider>;
 }

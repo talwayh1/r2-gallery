@@ -9,6 +9,36 @@ import type { ExecutionContext } from '@cloudflare/workers-types';
 
 const upload = new Hono<{ Bindings: AppBindings; Variables: Variables }>();
 
+/** Max concurrent file uploads — balances throughput vs. Workers CPU limits */
+const UPLOAD_CONCURRENCY = 4;
+
+/**
+ * Run async tasks with a concurrency limit.
+ * Inline helper — avoids adding a dependency like p-limit in the Workers runtime.
+ */
+async function runWithLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = [];
+  const executing = new Set<Promise<void>>();
+
+  for (let i = 0; i < items.length; i++) {
+    const p = (async () => {
+      results[i] = await fn(items[i]);
+    })();
+    executing.add(p);
+    const cleanup = () => executing.delete(p);
+    p.then(cleanup, cleanup);
+    if (executing.size >= limit) {
+      await Promise.race(executing);
+    }
+  }
+  await Promise.all(executing);
+  return results;
+}
+
 // Demo mode check
 const demoModeCheck = async (c: any, next: any) => {
   if (c.env.DEMO_MODE === 'true') {
@@ -73,22 +103,23 @@ upload.post('/upload', authMiddleware, demoModeCheck, async (c) => {
     return c.json({ error: 'No files uploaded' }, 400);
   }
 
-  const uploaded: { name: string; path: string; size: number; thumbGenerated?: boolean }[] = [];
-  const errors: { name: string; error: string }[] = [];
+  const ctx = c.executionCtx as ExecutionContext | undefined;
 
-  for (const file of files) {
+  /**
+   * Process a single file upload: validate, resolve conflict, store to R2,
+   * record metadata in D1, log activity, and kick off async thumbnail generation.
+   */
+  async function processFile(file: File): Promise<{ name: string; path: string; size: number; thumbGenerated?: boolean } | { name: string; error: string }> {
     // Check file type restriction
     if (!isFileTypeAllowed(file.name, allowedTypes)) {
-      errors.push({ name: file.name, error: `文件类型不允许 (允许: ${allowedTypes})` });
-      continue;
+      return { name: file.name, error: `文件类型不允许 (允许: ${allowedTypes})` };
     }
 
     const arrayBuffer = await file.arrayBuffer();
 
     // Check file size restriction
     if (maxSize > 0 && arrayBuffer.byteLength > maxSize) {
-      errors.push({ name: file.name, error: `文件大小超过限制 (最大: ${Math.round(maxSize / 1024 / 1024)}MB)` });
-      continue;
+      return { name: file.name, error: `文件大小超过限制 (最大: ${Math.round(maxSize / 1024 / 1024)}MB)` };
     }
 
     const relativePath = formData.get('relativePath') as string | null;
@@ -106,8 +137,7 @@ upload.post('/upload', authMiddleware, demoModeCheck, async (c) => {
     try {
       filePath = await resolveConflict(bucket, filePath, existsStrategy);
     } catch (err: any) {
-      errors.push({ name: file.name, error: err.message });
-      continue;
+      return { name: file.name, error: err.message };
     }
 
     await r2.putObject(bucket, filePath, arrayBuffer, { contentType: mime });
@@ -137,15 +167,20 @@ upload.post('/upload', authMiddleware, demoModeCheck, async (c) => {
     })();
 
     // Use waitUntil if available (Workers), otherwise fire-and-forget
-    const ctx = c.executionCtx as ExecutionContext | undefined;
     if (ctx?.waitUntil) {
       ctx.waitUntil(thumbPromise);
     } else {
       thumbPromise.catch(() => {});
     }
 
-    uploaded.push({ name: file.name, path: filePath, size: arrayBuffer.byteLength });
+    return { name: file.name, path: filePath, size: arrayBuffer.byteLength };
   }
+
+  // Process files in parallel with a concurrency limit
+  const results = await runWithLimit(files, UPLOAD_CONCURRENCY, processFile);
+
+  const uploaded = results.filter((r): r is { name: string; path: string; size: number; thumbGenerated?: boolean } => !('error' in r));
+  const errors = results.filter((r): r is { name: string; error: string } => 'error' in r);
 
   return c.json({ success: true, uploaded, errors });
 });

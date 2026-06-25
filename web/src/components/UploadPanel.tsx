@@ -89,7 +89,7 @@ function TaskRow({ task, onCancel, onRetry }: { task: UploadTask; onCancel: () =
 }
 
 export default function UploadPanel() {
-  const { tasks, isOpen, setOpen, cancel, cancelAll, retry, dismissCompleted, hasActiveUploads, activeCount, completedCount, failedCount } = useUploadQueue();
+  const { tasks, isOpen, setOpen, cancel, cancelAll, retry, retryAllFailed, dismissCompleted, hasActiveUploads, activeCount, completedCount, failedCount } = useUploadQueue();
   const listRef = useRef<HTMLDivElement>(null);
   const autoDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -166,6 +166,11 @@ export default function UploadPanel() {
               </p>
             </div>
             <div className="flex items-center gap-1">
+              {failedCount > 1 && (
+                <button onClick={retryAllFailed} className="text-[11px] text-amber-600 dark:text-amber-400 hover:text-amber-700 px-2 py-1 rounded hover:bg-amber-50 dark:hover:bg-amber-900/20">
+                  重试全部 ({failedCount})
+                </button>
+              )}
               {hasActiveUploads && (
                 <button onClick={cancelAll} className="text-[11px] text-red-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20">
                   全部取消
