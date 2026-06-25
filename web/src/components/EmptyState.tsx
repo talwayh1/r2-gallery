@@ -20,11 +20,13 @@ interface Props {
   onClearSearch?: () => void;
   onClearFilter?: () => void;
   onUpload?: () => void;
+  /** Create a new folder in the current directory (user-only) */
+  onCreateFolder?: () => void;
   /** Navigate to a directory (used by "返回首页" button) */
   onNavigate?: (dir: string) => void;
 }
 
-export default function EmptyState({ type, user, onClearSearch, onClearFilter, onUpload, onNavigate }: Props) {
+export default function EmptyState({ type, user, onClearSearch, onClearFilter, onUpload, onCreateFolder, onNavigate }: Props) {
   const { t } = useTranslation();
 
   const config = CONFIGS[type];
@@ -79,6 +81,20 @@ export default function EmptyState({ type, user, onClearSearch, onClearFilter, o
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
               {t('file.upload', '上传文件')}
+            </span>
+          </button>
+        )}
+
+        {(type === 'directory' || type === 'upload') && user && onCreateFolder && (
+          <button
+            onClick={onCreateFolder}
+            className="px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          >
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-5 4h10a2 2 0 002-2V9.828a2 2 0 00-.586-1.414l-2.828-2.828A2 2 0 0014.172 5H9a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              {t('folder.create', '新建文件夹')}
             </span>
           </button>
         )}

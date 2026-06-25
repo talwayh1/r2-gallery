@@ -1188,6 +1188,13 @@ export default function App() {
           edgeSwipeStartXRef.current = null;
         }}
       >
+        {/* Mobile sidebar swipe indicator — thin strip on left edge when closed */}
+        {isMobile && !sidebarOpen && (
+          <div className="fixed left-0 top-14 bottom-0 z-20 w-1 flex items-center justify-center pointer-events-none">
+            <div className="w-0.5 h-8 rounded-full bg-gray-300 dark:bg-gray-600 opacity-40 transition-opacity" />
+          </div>
+        )}
+
         {/* Mobile sidebar overlay — always rendered for fade-out animation */}
         {isMobile && (
           <div
@@ -1272,6 +1279,7 @@ export default function App() {
               onClearSearch={search ? () => setSearch('') : undefined}
               onClearFilter={typeFilter !== 'all' ? () => setTypeFilter('all') : undefined}
               onUpload={user ? () => uploadDropzoneRef.current?.openFileDialog() : undefined}
+              onCreateFolder={user ? () => setShowCreateFolder(true) : undefined}
               onNavigate={navigate}
             />
           ) : (
