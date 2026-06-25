@@ -50,10 +50,9 @@ export function useSwipeGesture({
       if (!enabled || !touchStart.current) return;
       const touch = e.touches[0];
       const dy = touch.clientY - touchStart.current.y;
-      const dt = Date.now() - touchStart.current.time;
 
-      // Only show progress for downward swipes (not left/right navigations)
-      if (dy > 0 && dt < 500 && onSwipeProgressRef.current) {
+      // Always track downward progress for visual feedback (no time limit)
+      if (dy > 0 && onSwipeProgressRef.current) {
         if (dy > 30) swipeDownConfirmed.current = true;
         onSwipeProgressRef.current(dy);
       }
@@ -64,12 +63,9 @@ export function useSwipeGesture({
       const touch = e.changedTouches[0];
       const dx = touch.clientX - touchStart.current.x;
       const dy = touch.clientY - touchStart.current.y;
-      const dt = Date.now() - touchStart.current.time;
       touchStart.current = null;
 
       const minDist = 50;
-      const maxDuration = 500;
-      if (dt > maxDuration) return;
 
       const absDx = Math.abs(dx);
       const absDy = Math.abs(dy);

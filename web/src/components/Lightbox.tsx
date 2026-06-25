@@ -233,6 +233,9 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
   // Swipe-to-close drag feedback
   const [swipeDragY, setSwipeDragY] = useState(0);
+  // When true, the swipe-down close animation is in progress (sliding off-screen)
+  const [swipeClosing, setSwipeClosing] = useState(false);
+  const swipeCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handlePosterUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -553,6 +556,11 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
   // Disable swipe gestures when zoomed
   const handleClose = useCallback(() => {
+    setSwipeClosing(false);
+    if (swipeCloseTimerRef.current) {
+      clearTimeout(swipeCloseTimerRef.current);
+      swipeCloseTimerRef.current = null;
+    }
     setSwipeDragY(0);
     stopSlideshow();
     // Clean up auto-hide timer and reset UI visibility
@@ -560,6 +568,17 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     setUiVisible(true);
     onClose();
   }, [stopSlideshow, onClose]);
+
+  // Smooth swipe-down-to-close: continues the drag momentum by animating
+  // the lightbox off-screen before calling handleClose. Gives a fluid feel
+  // vs. the abrupt jump-to-center + fade that happened before.
+  const handleSwipeClose = useCallback(() => {
+    setSwipeDragY(window.innerHeight * 1.2);
+    setSwipeClosing(true);
+    swipeCloseTimerRef.current = setTimeout(() => {
+      handleClose();
+    }, 350);
+  }, [handleClose]);
 
   const handleCopyFileName = useCallback(async () => {
     try {
@@ -607,7 +626,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const swipeRef = useSwipeGesture({
     onSwipeLeft: wrapSwipe(goNext),
     onSwipeRight: wrapSwipe(goPrev),
-    onSwipeDown: wrapSwipe(handleClose),
+    onSwipeDown: wrapSwipe(handleSwipeClose),
     onSwipeProgress: setSwipeDragY,
     enabled: !isZoomed,
   });
@@ -1386,7 +1405,11 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   return (
     <div
       ref={swipeRef}
-      style={closing ? {
+      style={swipeClosing ? {
+        transform: `translateY(${window.innerHeight * 1.2}px) scale(0.92)`,
+        opacity: 0,
+        transition: 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.35s ease',
+      } : closing ? {
         opacity: 0,
         transform: 'scale(0.95)',
         transition: 'opacity 0.25s ease, transform 0.25s ease',
@@ -1394,11 +1417,11 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         transform: `translateY(${swipeDragY}px) scale(${Math.max(0.92, 1 - swipeDragY / (window.innerHeight * 0.6))})`,
         opacity: Math.max(0.5, 1 - swipeDragY / (window.innerHeight * 0.5)),
         transition: 'none',
-      } : swipeDragY === 0 ? {
+      } : {
         transform: 'translateY(0px) scale(1)',
         opacity: 1,
         transition: 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.35s ease',
-      } : {}}
+      }}
       className={`fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm touch-pan-y ${!cursorVisible && isVideo ? 'cursor-none' : ''}`}
       onClick={(e) => {
         // Skip click if it was synthesized from a swipe gesture (mobile)
