@@ -377,54 +377,31 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
         onClick={togglePlay}
       />
 
-      {/* YouTube-style double-tap seek overlay */}
-      <div
-        className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
-      >
-        {/* Left seek zone */}
-        {doubleTapSeekDir && (
-          <div className="absolute inset-y-0 left-0 w-[30%] flex items-center justify-center">
-            <div className={`transition-all duration-300 ${
-              doubleTapSeekDir === 'left'
-                ? 'opacity-100 scale-100'
-                : 'opacity-0 scale-50'
-            }`}>
+      {/* YouTube-style double-tap seek overlay — only render the active side */}
+      {doubleTapSeekDir && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+          <div className={`absolute inset-y-0 ${doubleTapSeekDir === 'left' ? 'left-0' : 'right-0'} w-[30%] flex items-center justify-center`}>
+            <div className="opacity-100 scale-100 transition-all duration-300">
               <div className="relative flex flex-col items-center gap-1">
                 <div className="bg-black/60 backdrop-blur-sm rounded-full w-16 h-16 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                  </svg>
+                  {doubleTapSeekDir === 'left' ? (
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                    </svg>
+                  ) : (
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                    </svg>
+                  )}
                 </div>
                 <span className="text-white font-bold text-sm bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-full">
-                  -{SEEK_STEP}s
+                  {doubleTapSeekDir === 'left' ? '-' : '+'}{SEEK_STEP}s
                 </span>
               </div>
             </div>
           </div>
-        )}
-
-        {/* Right seek zone */}
-        {doubleTapSeekDir && (
-          <div className="absolute inset-y-0 right-0 w-[30%] flex items-center justify-center">
-            <div className={`transition-all duration-300 ${
-              doubleTapSeekDir === 'right'
-                ? 'opacity-100 scale-100'
-                : 'opacity-0 scale-50'
-            }`}>
-              <div className="relative flex flex-col items-center gap-1">
-                <div className="bg-black/60 backdrop-blur-sm rounded-full w-16 h-16 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                  </svg>
-                </div>
-                <span className="text-white font-bold text-sm bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-full">
-                  +{SEEK_STEP}s
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Seek hint overlay — brief arrow indicating tap-to-seek direction with seconds */}
       <div

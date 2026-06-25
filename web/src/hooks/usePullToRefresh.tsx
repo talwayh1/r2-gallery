@@ -62,6 +62,19 @@ export function usePullToRefresh({
   const refresher = useRef<Promise<void> | null>(null);
   const rafId = useRef(0);
   const crossedThreshold = useRef(false);
+  // Refs to avoid stale closures in touch handlers
+  const pullDistanceRef = useRef(0);
+  const maxPullRef = useRef(maxPull);
+  const thresholdRef = useRef(threshold);
+  const queryRef = useRef(query);
+  maxPullRef.current = maxPull;
+  thresholdRef.current = threshold;
+  queryRef.current = query;
+
+  // Sync ref with state so touch handlers always read the latest value
+  useEffect(() => {
+    pullDistanceRef.current = pullDistance;
+  }, [pullDistance]);
 
   // Cleanup animation frames
   useEffect(() => {
@@ -76,12 +89,12 @@ export function usePullToRefresh({
     // Only activate when scrolled to the very top
     if (el.scrollTop > 0) return;
     // Only on mobile
-    if (!window.matchMedia(query).matches) return;
+    if (!window.matchMedia(queryRef.current).matches) return;
 
     startY.current = e.touches[0].clientY;
     pulling.current = true;
     crossedThreshold.current = false;
-  }, [scrollRef, refreshing, query]);
+  }, [scrollRef, refreshing]);
 
   const onTouchMove = useCallback((e: React.TouchEvent) => {
     if (!pulling.current || refreshing) return;
@@ -96,29 +109,31 @@ export function usePullToRefresh({
 
     if (dy <= 0) {
       // Scrolling up / not pulling down
-      if (pullDistance > 0) {
+      if (pullDistanceRef.current > 0) {
         setPullDistance(0);
+        pullDistanceRef.current = 0;
       }
       return;
     }
 
     // Rubber-band: ease out after crossing a small dead zone
-    const raw = Math.min(dy, maxPull + 60);
-    const eased = raw > 5 ? easeOut((raw - 5) / maxPull) * maxPull : 0;
+    const raw = Math.min(dy, maxPullRef.current + 60);
+    const eased = raw > 5 ? easeOut((raw - 5) / maxPullRef.current) * maxPullRef.current : 0;
 
     if (rafId.current) cancelAnimationFrame(rafId.current);
     rafId.current = requestAnimationFrame(() => {
       setPullDistance(eased);
+      pullDistanceRef.current = eased;
 
       // Haptic feedback when first crossing the threshold
-      if (eased >= threshold && !crossedThreshold.current) {
+      if (eased >= thresholdRef.current && !crossedThreshold.current) {
         crossedThreshold.current = true;
         hapticFeedback('medium');
-      } else if (eased < threshold && crossedThreshold.current) {
+      } else if (eased < thresholdRef.current && crossedThreshold.current) {
         crossedThreshold.current = false;
       }
     });
-  }, [refreshing, scrollRef, pullDistance, maxPull]);
+  }, [refreshing, scrollRef]);
 
   const onTouchEnd = useCallback((_e: React.TouchEvent) => {
     if (!pulling.current) return;
@@ -131,30 +146,35 @@ export function usePullToRefresh({
 
     if (refreshing) return;
 
-    if (pullDistance >= threshold) {
+    const pd = pullDistanceRef.current;
+    if (pd >= thresholdRef.current) {
       // Trigger refresh with haptic confirmation
       hapticFeedback('medium');
       setRefreshing(true);
-      setPullDistance(threshold); // hold at threshold height for visual
+      setPullDistance(thresholdRef.current); // hold at threshold height for visual
       const result = onRefresh();
       if (result && typeof result.then === 'function') {
         refresher.current = result.then(() => {
           setRefreshing(false);
           setPullDistance(0);
+          pullDistanceRef.current = 0;
         }).catch(() => {
           setRefreshing(false);
           setPullDistance(0);
+          pullDistanceRef.current = 0;
         });
       } else {
         // Synchronous refresh
         setRefreshing(false);
         setPullDistance(0);
+        pullDistanceRef.current = 0;
       }
     } else {
       // Snap back
       setPullDistance(0);
+      pullDistanceRef.current = 0;
     }
-  }, [pullDistance, threshold, refreshing, onRefresh]);
+  }, [refreshing, onRefresh]);
 
   return {
     pullDistance,
