@@ -81,6 +81,15 @@
   animation: slideDown 0.2s ease-out;
 }
 
+/* Mobile filter bar slide-up exit animation (reverse of slideDown) */
+@keyframes slideUpExit {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(-8px); opacity: 0; }
+}
+.animate-slide-up-exit {
+  animation: slideUpExit 0.2s ease-out forwards;
+}
+
 /* Dialog backdrop fade-in */
 @keyframes fadeInOverlay {
   from { opacity: 0; }

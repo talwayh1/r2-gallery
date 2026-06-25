@@ -91,6 +91,9 @@ export default function Header({
   const [langOpen, setLangOpen] = useState(false);
   const [mobileLangOpen, setMobileLangOpen] = useState(false);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [showFilterBar, setShowFilterBar] = useState(false);
+  const [isFilterClosing, setIsFilterClosing] = useState(false);
+  const filterCloseTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const moreRef = useClickOutside<HTMLDivElement>(() => setMoreOpen(false), moreOpen);
   const layoutRef = useClickOutside<HTMLDivElement>(() => setLayoutOpen(false), layoutOpen);
   const dirMenuRef = useClickOutside<HTMLDivElement>(() => setDirMenuOpen(false), dirMenuOpen);
@@ -123,6 +126,27 @@ export default function Header({
     el.addEventListener('scroll', handleScroll, { passive: true });
     return () => el.removeEventListener('scroll', handleScroll);
   }, [mobileFilterOpen, scrollRef]);
+
+  // Animate filter bar mount/unmount with slide-down/slide-up transitions
+  useEffect(() => {
+    if (mobileFilterOpen) {
+      if (filterCloseTimerRef.current) {
+        clearTimeout(filterCloseTimerRef.current);
+        filterCloseTimerRef.current = undefined;
+      }
+      setIsFilterClosing(false);
+      setShowFilterBar(true);
+    } else if (showFilterBar) {
+      setIsFilterClosing(true);
+      filterCloseTimerRef.current = setTimeout(() => {
+        setShowFilterBar(false);
+        setIsFilterClosing(false);
+      }, 200);
+    }
+    return () => {
+      if (filterCloseTimerRef.current) clearTimeout(filterCloseTimerRef.current);
+    };
+  }, [mobileFilterOpen]);
 
   // Listen for PWA install prompt availability
   useEffect(() => {
@@ -801,8 +825,8 @@ export default function Header({
       </header>
 
         {/* Mobile inline filter bar — outside header flex to avoid layout breakage */}
-        {isMobile && mobileFilterOpen && (
-          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-14 z-30 space-y-2 shadow-sm animate-slide-down">
+        {isMobile && showFilterBar && (
+          <div className={`px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-14 z-30 space-y-2 shadow-sm ${isFilterClosing ? 'animate-slide-up-exit' : 'animate-slide-down'}`}>
             <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-1.5">
               <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
