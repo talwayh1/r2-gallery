@@ -25,6 +25,7 @@ const SIZE_MAP: Record<string, string> = {
  * Shows an SVG file icon instead of a broken image.
  * Shows a shimmer skeleton while the image is loading.
  * Uses decoding="async" for non-blocking decode and supports fetchpriority for viewport-prioritized images.
+ * Automatically retries failed loads up to 2 times with exponential backoff.
  */
 const FallbackIcon = ({ size }: { size: string }) => (
   <div className={`w-full h-full flex items-center justify-center text-gray-400 ${size}`}>
@@ -42,7 +43,7 @@ const ShimmerSkeleton = () => (
 );
 
 export default function SafeThumb({ path, mtime, className = 'w-full h-full object-cover', containerSize = 'md', priority = false }: Props) {
-  const { failed, loaded, handleLoad, handleError, imgClasses } = useSafeImage(path);
+  const { failed, loaded, handleLoad, handleError, imgClasses, retryCount } = useSafeImage(path);
 
   if (failed) {
     return <FallbackIcon size={SIZE_MAP[containerSize]} />;
@@ -59,7 +60,7 @@ export default function SafeThumb({ path, mtime, className = 'w-full h-full obje
         <div className="absolute inset-0 shimmer" />
       </div>
       <img
-        key={path}
+        key={`${path}:${retryCount}`}
         src={getThumbUrl(path, mtime)}
         alt=""
         className={`${className} ${imgClasses}`}
@@ -76,6 +77,7 @@ export default function SafeThumb({ path, mtime, className = 'w-full h-full obje
 /**
  * Same as SafeThumb but accepts a direct URL instead of a path.
  * Supports fetchpriority for initial-viewport images.
+ * Automatically retries failed loads up to 2 times with exponential backoff.
  */
 interface SafeThumbUrlProps {
   url: string;
@@ -85,7 +87,7 @@ interface SafeThumbUrlProps {
 }
 
 export function SafeThumbUrl({ url, className = 'w-full h-full object-cover', containerSize = 'sm', priority = false }: SafeThumbUrlProps) {
-  const { failed, loaded, handleLoad, handleError, imgClasses } = useSafeImage(url);
+  const { failed, loaded, handleLoad, handleError, imgClasses, retryCount } = useSafeImage(url);
 
   if (failed) {
     return <FallbackIcon size={SIZE_MAP[containerSize]} />;
@@ -102,6 +104,7 @@ export function SafeThumbUrl({ url, className = 'w-full h-full object-cover', co
         <div className="absolute inset-0 shimmer" />
       </div>
       <img
+        key={`${url}:${retryCount}`}
         src={url}
         alt=""
         className={`${className} ${imgClasses}`}

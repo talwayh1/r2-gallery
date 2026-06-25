@@ -24,6 +24,7 @@ interface VirtualListResult {
  * Lightweight virtual list hook — single-column, fixed row height.
  * Only renders visible items + overscan buffer for large file listings.
  * Uses requestAnimationFrame to batch scroll updates.
+ * Automatically clamps scroll position when itemCount shrinks (e.g. search/filter).
  */
 export function useVirtualList({
   itemCount,
@@ -72,6 +73,18 @@ export function useVirtualList({
       }
     };
   }, []);
+
+  // Clamp scroll position when itemCount shrinks — prevent blank viewport
+  // when search/filter reduces results below the current scroll position.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const maxScroll = Math.max(0, itemCount * rowHeight - containerHeight);
+    if (el.scrollTop > maxScroll) {
+      el.scrollTop = maxScroll;
+      setScrollTop(maxScroll);
+    }
+  }, [itemCount, containerHeight, rowHeight]);
 
   const totalHeight = itemCount * rowHeight;
 

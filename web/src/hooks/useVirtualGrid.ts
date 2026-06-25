@@ -33,6 +33,7 @@ interface VirtualGridResult {
  * Only renders visible rows + overscan buffer for large file grids.
  * Uses requestAnimationFrame to batch scroll updates and avoid
  * unnecessary re-renders on every scroll pixel.
+ * Automatically clamps scroll position when itemCount shrinks.
  */
 export function useVirtualGrid({
   itemCount,
@@ -107,10 +108,23 @@ export function useVirtualGrid({
     ? Math.max(rowHeight * (effectiveMinWidth / minColumnWidth), 180)
     : rowHeight;
 
-  // Calculate visible range
+  // Clamp scroll position when itemCount shrinks — prevent blank viewport
+  // when search/filter deletes reduce results below the current scroll position.
   const totalRows = Math.ceil(itemCount / columns);
   const totalHeight = totalRows * effectiveRowHeight;
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const maxScroll = Math.max(0, totalHeight - state.containerHeight);
+    if (el.scrollTop > maxScroll) {
+      el.scrollTop = maxScroll;
+      setState(prev => ({ ...prev, scrollTop: maxScroll }));
+    }
+  }, [totalHeight, state.containerHeight]);
+
+  // Calculate visible range
   const startRow = Math.max(0, Math.floor(state.scrollTop / effectiveRowHeight) - overscan);
   const visibleRows = Math.ceil(state.containerHeight / effectiveRowHeight) + 2 * overscan;
   const endRow = Math.min(totalRows, startRow + visibleRows);
