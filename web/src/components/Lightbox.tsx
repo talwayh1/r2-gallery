@@ -3080,6 +3080,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                     alt=""
                     className="w-full h-full object-cover"
                     loading="lazy"
+                    decoding="async"
                     fetchPriority={Math.abs(i - index) <= 2 ? 'high' : 'low'}
                   />
                 ) : (

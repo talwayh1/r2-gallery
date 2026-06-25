@@ -43,7 +43,7 @@ function TaskRow({ task, onCancel, onRetry }: { task: UploadTask; onCancel: () =
       <div className="flex items-start gap-3">
         {task.previewUrl ? (
           <div className="shrink-0 w-8 h-8 rounded overflow-hidden bg-gray-100 dark:bg-gray-700">
-            <img src={task.previewUrl} alt="" className="w-full h-full object-cover img-fade-in" loading="lazy" />
+            <img src={task.previewUrl} alt="" className="w-full h-full object-cover img-fade-in" loading="lazy" decoding="async" />
           </div>
         ) : (
           <div className="mt-0.5 shrink-0"><StatusIcon status={task.status} /></div>

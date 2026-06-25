@@ -58,6 +58,7 @@ function MemoriesVideoPoster({ file }: { file: { path: string; mime: string; mti
             src={getThumbUrl(file.path, file.mtime)}
             alt=""
             loading="lazy"
+            decoding="async"
             className={`w-full object-cover transition-opacity duration-300 ${posterLoaded ? 'opacity-100' : 'opacity-0 absolute'}`}
             onLoad={() => setPosterLoaded(true)}
             onError={() => setPosterFailed(true)}
@@ -213,6 +214,7 @@ export default function MemoriesPage({ onClose, onNavigate, onOpenFile }: Props)
                           src={getThumbUrl(file.path, file.mtime)}
                           alt={file.name}
                           loading="lazy"
+                          decoding="async"
                           className={`w-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0 absolute'}`}
                           onLoad={() => handleImageLoad(file.path)}
                         />

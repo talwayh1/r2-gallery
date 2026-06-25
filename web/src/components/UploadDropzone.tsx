@@ -129,10 +129,10 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
           run: async (ctx: UploadRunnerContext) => {
             try {
               await uploadFileWithProgress(dir, file, relativePath, ctx.onProgress, ctx.signal);
-            } catch (e) {
-              // If upload fails, revoke the preview URL to free memory immediately
+            } finally {
+              // Revoke the blob URL after upload completes (success or failure)
+              // to prevent memory leaks from accumulated object URLs
               if (previewUrl) try { URL.revokeObjectURL(previewUrl); } catch { /* noop */ }
-              throw e;
             }
           },
         };
