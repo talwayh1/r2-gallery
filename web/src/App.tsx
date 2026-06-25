@@ -76,12 +76,18 @@ export default function App() {
     return window.innerWidth >= 768;
   });
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const isMobileRef = useRef(isMobile);
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)');
-    const listener = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    const listener = (e: MediaQueryListEvent) => {
+      setIsMobile(e.matches);
+      if (e.matches) setSidebarOpen(false);
+    };
     mq.addEventListener('change', listener);
     return () => mq.removeEventListener('change', listener);
   }, []);
+  // Sync isMobileRef whenever isMobile changes
+  useEffect(() => { isMobileRef.current = isMobile; }, [isMobile]);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 200);
   const [showLogin, setShowLogin] = useState(false);
@@ -247,17 +253,6 @@ export default function App() {
       if (data.hideLoginButton) setHideLoginButton(true);
       if (data.cdnDomain) setCdnDomain(data.cdnDomain);
     }).catch(console.error);
-  }, []);
-
-  // Track viewport size
-  useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      if (mobile) setSidebarOpen(false);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // Persist sidebar state
@@ -598,7 +593,7 @@ export default function App() {
 
     setDir(path);
     setSearch('');
-    if (isMobile) setSidebarOpen(false);
+    if (isMobileRef.current) setSidebarOpen(false);
 
     // Update URL for deep linking
     const url = path ? `/dir/${encodeURIComponent(path)}` : '/';
@@ -609,7 +604,7 @@ export default function App() {
     } else {
       window.history.pushState(null, '', url);
     }
-  }, [isMobile, dir]);
+  }, [dir]);
 
   // Handle browser back/forward navigation
   useEffect(() => {
