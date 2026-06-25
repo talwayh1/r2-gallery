@@ -176,10 +176,14 @@ export default function App() {
       if (e instanceof DOMException && e.name === 'AbortError') return;
       console.error('Failed to load files:', e);
       const msg = (e as Error).message || '加载文件失败';
-      // Only show toast for non-Abort errors — AbortError is handled above
-      toast('error', `加载文件失败: ${msg}`);
-      if (append) setLoadMoreError(msg);
-      else setLoadError(msg);
+      // Append (load-more) errors are shown inline via loadMoreError in the layout component
+      // Non-append errors show a toast and inline banner
+      if (append) {
+        setLoadMoreError(msg);
+      } else {
+        toast('error', `加载文件失败: ${msg}`);
+        setLoadError(msg);
+      }
     } finally {
       if (controller === abortRef.current) {
         setLoading(false);
@@ -680,7 +684,7 @@ export default function App() {
           />
         );
       case 'list':
-        return <FileList key={layout} {...commonProps} />;
+        return <FileList key={layout} {...commonProps} onMove={() => loadFiles(dir)} />;
       case 'blocks':
         return <FileBlocks key={layout} {...commonProps} />;
       case 'columns':
