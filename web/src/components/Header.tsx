@@ -61,6 +61,36 @@ const SORTS: { key: SortMode; label: string; icon: string }[] = [
   { key: 'shuffle', label: '随机', icon: '🔀' },
 ];
 
+const THEME_LABELS: Record<ThemeMode, string> = {
+  light: '浅色 (L)',
+  dark: '深色 (D)',
+  system: '跟随系统 (S)',
+  contrast: '高对比度 (C)',
+};
+
+const THEME_ICONS: Record<ThemeMode, React.ReactNode> = {
+  light: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+    </svg>
+  ),
+  dark: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+    </svg>
+  ),
+  system: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    </svg>
+  ),
+  contrast: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v18m0-18a9 9 0 000 18m0-18a9 9 0 019 9H3a9 9 0 019-9z" />
+    </svg>
+  ),
+};
+
 const TYPE_FILTERS: { key: string; label: string; icon: React.ReactNode }[] = [
   { key: 'all', label: '全部', icon: <FileTypeIcon mime='application/pdf' className='w-4 h-4' /> },
   { key: 'image', label: '图片', icon: <FileTypeIcon mime='image/jpeg' className='w-4 h-4' /> },
@@ -487,16 +517,11 @@ export default function Header({
               )}
             </div>
 
-            <button onClick={onThemeToggle} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="切换主题">
-              {theme === 'dark' ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-              )}
+            <button onClick={onThemeToggle} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg relative group" title={THEME_LABELS[theme]}>
+              {THEME_ICONS[theme]}
+              <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-gray-400 dark:text-gray-500 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                {THEME_LABELS[theme]}
+              </span>
             </button>
 
             {/* Language switcher */}
@@ -599,16 +624,11 @@ export default function Header({
               </svg>
             </button>
             {/* Mobile theme toggle */}
-            <button onClick={onThemeToggle} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg shrink-0" title="切换主题">
-              {theme === 'dark' ? (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-              )}
+            <button onClick={onThemeToggle} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg shrink-0 relative group" title={THEME_LABELS[theme]}>
+              {THEME_ICONS[theme]}
+              <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] text-gray-400 dark:text-gray-500 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                {THEME_LABELS[theme]}
+              </span>
             </button>
             {/* Mobile filter toggle */}
             <button onClick={() => setMobileFilterOpen(!mobileFilterOpen)} className={`p-1.5 rounded-lg shrink-0 transition-colors ${mobileFilterOpen ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`} title="筛选">
@@ -777,7 +797,7 @@ export default function Header({
                   <span>🔄</span><span>刷新</span>
                 </button>
                 <button onClick={() => { onThemeToggle(); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-                  <span>{theme === 'dark' ? <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>}</span><span>切换主题</span>
+                  <span className="w-4 h-4 flex items-center justify-center">{THEME_ICONS[theme]}</span><span>{THEME_LABELS[theme]}</span>
                 </button>
                 <button onClick={() => { onShortcutsClick?.(); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
                   <span>⚡</span><span>快捷键</span>

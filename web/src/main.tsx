@@ -50,15 +50,22 @@ window.applySWUpdate = async () => {
   return true;
 };
 
+// Define the BeforeInstallPromptEvent interface (not part of standard TS lib types)
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+  prompt(): Promise<void>;
+}
+
 // Capture PWA install prompt for custom install UI
-let deferredPrompt: any = null;
-window.addEventListener('beforeinstallprompt', (e) => {
+let deferredPrompt: BeforeInstallPromptEvent | null = null;
+window.addEventListener('beforeinstallprompt', (e: Event) => {
   e.preventDefault();
-  deferredPrompt = e;
+  deferredPrompt = e as BeforeInstallPromptEvent;
 });
 
 // Expose install function globally
-window.installPWA = async () => {
+window.installPWA = async (): Promise<boolean> => {
   if (!deferredPrompt) return false;
   deferredPrompt.prompt();
   const { outcome } = await deferredPrompt.userChoice;
