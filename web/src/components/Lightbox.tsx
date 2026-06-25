@@ -145,6 +145,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     goLast: () => {},
     resetZoom: () => {},
     handleZoomActualSize: () => {},
+    handleZoomFitWidth: () => {},
     toggleSlideshow: () => {},
     handleDeleteConfirm: () => {},
     handleDeleteExecute: () => {},
@@ -291,6 +292,16 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     const img = imageRef.current;
     if (!img || !img.naturalWidth || img.clientWidth === 0) return;
     const ratio = img.naturalWidth / img.clientWidth;
+    setScale(ratio);
+    setOffset({ x: 0, y: 0 });
+  }, []);
+
+  // Zoom to fit container width (fill width, allow vertical scroll)
+  const handleZoomFitWidth = useCallback(() => {
+    const img = imageRef.current;
+    const container = imgContainerRef.current;
+    if (!img || !container || !img.naturalWidth || container.clientWidth === 0) return;
+    const ratio = container.clientWidth / img.naturalWidth;
     setScale(ratio);
     setOffset({ x: 0, y: 0 });
   }, []);
@@ -920,6 +931,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     goLast,
     resetZoom,
     handleZoomActualSize,
+    handleZoomFitWidth,
     toggleSlideshow,
     handleDeleteConfirm,
     handleDeleteExecute,
@@ -1002,6 +1014,9 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       } else if (e.key === '1') {
         e.preventDefault();
         kb.handleZoomActualSize();
+      } else if (e.key === '2') {
+        e.preventDefault();
+        kb.handleZoomFitWidth();
       } else if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
         kb.handleCopyFileName();
@@ -1582,6 +1597,16 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                     1:1
                   </button>
                 ) : null}
+                {/* Fit to Width — only show when image has loaded */}
+                {imageLoaded && imageDimensions ? (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleZoomFitWidth(); }}
+                    className="px-1.5 py-1 text-xs font-bold text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0 font-mono"
+                    title="适配宽度 (2)"
+                  >
+                    W
+                  </button>
+                ) : null}
                 {isZoomed && (
                   <button
                     onClick={(e) => { e.stopPropagation(); resetZoom(); }}
@@ -1881,6 +1906,19 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 title="实际大小 (1:1)"
               >
                 1:1
+              </button>
+            ) : null}
+            {/* Fit to Width — only show when image has loaded */}
+            {imageLoaded && imageDimensions ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleZoomFitWidth();
+                }}
+                className="px-1.5 py-1 text-xs font-bold text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0 font-mono"
+                title="适配宽度 (2)"
+              >
+                W
               </button>
             ) : null}
             {/* Zoom level percentage */}
