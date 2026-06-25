@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Scroll-to-top floating button with scroll progress ring.
@@ -8,6 +9,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
  * Smoothly fades in/out via CSS transitions.
  */
 export default function ScrollToTop({ scrollRef }: { scrollRef?: React.RefObject<HTMLDivElement | null> }) {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
   const [progress, setProgress] = useState(0);
   const threshold = 300;
@@ -56,8 +58,8 @@ export default function ScrollToTop({ scrollRef }: { scrollRef?: React.RefObject
   return (
     <button
       onClick={scrollToTop}
-      aria-label="返回顶部"
-      title="返回顶部"
+      aria-label={t('scrollToTop')}
+      title={t('scrollToTop')}
       style={{
         position: 'fixed',
         left: '1.5rem',

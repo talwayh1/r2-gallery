@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   onClose: () => void;
@@ -6,89 +7,95 @@ interface Props {
 
 interface Shortcut {
   keys: string[];
-  description: string;
+  descriptionKey: string;
 }
 
-const shortcuts: { category: string; items: Shortcut[] }[] = [
+interface ShortcutSection {
+  categoryKey: string;
+  items: Shortcut[];
+}
+
+const shortcutSections: ShortcutSection[] = [
   {
-    category: '全局',
+    categoryKey: 'kbd.category.global',
     items: [
-      { keys: ['?'], description: '显示/隐藏快捷键帮助' },
-      { keys: ['/'], description: '全局搜索' },
-      { keys: ['Ctrl', 'F'], description: '全局搜索' },
-      { keys: ['Ctrl', 'K'], description: '全局搜索' },
-      { keys: ['R'], description: '刷新文件列表' },
-      { keys: ['G'], description: '切换下一个布局' },
-      { keys: ['B'], description: '切换侧边栏' },
-      { keys: ['N'], description: '新建文件夹 (需要登录)' },
-      { keys: ['1'], description: '网格布局' },
-      { keys: ['2'], description: '列表布局' },
-      { keys: ['3'], description: '图片列表' },
-      { keys: ['4'], description: '列布局' },
-      { keys: ['5'], description: '块布局' },
-      { keys: ['6'], description: '行布局' },
-      { keys: ['T'], description: '切换亮色/暗色主题' },
-      { keys: ['Alt', '0'], description: '全局搜索：全部类型' },
-      { keys: ['Alt', '1'], description: '全局搜索：图片' },
-      { keys: ['Alt', '2'], description: '全局搜索：视频' },
-      { keys: ['Alt', '3'], description: '全局搜索：音频' },
-      { keys: ['Alt', '4'], description: '全局搜索：文档' },
+      { keys: ['?'], descriptionKey: 'kbd.toggle' },
+      { keys: ['/'], descriptionKey: 'kbd.search' },
+      { keys: ['Ctrl', 'F'], descriptionKey: 'kbd.search' },
+      { keys: ['Ctrl', 'K'], descriptionKey: 'kbd.search' },
+      { keys: ['R'], descriptionKey: 'kbd.refresh' },
+      { keys: ['G'], descriptionKey: 'kbd.next_layout' },
+      { keys: ['B'], descriptionKey: 'kbd.toggle_sidebar' },
+      { keys: ['N'], descriptionKey: 'kbd.new_folder' },
+      { keys: ['1'], descriptionKey: 'kbd.layout_grid' },
+      { keys: ['2'], descriptionKey: 'kbd.layout_list' },
+      { keys: ['3'], descriptionKey: 'kbd.layout_imagelist' },
+      { keys: ['4'], descriptionKey: 'kbd.layout_columns' },
+      { keys: ['5'], descriptionKey: 'kbd.layout_blocks' },
+      { keys: ['6'], descriptionKey: 'kbd.layout_rows' },
+      { keys: ['T'], descriptionKey: 'kbd.toggle_theme' },
+      { keys: ['Alt', '0'], descriptionKey: 'kbd.search_all' },
+      { keys: ['Alt', '1'], descriptionKey: 'kbd.search_image' },
+      { keys: ['Alt', '2'], descriptionKey: 'kbd.search_video' },
+      { keys: ['Alt', '3'], descriptionKey: 'kbd.search_audio' },
+      { keys: ['Alt', '4'], descriptionKey: 'kbd.search_doc' },
     ],
   },
   {
-    category: '文件操作',
+    categoryKey: 'kbd.category.file',
     items: [
-      { keys: ['Ctrl', 'A'], description: '全选文件' },
-      { keys: ['Ctrl', 'C'], description: '复制选中文件' },
-      { keys: ['Ctrl', 'X'], description: '剪切选中文件' },
-      { keys: ['Ctrl', 'V'], description: '粘贴文件到当前目录' },
-      { keys: ['Ctrl', 'Shift', 'D'], description: '复制文件（创建副本）' },
-      { keys: ['Shift', 'D'], description: '下载选中文件' },
-      { keys: ['Delete'], description: '删除选中文件' },
-      { keys: ['F2'], description: '重命名选中文件' },
-      { keys: ['Esc'], description: '取消选择' },
-      { keys: ['Ctrl', 'Shift', 'C'], description: '复制选中文件的分享链接' },
-      { keys: ['Ctrl', 'Shift', 'A'], description: '取消全选' },
+      { keys: ['Ctrl', 'A'], descriptionKey: 'kbd.select_all' },
+      { keys: ['Ctrl', 'C'], descriptionKey: 'kbd.copy' },
+      { keys: ['Ctrl', 'X'], descriptionKey: 'kbd.cut' },
+      { keys: ['Ctrl', 'V'], descriptionKey: 'kbd.paste' },
+      { keys: ['Ctrl', 'Shift', 'D'], descriptionKey: 'kbd.duplicate' },
+      { keys: ['Shift', 'D'], descriptionKey: 'kbd.download' },
+      { keys: ['Delete'], descriptionKey: 'kbd.delete' },
+      { keys: ['F2'], descriptionKey: 'kbd.rename' },
+      { keys: ['Esc'], descriptionKey: 'kbd.deselect' },
+      { keys: ['Ctrl', 'Shift', 'C'], descriptionKey: 'kbd.copy_link' },
+      { keys: ['Ctrl', 'Shift', 'A'], descriptionKey: 'kbd.deselect_all' },
     ],
   },
   {
-    category: '灯箱 (Lightbox)',
+    categoryKey: 'kbd.category.lightbox',
     items: [
-      { keys: ['←', '↑'], description: '上一张' },
-      { keys: ['→', '↓'], description: '下一张' },
-      { keys: ['Shift', '←'], description: '向前跳 10 张' },
-      { keys: ['Shift', '→'], description: '向后跳 10 张' },
-      { keys: ['Home'], description: '跳转到第一张' },
-      { keys: ['End'], description: '跳转到最后一张' },
-      { keys: ['Esc'], description: '关闭面板/关闭灯箱' },
-      { keys: ['I'], description: '切换文件信息面板' },
-      { keys: ['C'], description: '复制图片到剪贴板' },
-      { keys: ['D'], description: '下载当前文件' },
-      { keys: ['M'], description: '切换更多工具面板' },
-      { keys: ['Space', 'S'], description: '播放/暂停幻灯片' },
-      { keys: ['+', '-'], description: '放大/缩小' },
-      { keys: ['0'], description: '重置缩放' },
-      { keys: ['1'], description: '实际大小 (1:1)' },
-      { keys: ['2'], description: '适配宽度 (W)' },
-      { keys: ['Ctrl', 'O'], description: '在新标签页打开文件' },
-      { keys: ['Ctrl', 'W'], description: '关闭灯箱' },
-      { keys: ['Ctrl', 'D'], description: '复制当前文件' },
-      { keys: ['[', ']'], description: '幻灯片播放中减速/加速' },
-      { keys: ['F'], description: '切换全屏' },
-      { keys: ['R', 'Shift+R'], description: '顺时针/逆时针旋转' },
+      { keys: ['←', '↑'], descriptionKey: 'kbd.lightbox_prev' },
+      { keys: ['→', '↓'], descriptionKey: 'kbd.lightbox_next' },
+      { keys: ['Shift', '←'], descriptionKey: 'kbd.lightbox_jump' },
+      { keys: ['Shift', '→'], descriptionKey: 'kbd.lightbox_jump_back' },
+      { keys: ['Home'], descriptionKey: 'kbd.lightbox_first' },
+      { keys: ['End'], descriptionKey: 'kbd.lightbox_last' },
+      { keys: ['Esc'], descriptionKey: 'kbd.lightbox_close' },
+      { keys: ['I'], descriptionKey: 'kbd.lightbox_info' },
+      { keys: ['C'], descriptionKey: 'kbd.lightbox_copy_image' },
+      { keys: ['D'], descriptionKey: 'kbd.lightbox_download' },
+      { keys: ['M'], descriptionKey: 'kbd.lightbox_tools' },
+      { keys: ['Space', 'S'], descriptionKey: 'kbd.lightbox_slideshow' },
+      { keys: ['+', '-'], descriptionKey: 'kbd.lightbox_zoom' },
+      { keys: ['0'], descriptionKey: 'kbd.lightbox_reset' },
+      { keys: ['1'], descriptionKey: 'kbd.lightbox_actual' },
+      { keys: ['2'], descriptionKey: 'kbd.lightbox_fit' },
+      { keys: ['Ctrl', 'O'], descriptionKey: 'kbd.lightbox_newtab' },
+      { keys: ['Ctrl', 'W'], descriptionKey: 'kbd.lightbox_close_modal' },
+      { keys: ['Ctrl', 'D'], descriptionKey: 'kbd.lightbox_copy_file' },
+      { keys: ['[', ']'], descriptionKey: 'kbd.lightbox_speed' },
+      { keys: ['F'], descriptionKey: 'kbd.lightbox_fullscreen' },
+      { keys: ['R', 'Shift+R'], descriptionKey: 'kbd.lightbox_rotate' },
     ],
   },
   {
-    category: '触控手势 (移动端)',
+    categoryKey: 'kbd.category.touch',
     items: [
-      { keys: ['← 滑动'], description: '下一张' },
-      { keys: ['滑动 →'], description: '上一张' },
-      { keys: ['下滑'], description: '关闭灯箱' },
+      { keys: ['← 滑动'], descriptionKey: 'kbd.touch_next' },
+      { keys: ['滑动 →'], descriptionKey: 'kbd.touch_prev' },
+      { keys: ['下滑'], descriptionKey: 'kbd.touch_close' },
     ],
   },
 ];
 
 export default function KeyboardShortcuts({ onClose }: Props) {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -116,11 +123,22 @@ export default function KeyboardShortcuts({ onClose }: Props) {
     };
   }, [onClose]);
 
+  // Map shortcut data to translated display objects
+  const sections = useMemo(() => {
+    return shortcutSections.map((section) => ({
+      category: t(section.categoryKey),
+      items: section.items.map((item) => ({
+        ...item,
+        description: t(item.descriptionKey),
+      })),
+    }));
+  }, [t]);
+
   // Filter shortcuts by search term
   const filteredShortcuts = useMemo(() => {
-    if (!searchTerm.trim()) return shortcuts;
+    if (!searchTerm.trim()) return sections;
     const term = searchTerm.toLowerCase().trim();
-    return shortcuts
+    return sections
       .map((section) => ({
         ...section,
         items: section.items.filter(
@@ -130,9 +148,9 @@ export default function KeyboardShortcuts({ onClose }: Props) {
         ),
       }))
       .filter((section) => section.items.length > 0);
-  }, [searchTerm]);
+  }, [sections, searchTerm]);
 
-  const totalCount = shortcuts.reduce((s, c) => s + c.items.length, 0);
+  const totalCount = sections.reduce((s, c) => s + c.items.length, 0);
   const shownCount = filteredShortcuts.reduce((s, c) => s + c.items.length, 0);
   const hasFilter = searchTerm.trim().length > 0;
   const matchCount = hasFilter ? shownCount : totalCount;
@@ -153,7 +171,7 @@ export default function KeyboardShortcuts({ onClose }: Props) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            键盘快捷键
+            {t('kbd.title')}
           </h2>
           <button
             onClick={onClose}
@@ -180,7 +198,7 @@ export default function KeyboardShortcuts({ onClose }: Props) {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={`搜索 ${totalCount} 个快捷键...`}
+              placeholder={t('kbd.search_shortcuts', { count: totalCount })}
               className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 focus:ring-1 focus:ring-blue-400/30 dark:focus:ring-blue-500/30 transition-colors"
             />
             {searchTerm && (
@@ -196,7 +214,7 @@ export default function KeyboardShortcuts({ onClose }: Props) {
           </div>
           {hasFilter && (
             <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
-              找到 {matchCount} 个匹配项
+              {t('kbd.found_matches', { count: matchCount })}
             </p>
           )}
         </div>
@@ -209,12 +227,12 @@ export default function KeyboardShortcuts({ onClose }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                   d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-sm">未找到匹配的快捷键</p>
+              <p className="text-sm">{t('kbd.no_matches')}</p>
               <button
                 onClick={() => setSearchTerm('')}
                 className="mt-2 text-xs text-blue-500 hover:text-blue-600"
               >
-                清除搜索
+                {t('kbd.clear_search')}
               </button>
             </div>
           ) : (
@@ -225,7 +243,7 @@ export default function KeyboardShortcuts({ onClose }: Props) {
                 </h3>
                 <div className="space-y-1.5">
                   {section.items.map((item) => (
-                    <div key={item.description} className="flex items-center justify-between gap-4">
+                    <div key={item.descriptionKey} className="flex items-center justify-between gap-4">
                       <span className="text-sm text-gray-700 dark:text-gray-300">{item.description}</span>
                       <div className="flex items-center gap-1 shrink-0">
                         {item.keys.map((key, i) => (
@@ -248,7 +266,10 @@ export default function KeyboardShortcuts({ onClose }: Props) {
         {/* Footer */}
         <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 text-center shrink-0">
           <p className="text-xs text-gray-400 dark:text-gray-500">
-            按 <kbd className="inline-flex items-center justify-center w-5 h-5 text-[10px] font-mono bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded">?</kbd> 或 <kbd className="inline-flex items-center justify-center w-8 h-5 text-[10px] font-mono bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded">Esc</kbd> 关闭
+            <kbd className="inline-flex items-center justify-center w-5 h-5 text-[10px] font-mono bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded">?</kbd>
+            {' / '}
+            <kbd className="inline-flex items-center justify-center w-8 h-5 text-[10px] font-mono bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded">Esc</kbd>
+            {' — '}{t('kbd.lightbox_close')}
           </p>
         </div>
       </div>
