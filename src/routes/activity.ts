@@ -10,8 +10,8 @@ const activity = new Hono<{ Bindings: AppBindings; Variables: Variables }>();
 
 // GET /api/activity — list recent activity
 activity.get('/activity', authMiddleware, async (c) => {
-  const limit = parseInt(c.req.query('limit') || '50');
-  const offset = parseInt(c.req.query('offset') || '0');
+  const limit = Math.min(parseInt(c.req.query('limit') || '50') || 50, 200);
+  const offset = Math.max(parseInt(c.req.query('offset') || '0') || 0, 0);
   const items = await db.listActivity(c.env.DB, limit, offset);
   const total = await db.getActivityCount(c.env.DB);
   return c.json({ items, total, hasMore: offset + items.length < total });

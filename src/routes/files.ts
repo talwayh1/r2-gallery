@@ -5,6 +5,7 @@ import * as db from '../services/db';
 import { authMiddleware } from '../auth';
 import { generateThumbnail, getThumbKey, isSupportedImageType, isSvg } from '../services/thumbnail';
 import { getMimeType } from '../utils/mime';
+import type { ExecutionContext } from '@cloudflare/workers-types';
 
 const files = new Hono<{ Bindings: AppBindings; Variables: Variables }>();
 
@@ -298,6 +299,17 @@ files.get('/file', async (c) => {
   const contentType = getMimeType(path);
   const isDownload = c.req.query('download') === '1';
 
+  // Fire-and-forget traffic logging — don't block file serving
+  const ctx = c.executionCtx as ExecutionContext | undefined;
+  const logTrafficAsync = (bytes: number) => {
+    const promise = db.logTraffic(c.env.DB, path, bytes, c.get('userId'));
+    if (ctx?.waitUntil) {
+      ctx.waitUntil(promise);
+    } else {
+      promise.catch(() => {});
+    }
+  };
+
   // Parse Range header for partial content (video seeking)
   const rangeHeader = c.req.header('Range');
   if (rangeHeader && !isDownload) {
@@ -321,7 +333,7 @@ files.get('/file', async (c) => {
       headers.set('X-Content-Type-Options', 'nosniff');
 
       // Log traffic
-      try { await db.logTraffic(c.env.DB, path, length, c.get('userId')); } catch {}
+      try { logTrafficAsync(length); } catch {}
 
       return new Response(rangeObj.body!, { status: 206, headers });
     }
@@ -341,7 +353,7 @@ files.get('/file', async (c) => {
   }
 
   // Log traffic
-  try { await db.logTraffic(c.env.DB, path, totalSize, c.get('userId')); } catch {}
+  try { logTrafficAsync(totalSize); } catch {}
 
   return new Response(obj.body!, { headers });
 });
