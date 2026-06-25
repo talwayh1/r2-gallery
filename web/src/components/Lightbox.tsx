@@ -165,6 +165,8 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     confirmDelete: false,
     onDelete: null as ((path: string) => void) | null,
     onDuplicate: null as ((path: string) => void) | null,
+    onLocate: null as ((path: string) => void) | null,
+    handleLocate: () => {},
     slideshowTimerRef: { current: null as number | null },
     imgContainerRef: { current: null as HTMLElement | null },
   });
@@ -926,6 +928,13 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     }
   }, [current, onDelete, deleting]);
 
+  const handleLocate = useCallback(() => {
+    const cur = items[index];
+    if (onLocate && cur?.path) {
+      onLocate(cur.path);
+    }
+  }, [onLocate, items, index]);
+
   // Sync keyboard ref with latest values on every render
   keyboardRef.current = {
     handleClose,
@@ -958,6 +967,8 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     confirmDelete,
     onDelete: onDelete ?? null,
     onDuplicate: onDuplicate ?? null,
+    onLocate: onLocate ?? null,
+    handleLocate,
     slideshowTimerRef: slideshowTimerRef as { current: number | null },
     imgContainerRef,
   };
@@ -993,6 +1004,12 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       else if (e.key === '?' || e.key === 'h' || e.key === 'H') {
         e.preventDefault();
         setShowKeyboardHelp((s) => !s);
+      }
+      else if (e.key === 'l' || e.key === 'L') {
+        if (kb.onLocate) {
+          e.preventDefault();
+          kb.handleLocate();
+        }
       }
       else if (e.key === '+' || e.key === '=') {
         e.preventDefault();
@@ -1351,12 +1368,6 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     }).catch(() => {
       // User cancelled — no action needed
     });
-  };
-
-  const handleLocate = () => {
-    if (onLocate && current.path) {
-      onLocate(current.path);
-    }
   };
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -1825,7 +1836,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 <button
                   onClick={(e) => { e.stopPropagation(); handleLocate(); setShowMoreTools(false); }}
                   className="flex items-center gap-1.5 px-3 py-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors text-xs shrink-0"
-                  title="定位到所在文件夹"
+                  title="定位到所在文件夹 (L)"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
                   <span>所在文件夹</span>

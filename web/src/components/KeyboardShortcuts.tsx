@@ -79,6 +79,7 @@ const shortcutSections: ShortcutSection[] = [
       { keys: ['Ctrl', 'O'], descriptionKey: 'kbd.lightbox_newtab' },
       { keys: ['Ctrl', 'W'], descriptionKey: 'kbd.lightbox_close_modal' },
       { keys: ['Ctrl', 'D'], descriptionKey: 'kbd.lightbox_copy_file' },
+      { keys: ['L'], descriptionKey: 'kbd.lightbox_locate' },
       { keys: ['[', ']'], descriptionKey: 'kbd.lightbox_speed' },
       { keys: ['F'], descriptionKey: 'kbd.lightbox_fullscreen' },
       { keys: ['R', 'Shift+R'], descriptionKey: 'kbd.lightbox_rotate' },
