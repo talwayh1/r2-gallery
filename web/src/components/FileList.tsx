@@ -6,7 +6,7 @@ import SafeThumb from './SafeThumb';
 import ShareDialog from './ShareDialog';
 import EmptyState from './EmptyState';
 import FileTypeIcon from './FileTypeIcon';
-import { formatSize } from '../utils';
+import { formatSize, formatDate, getKindOrder, cn } from '../utils';
 import HighlightText from './HighlightText';
 
 const FolderPicker = lazy(() => import('./FolderPicker'));
@@ -35,22 +35,6 @@ interface Props {
 
 type SortKey = 'name' | 'size' | 'mtime' | 'kind' | 'shuffle';
 type SortDir = 'asc' | 'desc';
-
-function getKindOrder(mime: string): number {
-  if (mime.startsWith('image/')) return 0;
-  if (mime.startsWith('video/')) return 1;
-  if (mime.startsWith('audio/')) return 2;
-  if (mime === 'application/pdf' || mime.startsWith('text/') ||
-      mime === 'application/json' || mime === 'application/xml' ||
-      mime === 'application/javascript' || mime === 'application/x-yaml') return 3;
-  return 4;
-}
-
-
-function formatDate(ts: number) {
-  if (!ts) return '';
-  return new Date(ts * 1000).toLocaleDateString();
-}
 
 export default function FileList({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, sortBy: sortByProp, sortOrder: sortOrderProp, search }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
@@ -264,9 +248,10 @@ export default function FileList({ files, dirs, dirMtimes, currentDir, onNavigat
               return (
                 <tr
                   key={item.path}
-                  className={`border-b border-gray-100 dark:border-gray-800 cursor-pointer transition-colors render-optimized ${
-                    isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
-                  }`}
+                  className={cn(
+                    'border-b border-gray-100 dark:border-gray-800 cursor-pointer transition-colors render-optimized',
+                    isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50',
+                  )}
                   onClick={() => isDir ? onNavigate(item.path) : onOpen(item.path, item.mime)}
                   onContextMenu={(e) => handleContextMenu(e, item.path, item.name, isDir)}
                   onTouchStart={(e) => handleTouchStart(e, item.path, item.name, isDir)}
@@ -275,9 +260,10 @@ export default function FileList({ files, dirs, dirMtimes, currentDir, onNavigat
                 >
                   <td className="px-2 py-3 text-center">
                     <div
-                      className={`inline-flex items-center justify-center w-5 h-5 rounded-md border-2 transition-colors ${
-                        isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300 dark:border-gray-600'
-                      }`}
+                      className={cn(
+                        'inline-flex items-center justify-center w-5 h-5 rounded-md border-2 transition-colors',
+                        isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300 dark:border-gray-600',
+                      )}
                       onClick={(e) => { e.stopPropagation(); handleToggleSelect(item.path); }}
                     >
                       {isSelected && (

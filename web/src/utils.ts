@@ -83,3 +83,25 @@ export function getAspectRatio(w: number, h: number): string {
   if (rw > 50 || rh > 50) return `${ratio.toFixed(2)}:1`;
   return `${rw}:${rh}`;
 }
+
+/**
+ * Lightweight classnames helper — joins truthy class values with spaces.
+ * Accepts strings, falsy values, and nested arrays of the same.
+ * No external dependency needed; mirrors clsx for common use cases.
+ *
+ * @example
+ * cn('px-4', isActive && 'bg-blue-500', 'py-2') // → "px-4 bg-blue-500 py-2"
+ */
+export function cn(...classes: (string | false | null | undefined | (string | false | null | undefined)[])[]): string {
+  const parts: string[] = [];
+  for (const c of classes) {
+    if (Array.isArray(c)) {
+      for (const sub of c) {
+        if (sub) parts.push(sub);
+      }
+    } else if (c) {
+      parts.push(c);
+    }
+  }
+  return parts.join(' ');
+}
