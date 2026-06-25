@@ -75,7 +75,13 @@ export default function App() {
     if (saved !== null) return saved === 'true';
     return window.innerWidth >= 768;
   });
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const listener = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', listener);
+    return () => mq.removeEventListener('change', listener);
+  }, []);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 200);
   const [showLogin, setShowLogin] = useState(false);
@@ -84,7 +90,7 @@ export default function App() {
 
   // New features state
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [typeFilter, setTypeFilter] = useState<TypeFilterKind>('all');
+  const [typeFilter, setTypeFilter] = useState<TypeFilterKind>(() => (localStorage.getItem('typeFilter') as TypeFilterKind) || 'all');
   const [sortBy, setSortBy] = useState<SortMode>(() => {
     return (localStorage.getItem('sortBy') as SortMode) || 'name';
   });
@@ -1169,7 +1175,7 @@ export default function App() {
           localStorage.setItem('sortBy', sort);
           localStorage.setItem('sortOrder', order);
         }}
-        onTypeFilterChange={(t) => setTypeFilter(t as TypeFilterKind)}
+        onTypeFilterChange={(t) => { setTypeFilter(t as TypeFilterKind); localStorage.setItem('typeFilter', t as string); }}
         hideLoginButton={hideLoginButton}
         selectMode={selectMode}
         onSelectModeToggle={() => setSelectMode(!selectMode)}
