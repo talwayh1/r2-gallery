@@ -29,6 +29,7 @@ const MoveToFolder = lazy(() => import('./components/MoveToFolder'));
 const InstallPrompt = lazy(() => import('./components/InstallPrompt'));
 
 // TypeFilter: static import (matchFilter used in useMemo, component small enough to keep in main chunk)
+import RenameDialog from './components/RenameDialog';
 import TypeFilter, { matchFilter } from './components/TypeFilter';
 import type { TypeFilter as TypeFilterKind } from './components/TypeFilter';
 import SkeletonGrid from './components/SkeletonGrid';
@@ -101,6 +102,8 @@ export default function App() {
   const [showDiscover, setShowDiscover] = useState(false);
   const [showMemories, setShowMemories] = useState(false);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [renameTarget, setRenameTarget] = useState<string | null>(null);
+  const [renameCurrentName, setRenameCurrentName] = useState('');
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -469,15 +472,13 @@ export default function App() {
           handleBatchDelete();
         }
       } else if (e.key === 'F2') {
-        // F2 — rename first selected file
+        // F2 — rename first selected file via modal dialog
         if (selected.size === 1 && user) {
           e.preventDefault();
           const path = Array.from(selected)[0];
           const name = path.split('/').pop() || path;
-          const newName = prompt('重命名:', name);
-          if (newName && newName !== name) {
-            handleRename(path, newName);
-          }
+          setRenameTarget(path);
+          setRenameCurrentName(name);
         }
       } else if (e.key === 'c' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
         // Ctrl+Shift+C — copy selected file links
@@ -1416,6 +1417,17 @@ export default function App() {
             onClose={() => setShowBatchRename(false)}
           />
         </Suspense></ErrorBoundary>
+      )}
+      {renameTarget !== null && (
+        <RenameDialog
+          path={renameTarget}
+          currentName={renameCurrentName}
+          onConfirm={(newName) => {
+            handleRename(renameTarget, newName);
+            setRenameTarget(null);
+          }}
+          onCancel={() => setRenameTarget(null)}
+        />
       )}
       {showStats && user && (
         <ErrorBoundary><Suspense fallback={<LazyLoading />}>
