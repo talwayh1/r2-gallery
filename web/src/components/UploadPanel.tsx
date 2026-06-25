@@ -10,6 +10,7 @@
  */
 
 import { useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useUploadQueue, formatEta, formatSpeed, type UploadTask, type UploadTaskStatus } from '../hooks/useUploadQueue';
 import { formatSize } from '../utils';
 import { toast } from '../hooks/useToast';
@@ -25,15 +26,17 @@ function StatusIcon({ status }: { status: UploadTaskStatus }) {
 }
 
 function StatusPill({ status }: { status: UploadTaskStatus }) {
+  const { t } = useTranslation();
   const cls = status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
     : status === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
     : status === 'cancelled' ? 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
     : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
-  const label = status === 'completed' ? '完成' : status === 'failed' ? '失败' : status === 'cancelled' ? '取消' : '上传中';
+  const label = status === 'completed' ? t('upload.status.completed') : status === 'failed' ? t('upload.status.failed') : status === 'cancelled' ? t('upload.status.cancelled') : t('upload.status.uploading');
   return <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${cls}`}>{label}</span>;
 }
 
 function TaskRow({ task, onCancel, onRetry }: { task: UploadTask; onCancel: () => void; onRetry: () => void }) {
+  const { t } = useTranslation();
   const pct = task.total > 0 ? Math.round((Math.min(task.loaded, task.total) / task.total) * 100) : 0;
   const canCancel = task.status === 'queued' || task.status === 'uploading';
   const canRetry = task.status === 'failed' || task.status === 'cancelled';
@@ -58,7 +61,7 @@ function TaskRow({ task, onCancel, onRetry }: { task: UploadTask; onCancel: () =
               </button>
             )}
             {canRetry && (
-              <button onClick={onRetry} className="shrink-0 p-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" title="重新上传">
+              <button onClick={onRetry} className="shrink-0 p-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" title={t('upload.retry')}>
                 <svg className="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
@@ -89,6 +92,7 @@ function TaskRow({ task, onCancel, onRetry }: { task: UploadTask; onCancel: () =
 }
 
 export default function UploadPanel() {
+  const { t } = useTranslation();
   const { tasks, isOpen, setOpen, cancel, cancelAll, retry, retryAllFailed, dismissCompleted, hasActiveUploads, activeCount, completedCount, failedCount } = useUploadQueue();
   const listRef = useRef<HTMLDivElement>(null);
   const autoDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -116,13 +120,18 @@ export default function UploadPanel() {
         const cancelled = tasks.filter(t => t.status === 'cancelled').length;
         // Show summary toast
         if (done === total) {
-          toast('success', `全部 ${total} 个文件上传完成`);
+          toast('success', t('upload.allDone', { total }));
         } else if (failed === total) {
-          toast('error', `全部 ${total} 个文件上传失败`);
+          toast('error', t('upload.allFailed', { total }));
         } else if (failed > 0) {
-          toast('info', `上传完成：${done} 个成功，${failed} 个失败${cancelled > 0 ? `，${cancelled} 个取消` : ''}`);
+          const parts = [`${t('upload.doneCount', { count: done })}`, `${t('upload.failedCount', { count: failed })}`];
+          if (cancelled > 0) parts.push(t('upload.cancelledCount', { count: cancelled }));
+          toast('info', parts.join(' · '));
         } else {
-          toast('info', `上传完成（${total} 个${done > 0 ? `，${done} 个成功` : ''}${cancelled > 0 ? `，${cancelled} 个取消` : ''}）`);
+          const parts = [t('upload.totalCount', { count: total })];
+          if (done > 0) parts.push(t('upload.doneCount', { count: done }));
+          if (cancelled > 0) parts.push(t('upload.cancelledCount', { count: cancelled }));
+          toast('info', parts.join(' · '));
         }
         // Auto-dismiss panel
         setOpen(false);
@@ -157,23 +166,23 @@ export default function UploadPanel() {
           {/* Header */}
           <div className="px-4 py-3 flex items-center justify-between shrink-0">
             <div>
-              <h3 className="text-sm font-semibold">上传队列</h3>
-              <p className="text-[11px] text-gray-400">
-                {activeCount > 0 ? `${activeCount} 个上传中` : ''}
-                {completedCount > 0 ? ` · ${completedCount} 个完成` : ''}
-                {failedCount > 0 ? ` · ${failedCount} 个失败` : ''}
-                {tasks.length > 0 && ` · 共 ${tasks.length} 个`}
-              </p>
+              <h3 className="text-sm font-semibold">{t('upload.queueTitle')}</h3>
+                            <p className="text-[11px] text-gray-400">
+                              {activeCount > 0 ? t('upload.activeCount', { count: activeCount }) : ''}
+                              {completedCount > 0 ? ` · ${t('upload.doneCount', { count: completedCount })}` : ''}
+                              {failedCount > 0 ? ` · ${t('upload.failedCount', { count: failedCount })}` : ''}
+                              {tasks.length > 0 ? ` · ${t('upload.totalCount', { count: tasks.length })}` : ''}
+                            </p>
             </div>
             <div className="flex items-center gap-1">
               {failedCount > 1 && (
                 <button onClick={retryAllFailed} className="text-[11px] text-amber-600 dark:text-amber-400 hover:text-amber-700 px-2 py-1 rounded hover:bg-amber-50 dark:hover:bg-amber-900/20">
-                  重试全部 ({failedCount})
+                  {t('upload.retryAll', { count: failedCount })}
                 </button>
               )}
               {hasActiveUploads && (
                 <button onClick={cancelAll} className="text-[11px] text-red-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20">
-                  全部取消
+                  {t('upload.cancelAll')}
                 </button>
               )}
               <button onClick={() => setOpen(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
@@ -185,7 +194,7 @@ export default function UploadPanel() {
           {/* Task list */}
           <div ref={listRef} className="flex-1 overflow-y-auto min-h-0">
             {tasks.length === 0 ? (
-              <div className="p-6 text-center text-gray-400 text-sm">暂无上传任务</div>
+              <div className="p-6 text-center text-gray-400 text-sm">{t('upload.empty')}</div>
             ) : (
               <>
                 {/* Clear completed button at top of list when there are done items */}
@@ -195,7 +204,7 @@ export default function UploadPanel() {
                       onClick={dismissCompleted}
                       className="w-full py-1 text-[11px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 bg-gray-50 dark:bg-gray-800 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                     >
-                      清空已完成 ({terminalCount})
+                      {t('upload.clearCompleted', { count: terminalCount })}
                     </button>
                   </div>
                 )}

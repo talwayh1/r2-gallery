@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getStats, type Stats } from '../api';
 
 interface Props {
@@ -17,14 +18,15 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  image: '图片',
-  video: '视频',
-  audio: '音频',
-  document: '文档',
-  other: '其他',
+  image: 'stats.type.image',
+  video: 'stats.type.video',
+  audio: 'stats.type.audio',
+  document: 'stats.type.document',
+  other: 'stats.type.other',
 };
 
 export default function StatsPanel({ onClose, onNavigate }: Props) {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -60,7 +62,7 @@ export default function StatsPanel({ onClose, onNavigate }: Props) {
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold">📊 存储统计</h2>
+          <h2 className="text-lg font-semibold">{t('stats.title')}</h2>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">✕</button>
         </div>
 
@@ -74,11 +76,11 @@ export default function StatsPanel({ onClose, onNavigate }: Props) {
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 text-center">
                 <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{stats.totalFiles.toLocaleString()}</div>
-                <div className="text-sm text-gray-500 mt-1">总文件数</div>
+                <div className="text-sm text-gray-500 mt-1">{t('stats.totalFiles')}</div>
               </div>
               <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 text-center">
                 <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{formatSize(stats.totalSize)}</div>
-                <div className="text-sm text-gray-500 mt-1">总容量</div>
+                <div className="text-sm text-gray-500 mt-1">{t('stats.totalSize')}</div>
               </div>
             </div>
 
@@ -86,7 +88,7 @@ export default function StatsPanel({ onClose, onNavigate }: Props) {
             <div className="flex items-start gap-6">
               <div className="w-40 h-40 rounded-full shrink-0" style={{ background: pieGradient }} />
               <div className="flex-1">
-                <h3 className="font-medium mb-3">文件类型分布</h3>
+                <h3 className="font-medium mb-3">{t('stats.typeDistribution')}</h3>
                 <div className="space-y-2">
                   {Object.entries(stats.fileTypes)
                     .filter(([, v]) => v.count > 0)
@@ -94,7 +96,7 @@ export default function StatsPanel({ onClose, onNavigate }: Props) {
                     .map(([key, val]) => (
                       <div key={key} className="flex items-center gap-3">
                         <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: TYPE_COLORS[key] }} />
-                        <span className="text-sm w-12">{TYPE_LABELS[key]}</span>
+                        <span className="text-sm w-12">{t(TYPE_LABELS[key])}</span>
                         <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                           <div
                             className="h-2 rounded-full transition-all"
@@ -104,7 +106,7 @@ export default function StatsPanel({ onClose, onNavigate }: Props) {
                             }}
                           />
                         </div>
-                        <span className="text-sm text-gray-500 w-20 text-right">{val.count} 个</span>
+                        <span className="text-sm text-gray-500 w-20 text-right">{t('stats.filesCount', { count: val.count })}</span>
                         <span className="text-sm text-gray-400 w-20 text-right">{formatSize(val.size)}</span>
                       </div>
                     ))}
@@ -115,14 +117,14 @@ export default function StatsPanel({ onClose, onNavigate }: Props) {
             {/* Top directories */}
             {stats.topDirs.length > 0 && (
               <div>
-                <h3 className="font-medium mb-3"><svg className="w-4 h-4 inline-block mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>热门目录</h3>
+                <h3 className="font-medium mb-3"><svg className="w-4 h-4 inline-block mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>{t('stats.topDirs')}</h3>
                 <div className="bg-gray-50 dark:bg-gray-850 rounded-xl overflow-hidden">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-gray-200 dark:border-gray-700">
-                        <th className="text-left p-3">目录</th>
-                        <th className="text-right p-3">文件数</th>
-                        <th className="text-right p-3">容量</th>
+                        <th className="text-left p-3">{t('stats.columnDir')}</th>
+                        <th className="text-right p-3">{t('stats.columnFiles')}</th>
+                        <th className="text-right p-3">{t('stats.columnSize')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -146,7 +148,7 @@ export default function StatsPanel({ onClose, onNavigate }: Props) {
             {/* Recent uploads */}
             {stats.recentUploads.length > 0 && (
               <div>
-                <h3 className="font-medium mb-3">🕐 最近上传</h3>
+                <h3 className="font-medium mb-3">{t('stats.recentUploads')}</h3>
                 <div className="space-y-1">
                   {stats.recentUploads.map(f => {
                     const parentDir = f.path.lastIndexOf('/') >= 0 ? f.path.substring(0, f.path.lastIndexOf('/')) : '';
@@ -167,7 +169,7 @@ export default function StatsPanel({ onClose, onNavigate }: Props) {
             )}
           </div>
         ) : (
-          <div className="flex items-center justify-center h-64 text-gray-500">加载失败</div>
+          <div className="flex items-center justify-center h-64 text-gray-500">{t('stats.loadFailed')}</div>
         )}
       </div>
     </div>
