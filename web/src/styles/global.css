@@ -9,6 +9,16 @@
   body {
     @apply m-0 antialiased;
   }
+  /* Smooth color transitions when toggling dark/light theme */
+  *, *::before, *::after {
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+  /* Exclude shimmer animations and loading animations from theme transitions */
+  .shimmer, .shimmer *,
+  .animate-loading-bar, .animate-loading-bar *,
+  [data-no-theme-transition] {
+    transition: none !important;
+  }
   /* Respect EXIF orientation metadata from cameras/mobile devices — fixes rotated portrait photos */
   img {
     image-orientation: from-image;
@@ -135,8 +145,8 @@
 }
 
 @keyframes toastExit {
-  from { transform: translateY(0); opacity: 1; }
-  to { transform: translateY(-8px); opacity: 0; }
+  from { transform: translateY(-8px); opacity: 1; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 .animate-toast-enter {
@@ -498,39 +508,33 @@ html {
   .mobile-search-bar {
     position: sticky;
     top: 0;
-    z-index: 20;
-    padding: 0.5rem;
-    background: inherit;
   }
 }
 
-/* ========== Accessibility: Respect reduced motion ========== */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-  /* Preserve the loading bar strip animation — it conveys progress rather than decoration */
-  .progress-stripes {
-    animation: none !important;
-    background-image: none !important;
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-  .animate-loading-bar {
-    animation: none !important;
-    background-color: #3b82f6;
-    width: 50% !important;
-  }
-  .shimmer {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%) !important;
-    background-size: 200% 100% !important;
-  }
-  :is(.dark) .shimmer {
-    background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%) !important;
-    background-size: 200% 100% !important;
-  }
+/* ========== Keyboard shortcut badges ========== */
+kbd.key-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: 500;
+  line-height: 1;
+  color: #9ca3af;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 3px;
+}
+.dark kbd.key-hint {
+  color: #6b7280;
+  background: #374151;
+  border-color: #4b5563;
+}
+
+/* ========== Toast overlapping protection ========== */
+.toast-container {
+  z-index: 10000;
 }

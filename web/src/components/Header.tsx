@@ -380,10 +380,10 @@ export default function Header({
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="过滤器..."
-              className="w-28 pl-7 pr-7 py-1 text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 transition-colors"
+              className="w-28 pl-7 pr-1 py-1 text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 transition-colors"
               title="在当前目录中按名称过滤文件 (/ 聚焦)"
             />
-            {search && (
+            {search ? (
               <button
                 onClick={() => onSearchChange('')}
                 className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
@@ -392,6 +392,8 @@ export default function Header({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
+            ) : (
+              <kbd className="key-hint absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none">/</kbd>
             )}
           </div>
         </div>
