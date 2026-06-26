@@ -1448,6 +1448,8 @@ export default function App() {
             onDelete={user ? handleLightboxDelete : undefined}
             onDuplicate={user ? handleLightboxDuplicate : undefined}
             onLocate={handleLightboxLocate}
+            onSelect={handleSelect}
+            selectedPaths={selected}
           />
         </Suspense></ErrorBoundary>
       )}

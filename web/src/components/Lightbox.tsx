@@ -43,6 +43,10 @@ interface Props {
   onDuplicate?: (path: string) => void;
   /** Called when user wants to locate the file in its parent folder */
   onLocate?: (path: string) => void;
+  /** Called when user wants to select/deselect the current file for batch operations */
+  onSelect?: (path: string) => void;
+  /** Set of currently selected file paths — determines select button state */
+  selectedPaths?: Set<string>;
   closing?: boolean;
 }
 
@@ -62,7 +66,7 @@ function isTextMime(mime: string): boolean {
          mime === 'application/yaml';
 }
 
-export default function Lightbox({ items, index, onClose, onNavigate, onDelete, onDuplicate, onLocate, closing }: Props) {
+export default function Lightbox({ items, index, onClose, onNavigate, onDelete, onDuplicate, onLocate, onSelect, selectedPaths, closing }: Props) {
   const current = items[index];
   const hasPrev = items.length > 1;
   const hasNext = items.length > 1;
@@ -178,6 +182,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     onDelete: null as ((path: string) => void) | null,
     onDuplicate: null as ((path: string) => void) | null,
     onLocate: null as ((path: string) => void) | null,
+    onSelect: null as ((path: string) => void) | null,
     handleLocate: () => {},
     slideshowTimerRef: { current: null as number | null },
     imgContainerRef: { current: null as HTMLElement | null },
@@ -1038,6 +1043,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     onDelete: onDelete ?? null,
     onDuplicate: onDuplicate ?? null,
     onLocate: onLocate ?? null,
+    onSelect: onSelect ?? null,
     handleLocate,
     slideshowTimerRef: slideshowTimerRef as { current: number | null },
     imgContainerRef,
@@ -1149,6 +1155,11 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
           document.documentElement.requestFullscreen().catch(() => {});
         } else {
           document.exitFullscreen().catch(() => {});
+        }
+      } else if (e.key === 'a' || e.key === 'A') {
+        if (kb.onSelect && kb.current) {
+          e.preventDefault();
+          kb.onSelect(kb.current.path);
         }
       } else if (e.key === 'r') {
         e.preventDefault();
@@ -1495,6 +1506,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     current.mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
     current.mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
     current.mime === 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+  const isSelected = selectedPaths?.has(current.path) ?? false;
 
   // Image formats browsers cannot natively render in an <img> tag
   const isBrowserUnsupportedImage = isImage && BROWSER_UNSUPPORTED_IMAGE_MIMES.has(current.mime);
@@ -1654,6 +1666,25 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
               </span>
             )}
             <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
+            {/* Select current file for batch operations */}
+            {onSelect && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onSelect(current.path); }}
+                onPointerDown={() => hapticFeedback()}
+                className={`p-2 rounded-lg transition-colors shrink-0 ${isSelected ? 'text-blue-400 bg-blue-500/10' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+                title={isSelected ? '取消选择 (A)' : '选择 (A)'}
+              >
+                {isSelected ? (
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9" strokeWidth="2" />
+                  </svg>
+                )}
+              </button>
+            )}
             {/* Fullscreen toggle */}
             <button
               onClick={toggleFullscreen}
@@ -2232,6 +2263,24 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
         </a>
+        {/* Select current file for batch operations */}
+        {onSelect && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onSelect(current.path); }}
+            className={`p-2 rounded-lg transition-colors ${isSelected ? 'text-blue-400 bg-blue-500/10' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+            title={isSelected ? '取消选择 (A)' : '选择 (A)'}
+          >
+            {isSelected ? (
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" strokeWidth="2" />
+              </svg>
+            )}
+          </button>
+        )}
         <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />
 
         {/* Info toggle */}
