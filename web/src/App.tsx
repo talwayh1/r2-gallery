@@ -422,9 +422,9 @@ export default function App() {
           setSidebarOpen((prev) => !prev);
         }
       } else if (e.key === 'a' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
-        // Ctrl+Shift+A — deselect all
+        // Ctrl+Shift+A — invert selection
         e.preventDefault();
-        setSelected(new Set());
+        handleInvertSelection();
       } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
         // Ctrl+A — select all files (prevent browser default)
         e.preventDefault();
@@ -894,6 +894,14 @@ export default function App() {
   const handleDeselectAll = useCallback(() => {
     setSelected(new Set());
   }, []);
+
+  const handleInvertSelection = useCallback(() => {
+    setSelected((prev) => {
+      const allPaths = Object.keys(filteredFiles);
+      const next = new Set(allPaths.filter((p) => !prev.has(p)));
+      return next;
+    });
+  }, [filteredFiles]);
 
   // Batch operations
   const handleBatchDelete = async () => {
@@ -1383,6 +1391,7 @@ export default function App() {
           onMoveToFolder={user ? handleMoveToFolder : undefined}
           onSelectAll={handleSelectAll}
           onDeselectAll={handleDeselectAll}
+          onInvertSelection={handleInvertSelection}
         />
       )}
 

@@ -15,6 +15,7 @@ interface Props {
   onMoveToFolder?: () => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
+  onInvertSelection: () => void;
 }
 
 /**
@@ -34,7 +35,7 @@ function useIsNarrow() {
 }
 
 export default function BulkActions({
-  selectedCount, totalCount, onDelete, onDownload, onDownloadZip, onCopyLinks, onCopyDirectLinks, onBatchRename, onCopy, onDuplicate, onCreateZip, onMoveToFolder, onSelectAll, onDeselectAll,
+  selectedCount, totalCount, onDelete, onDownload, onDownloadZip, onCopyLinks, onCopyDirectLinks, onBatchRename, onCopy, onDuplicate, onCreateZip, onMoveToFolder, onSelectAll, onDeselectAll, onInvertSelection,
 }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [showMore, setShowMore] = useState(false);
@@ -90,6 +91,19 @@ export default function BulkActions({
               className="text-sm text-gray-400 hover:text-gray-300 transition-colors whitespace-nowrap"
             >
               取消全选
+            </button>
+          )}
+
+          <div className="w-px h-5 bg-white/20 shrink-0" />
+
+          {/* Invert selection */}
+          {selectedCount > 0 && selectedCount < totalCount && (
+            <button
+              onClick={onInvertSelection}
+              className="text-sm text-gray-400 hover:text-gray-300 transition-colors whitespace-nowrap"
+              title="反选 (Ctrl+Shift+A)"
+            >
+              反选
             </button>
           )}
 
@@ -305,6 +319,17 @@ export default function BulkActions({
         )}
 
         <div className="w-px h-4 bg-white/20 shrink-0 mx-1" />
+
+        {/* Invert selection — mobile */}
+        {selectedCount > 0 && selectedCount < totalCount && (
+          <button
+            onClick={onInvertSelection}
+            className="text-xs text-gray-400 hover:text-gray-300 transition-colors shrink-0 px-1"
+            title="反选"
+          >
+            反选
+          </button>
+        )}
 
         {/* Download */}
         <button
