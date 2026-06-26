@@ -15,6 +15,28 @@ import webdavRouter from './routes/webdav';
 
 const app = new Hono<{ Bindings: AppBindings; Variables: Variables }>();
 
+// === Timeout middleware for API routes ===
+// Prevents hanging requests from exhausting worker CPU time.
+// Uses Promise.race to abort slow handlers while letting the loser resolve (harmlessly).
+const API_TIMEOUT = 25_000; // 25 seconds (leaves 5s margin before 30s Worker limit)
+
+function apiTimeoutMiddleware() {
+  return async (c: any, next: any) => {
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('TIMEOUT')), API_TIMEOUT)
+    );
+
+    try {
+      await Promise.race([next(), timeoutPromise]);
+    } catch (err) {
+      if ((err as Error).message === 'TIMEOUT') {
+        return c.json({ error: '请求超时，请重试' }, 503);
+      }
+      throw err;
+    }
+  };
+}
+
 // Global error handler (no stack trace leak to clients)
 app.onError((err, c) => {
   console.error('Worker error:', err);
@@ -27,6 +49,9 @@ app.use('/api/*', cors({
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
 }));
+
+// API request timeout middleware (applies to all subsequent /api/* routes)
+app.use('/api/*', apiTimeoutMiddleware());
 
 // Serve static assets with optimized cache headers (run_worker_first mode)
 app.use('*', async (c, next) => {

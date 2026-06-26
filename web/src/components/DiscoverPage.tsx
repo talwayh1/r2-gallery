@@ -65,6 +65,7 @@ export default function DiscoverPage({ onClose, onNavigate, onOpenFile }: Props)
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [loadError, setLoadError] = useState<string | null>(null);
   const pageSize = 30;
   const loadingRef = useRef(false); // prevent concurrent loads
@@ -74,7 +75,10 @@ export default function DiscoverPage({ onClose, onNavigate, onOpenFile }: Props)
     loadingRef.current = true;
 
     const isInitial = currentOffset === 0;
-    if (isInitial) setLoading(true);
+    if (isInitial) {
+      setLoading(true);
+      setFailedImages(new Set());
+    }
     else setLoadingMore(true);
     setLoadError(null);
 
@@ -193,17 +197,27 @@ export default function DiscoverPage({ onClose, onNavigate, onOpenFile }: Props)
                 {isImage ? (
                   <>
                     {/* Shimmer placeholder */}
-                    {!isLoaded && (
+                    {!isLoaded && !failedImages.has(file.path) && (
                       <div className="shimmer w-full aspect-square" />
                     )}
-                    <img
-                      src={getThumbUrl(file.path, file.mtime)}
-                      alt={file.name}
-                      loading="lazy"
-                      decoding="async"
-                      className={`w-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0 absolute'}`}
-                      onLoad={() => handleImageLoad(file.path)}
-                    />
+                    {/* Fallback when image fails to load */}
+                    {failedImages.has(file.path) ? (
+                      <div className="w-full aspect-square flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800">
+                        <svg className="w-10 h-10 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    ) : (
+                      <img
+                        src={getThumbUrl(file.path, file.mtime)}
+                        alt={file.name}
+                        loading="lazy"
+                        decoding="async"
+                        className={`w-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0 absolute'}`}
+                        onLoad={() => handleImageLoad(file.path)}
+                        onError={() => setFailedImages(prev => new Set(prev).add(file.path))}
+                      />
+                    )}
                   </>
                 ) : isVideo ? (
                   <VideoPosterCard file={file} />
