@@ -1,4 +1,5 @@
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { useTranslation } from 'react-i18next';
 
 /**
  * A slim banner that slides down from the top of the main content area
@@ -6,6 +7,7 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus';
  * Stays visible at the top of the scroll area via sticky positioning.
  */
 export default function OfflineBanner() {
+  const { t } = useTranslation();
   const online = useOnlineStatus();
 
   // When online, render nothing (avoids layout shift from a hidden element)
@@ -24,7 +26,7 @@ export default function OfflineBanner() {
         />
         <line strokeLinecap="round" strokeWidth={2} x1="2" y1="2" x2="22" y2="22" />
       </svg>
-      <span>网络断开 — 部分功能不可用</span>
+      <span>{t('offline.title')}</span>
     </div>
   );
 }

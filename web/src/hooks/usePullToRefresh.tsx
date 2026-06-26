@@ -14,6 +14,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { hapticFeedback } from '../utils/mobile';
 
 interface UsePullToRefreshOptions {
@@ -194,6 +195,7 @@ interface PullToRefreshIndicatorProps {
  * then an animated spinner while refreshing.
  */
 export function PullToRefreshIndicator({ pullDistance, refreshing }: PullToRefreshIndicatorProps) {
+  const { t } = useTranslation();
   if (pullDistance <= 0 && !refreshing) return null;
 
   const showRelease = pullDistance >= 60;
@@ -211,21 +213,21 @@ export function PullToRefreshIndicator({ pullDistance, refreshing }: PullToRefre
         {refreshing ? (
           <>
             <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            <span>刷新中...</span>
+            <span>{t('ptr.refreshing')}</span>
           </>
         ) : showRelease ? (
           <>
             <svg className="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
             </svg>
-            <span className="font-medium text-blue-500">释放刷新</span>
+            <span className="font-medium text-blue-500">{t('ptr.release')}</span>
           </>
         ) : (
           <>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
             </svg>
-            <span>下拉刷新</span>
+            <span>{t('ptr.pull')}</span>
           </>
         )}
       </div>

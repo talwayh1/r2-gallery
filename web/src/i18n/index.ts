@@ -304,6 +304,14 @@ const resources = {
       'discover.empty': '暂无媒体文件',
       'discover.empty.hint': '上传一些图片或视频开始浏览',
       'discover.loading': '加载更多...',
+
+      // Pull-to-refresh
+      'ptr.pull': '下拉刷新',
+      'ptr.release': '释放刷新',
+      'ptr.refreshing': '刷新中...',
+
+      // Offline banner
+      'offline.title': '网络断开 — 部分功能不可用',
     }
   },
   'en': {
@@ -578,6 +586,14 @@ const resources = {
       'discover.empty': 'No media files yet',
       'discover.empty.hint': 'Upload some images or videos to get started',
       'discover.loading': 'Loading more...',
+
+      // Pull-to-refresh
+      'ptr.pull': 'Pull to refresh',
+      'ptr.release': 'Release to refresh',
+      'ptr.refreshing': 'Refreshing...',
+
+      // Offline banner
+      'offline.title': 'Network offline — some features unavailable',
     }
   },
   'ja': {
@@ -852,6 +868,14 @@ const resources = {
       'discover.empty': 'メディアファイルがありません',
       'discover.empty.hint': '画像や動画をアップロードして開始しましょう',
       'discover.loading': 'さらに読み込み中...',
+
+      // Pull-to-refresh
+      'ptr.pull': 'プルダウンで更新',
+      'ptr.release': '指を離して更新',
+      'ptr.refreshing': '更新中...',
+
+      // Offline banner
+      'offline.title': 'ネットワークがオフライン — 一部機能が利用できません',
     }
   },
   'ko': {
@@ -1126,6 +1150,14 @@ const resources = {
       'discover.empty': '미디어 파일이 없습니다',
       'discover.empty.hint': '이미지나 비디오를 업로드하여 시작하세요',
       'discover.loading': '더 불러오는 중...',
+
+      // Pull-to-refresh
+      'ptr.pull': '당겨서 새로고침',
+      'ptr.release': '놓아서 새로고침',
+      'ptr.refreshing': '새로고침 중...',
+
+      // Offline banner
+      'offline.title': '네트워크 오프라인 — 일부 기능을 사용할 수 없습니다',
     }
   }
 };
