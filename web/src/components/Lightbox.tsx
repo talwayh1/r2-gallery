@@ -263,6 +263,8 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
   // Swipe-to-close drag feedback
   const [swipeDragY, setSwipeDragY] = useState(0);
+  // Horizontal swipe visual tracking (translateX follows finger during navigation swipes)
+  const [swipeDragX, setSwipeDragX] = useState(0);
   // When true, the swipe-down close animation is in progress (sliding off-screen)
   const [swipeClosing, setSwipeClosing] = useState(false);
   const swipeCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -672,6 +674,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     onSwipeRight: wrapSwipe(goPrev),
     onSwipeDown: wrapSwipe(handleSwipeClose),
     onSwipeProgress: setSwipeDragY,
+    onSwipeProgressX: setSwipeDragX,
     enabled: !isZoomed,
   });
 
@@ -1468,19 +1471,19 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     <div
       ref={swipeRef}
       style={swipeClosing ? {
-        transform: `translateY(${window.innerHeight * 1.2}px) scale(0.92)`,
+        transform: `translate(${swipeDragX}px, ${window.innerHeight * 1.2}px) scale(0.92)`,
         opacity: 0,
         transition: 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.35s ease',
       } : closing ? {
         opacity: 0,
         transform: 'scale(0.95)',
         transition: 'opacity 0.25s ease, transform 0.25s ease',
-      } : swipeDragY > 0 ? {
-        transform: `translateY(${swipeDragY}px) scale(${Math.max(0.92, 1 - swipeDragY / (window.innerHeight * 0.6))})`,
-        opacity: Math.max(0.5, 1 - swipeDragY / (window.innerHeight * 0.5)),
+      } : (swipeDragY > 0 || swipeDragX !== 0) ? {
+        transform: `translate(${swipeDragX}px, ${swipeDragY}px) scale(${swipeDragY > 0 ? Math.max(0.92, 1 - swipeDragY / (window.innerHeight * 0.6)) : 1})`,
+        opacity: swipeDragY > 0 ? Math.max(0.5, 1 - swipeDragY / (window.innerHeight * 0.5)) : 1,
         transition: 'none',
       } : {
-        transform: 'translateY(0px) scale(1)',
+        transform: 'translate(0px, 0px) scale(1)',
         opacity: 1,
         transition: 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.35s ease',
       }}

@@ -13,12 +13,14 @@ export function useSwipeGesture({
   onSwipeRight,
   onSwipeDown,
   onSwipeProgress,
+  onSwipeProgressX,
   enabled,
 }: {
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
   onSwipeDown: () => void;
   onSwipeProgress?: (dy: number) => void;
+  onSwipeProgressX?: (dx: number) => void;
   enabled: boolean;
 }) {
   const touchStart = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -34,6 +36,8 @@ export function useSwipeGesture({
   onSwipeDownRef.current = onSwipeDown;
   const onSwipeProgressRef = useRef(onSwipeProgress);
   onSwipeProgressRef.current = onSwipeProgress;
+  const onSwipeProgressXRef = useRef(onSwipeProgressX);
+  onSwipeProgressXRef.current = onSwipeProgressX;
 
   useEffect(() => {
     const el = containerRef.current;
@@ -49,9 +53,15 @@ export function useSwipeGesture({
     const handleTouchMove = (e: TouchEvent) => {
       if (!enabled || !touchStart.current) return;
       const touch = e.touches[0];
+      const dx = touch.clientX - touchStart.current.x;
       const dy = touch.clientY - touchStart.current.y;
 
-      // Always track downward progress for visual feedback (no time limit)
+      // Always track horizontal progress for visual feedback
+      if (onSwipeProgressXRef.current) {
+        onSwipeProgressXRef.current(dx);
+      }
+
+      // Track downward progress for visual feedback (no time limit)
       if (dy > 0 && onSwipeProgressRef.current) {
         if (dy > 30) swipeDownConfirmed.current = true;
         onSwipeProgressRef.current(dy);
@@ -73,6 +83,8 @@ export function useSwipeGesture({
       if (absDx > absDy && absDx > minDist) {
         if (dx < 0) onSwipeLeftRef.current();
         else onSwipeRightRef.current();
+        // Reset horizontal tracking after navigation
+        onSwipeProgressXRef.current?.(0);
       } else if (dy > 0 && (swipeDownConfirmed.current || (absDy > minDist))) {
         // Close if dragged past threshold (30% of viewport height)
         const closeThreshold = Math.min(window.innerHeight * 0.3, 200);
@@ -83,9 +95,13 @@ export function useSwipeGesture({
           onSwipeProgressRef.current?.(0);
           swipeDownConfirmed.current = false;
         }
+        // Reset horizontal tracking on vertical swipe end
+        onSwipeProgressXRef.current?.(0);
       } else {
-        // Snap back if not a downward swipe or too short
+        // Snap back if not a swipe or too short
         if (dy > 0) onSwipeProgressRef.current?.(0);
+        // Reset horizontal tracking on short/cancelled swipes
+        if (absDx > 0) onSwipeProgressXRef.current?.(0);
       }
     };
 
