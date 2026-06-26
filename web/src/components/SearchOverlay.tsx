@@ -14,6 +14,34 @@ interface Props {
 const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT = 5;
 
+// === In-memory LRU cache for search results ===
+// Speeds up repeat queries: when the user searches the same term + filter
+// combination again (e.g. after closing and re-opening the overlay),
+// results pop in instantly instead of waiting for another API round-trip.
+const SEARCH_CACHE_MAX = 30;
+
+interface SearchCacheEntry {
+  results: SearchResult[];
+  total: number;
+}
+
+const searchCache = new Map<string, SearchCacheEntry>();
+
+function getCacheKey(q: string, filterType: string | null | undefined): string {
+  return `${q}::${filterType ?? ''}`;
+}
+
+function cacheSearchResult(key: string, entry: SearchCacheEntry) {
+  // LRU: delete stale key then re-insert (Map preserves insertion order)
+  if (searchCache.has(key)) searchCache.delete(key);
+  searchCache.set(key, entry);
+  // Evict oldest entry when over limit
+  if (searchCache.size > SEARCH_CACHE_MAX) {
+    const firstKey = searchCache.keys().next().value;
+    if (firstKey !== undefined) searchCache.delete(firstKey);
+  }
+}
+
 function getRecentSearches(): string[] {
   try {
     const raw = localStorage.getItem(RECENT_SEARCHES_KEY);
@@ -114,7 +142,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     };
   }, []);
 
-  // Debounced search with stale request cancellation
+  // Debounced search with stale request cancellation and in-memory result caching
   const doSearch = useCallback(async (q: string, appendOffset?: number, filterType?: string | null) => {
     if (q.length < 2) {
       setResults([]);
@@ -129,11 +157,29 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     abortRef.current = new AbortController();
     const signal = abortRef.current.signal;
 
-    if (appendOffset != null) {
-      setLoadingMore(true);
+    // Full search (not append): check in-memory cache for instant delivery
+    let hadCacheHit = false;
+    if (appendOffset == null) {
+      const cacheKey = getCacheKey(q, filterType);
+      const cached = searchCache.get(cacheKey);
+      if (cached) {
+        hadCacheHit = true;
+        // LRU touch — move this entry to the end
+        searchCache.delete(cacheKey);
+        searchCache.set(cacheKey, cached);
+        setResults(cached.results);
+        setTotal(cached.total);
+        setSelectedIndex(0);
+        // Still fire the API call in the background to refresh stale data
+        setLoadingMore(false);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
     } else {
-      setLoading(true);
+      setLoadingMore(true);
     }
+
     try {
       const limit = 30;
       const data = await searchFiles(q, limit, appendOffset || 0, signal, filterType || undefined);
@@ -143,13 +189,18 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
         setResults(prev => [...prev, ...(data.results || [])]);
       } else {
         setResults(data.results || []);
+        // Cache the full result set
+        cacheSearchResult(getCacheKey(q, filterType), {
+          results: data.results || [],
+          total: data.total || 0,
+        });
       }
       setTotal(data.total || 0);
-      setSelectedIndex(0);
+      if (appendOffset == null) setSelectedIndex(0);
     } catch (err) {
       if ((err as Error).name === 'AbortError') return; // cancelled by newer search — silent
       console.error('Search failed:', err);
-      if (!appendOffset) setResults([]);
+      if (!appendOffset && !hadCacheHit) setResults([]);
     } finally {
       setLoading(false);
       setLoadingMore(false);
