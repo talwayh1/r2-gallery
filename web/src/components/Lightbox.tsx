@@ -298,6 +298,46 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     setImageLoaded(false);
   }, [current?.path]);
 
+  // Preload adjacent full-resolution images so next/prev navigation feels instant.
+  // Only preload for image files to avoid wasting bandwidth on video/audio/text.
+  useEffect(() => {
+    if (items.length <= 1) return;
+    // Collect paths for the next and previous image (wrap-around)
+    const prevIdx = index === 0 ? items.length - 1 : index - 1;
+    const nextIdx = index === items.length - 1 ? 0 : index + 1;
+    const adjPaths: string[] = [];
+    for (const idx of [prevIdx, nextIdx]) {
+      const item = items[idx];
+      if (item && item.mime.startsWith('image/')) {
+        adjPaths.push(item.path);
+      }
+    }
+    if (adjPaths.length === 0) return;
+    adjPaths.forEach((p) => {
+      const href = getFileUrl(p);
+      // Use <link rel="prefetch"> — lower priority than preload, suitable for
+      // resources the user *may* navigate to next. The browser fetches it
+      // during idle time and caches it for instant use.
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = href;
+      link.as = 'image';
+      // Tag with a data attribute so we can clean up stale links
+      link.dataset.lightboxAdjacent = 'true';
+      document.head.appendChild(link);
+    });
+    // Cleanup: remove stale preload links after a short delay to avoid
+    // thrashing when the user rapidly navigates through many images
+    const timer = setTimeout(() => {
+      document.head
+        .querySelectorAll('link[data-lightbox-adjacent]')
+        .forEach((el) => el.remove());
+    }, 5000);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [items, index]);
+
   // Compute derived values
   const url = current ? getFileUrl(current.path) : '';
   const name = current ? (current.path.split('/').pop() || '') : '';

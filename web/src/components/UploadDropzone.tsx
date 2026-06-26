@@ -37,6 +37,8 @@ interface WebKitDirectoryReader {
 
 /** Maximum files allowed in a single upload batch — prevents browser freeze with huge selections */
 const MAX_BATCH_FILES = 500;
+/** Maximum individual file size (100 MB) — Cloudflare Workers request body limit */
+const MAX_FILE_SIZE = 100 * 1024 * 1024;
 /** Human-readable file size formatter */
 function formatFileSize(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -114,6 +116,16 @@ const UploadDropzone = forwardRef<UploadDropzoneHandle, Props>(function UploadDr
       toast('warning', `单次最多上传 ${MAX_BATCH_FILES} 个文件，已跳过 ${files.length - MAX_BATCH_FILES} 个`);
       files = files.slice(0, MAX_BATCH_FILES);
     }
+
+    // Validate individual file sizes — filter out files exceeding MAX_FILE_SIZE
+    const oversized = files.filter(f => f.file.size > MAX_FILE_SIZE);
+    if (oversized.length > 0) {
+      const sample = oversized.slice(0, 3).map(f => `${f.relativePath || f.file.name} (${formatFileSize(f.file.size)})`).join('、');
+      const more = oversized.length > 3 ? `等 ${oversized.length} 个` : '';
+      toast('warning', `以下文件超过上传上限 (${formatFileSize(MAX_FILE_SIZE)}): ${sample}${more}`);
+      files = files.filter(f => f.file.size <= MAX_FILE_SIZE);
+    }
+    if (files.length === 0) return;
 
     // Generate preview URLs for image files
     const imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/bmp', 'image/svg+xml'];
