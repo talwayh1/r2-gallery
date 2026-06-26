@@ -435,6 +435,15 @@ html {
   opacity: 1;
 }
 
+/* Hide scrollbar but keep scrollable — used by mobile Lightbox toolbar and SearchOverlay */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Mobile bottom sheet */
 .mobile-bottom-sheet {
   position: fixed;

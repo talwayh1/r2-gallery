@@ -1163,18 +1163,18 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   }, [url]);
 
   // Preload adjacent items: full-size originals for ±1, thumbnails for ±2
-  // Skips preload in huge collections (>200) to avoid burst network requests
-  // Supports wrap-around for immediate neighbors: navigating from first→last or last→first
-  // feels just as fast as sequential navigation
+  // Always preload immediate neighbors (±1) for instant navigation.
+  // Skip farther (±2) thumbnail preloads in large collections (>200) to
+  // avoid burst network requests.
   useEffect(() => {
     if (!current?.mime.startsWith('image/')) return;
-    if (items.length > 200) return;
 
     const len = items.length;
     const seen = new Set<number>();
     const preloaded: HTMLImageElement[] = [];
 
-    // Immediate neighbors with wrap-around (±1) — ensures last↔first navigation is instant
+    // Immediate neighbors with wrap-around (±1) — ensures last↔first navigation
+    // is instant regardless of collection size (only 2 preload requests)
     const prev1 = (index - 1 + len) % len;
     const next1 = (index + 1) % len;
     for (const i of [prev1, next1]) {
@@ -1189,16 +1189,19 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     }
 
     // Farther neighbors with bounds check only (±2) — no wrap for 2+ away
-    for (const i of [index - 2, index + 2]) {
-      if (i < 0 || i >= len) continue;
-      if (seen.has(i)) continue;
-      seen.add(i);
-      if (!items[i]?.mime.startsWith('image/')) continue;
-      const img = new Image();
-      img.referrerPolicy = 'no-referrer';
-      img.fetchPriority = 'low';
-      img.src = getThumbUrl(items[i].path); // thumbnail for quick preview
-      preloaded.push(img);
+    // Skip in large collections (>200) to avoid burst network overhead
+    if (len <= 200) {
+      for (const i of [index - 2, index + 2]) {
+        if (i < 0 || i >= len) continue;
+        if (seen.has(i)) continue;
+        seen.add(i);
+        if (!items[i]?.mime.startsWith('image/')) continue;
+        const img = new Image();
+        img.referrerPolicy = 'no-referrer';
+        img.fetchPriority = 'low';
+        img.src = getThumbUrl(items[i].path); // thumbnail for quick preview
+        preloaded.push(img);
+      }
     }
 
     return () => {
