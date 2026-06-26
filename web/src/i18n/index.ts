@@ -254,6 +254,56 @@ const resources = {
 
       // ScrollToTop
       'scrollToTop': '返回顶部',
+
+      // Activity page
+      'activity.title': '📊 活动日志',
+      'activity.tab.activity': '操作记录',
+      'activity.tab.traffic': '流量统计',
+      'activity.traffic.total': '30天总流量',
+      'activity.traffic.requests': '30天请求数',
+      'activity.traffic.avg': '日均流量',
+      'activity.traffic.daily': '每日流量',
+      'activity.traffic.count': '{{count}}次',
+      'activity.action.upload': '上传',
+      'activity.action.delete': '删除',
+      'activity.action.rename': '重命名',
+      'activity.action.move': '移动',
+      'activity.action.mkdir': '创建文件夹',
+      'activity.action.restore': '恢复',
+      'activity.action.purge': '永久删除',
+      'activity.empty': '暂无活动记录',
+      'activity.empty.hint': '操作文件后会在这里显示',
+      'activity.loadError': '加载活动记录失败，请稍后重试',
+      'activity.retry': '重试',
+      'activity.loadMore': '滚动加载更多…',
+      'activity.action.unknown': '未知操作',
+
+      // Memories page
+      'memories.title': '💭 那年今日',
+      'memories.subtitle': '{{date}} 的回忆',
+      'memories.files': ' · {{count}} 个媒体文件',
+      'memories.loadError': '加载回忆失败，请重试',
+      'memories.reload': '重新加载',
+      'memories.empty': '暂无回忆',
+      'memories.empty.hint': '这一天没有历史照片或视频',
+      'memories.empty.footerHint': '上传更多内容，未来的今天会有回忆 ✨',
+      'memories.thisYear': '今年',
+      'memories.lastYear': '去年',
+      'memories.yearBefore': '前年',
+      'memories.yearsAgo': '{{n}} 年前',
+      'memories.year': '{{year}} 年',
+      'memories.fileCount': '{{count}} 个文件',
+      'memories.footer': '💡 每天打开看看，会有不同的回忆出现',
+
+      // Discover page
+      'discover.title': '✨ 发现',
+      'discover.total': '共 {{total}} 个媒体文件',
+      'discover.hint': '浏览最近上传的图片和视频',
+      'discover.loadError': '加载失败，请重试',
+      'discover.reload': '重新加载',
+      'discover.empty': '暂无媒体文件',
+      'discover.empty.hint': '上传一些图片或视频开始浏览',
+      'discover.loading': '加载更多...',
     }
   },
   'en': {
@@ -478,6 +528,56 @@ const resources = {
 
       // ScrollToTop
       'scrollToTop': 'Scroll to top',
+
+      // Activity page
+      'activity.title': '📊 Activity Log',
+      'activity.tab.activity': 'Activity',
+      'activity.tab.traffic': 'Traffic',
+      'activity.traffic.total': '30-Day Total Traffic',
+      'activity.traffic.requests': '30-Day Requests',
+      'activity.traffic.avg': 'Daily Average',
+      'activity.traffic.daily': 'Daily Traffic',
+      'activity.traffic.count': '{{count}} requests',
+      'activity.action.upload': 'Upload',
+      'activity.action.delete': 'Delete',
+      'activity.action.rename': 'Rename',
+      'activity.action.move': 'Move',
+      'activity.action.mkdir': 'Create Folder',
+      'activity.action.restore': 'Restore',
+      'activity.action.purge': 'Permanent Delete',
+      'activity.empty': 'No activity yet',
+      'activity.empty.hint': 'Activity appears here after file operations',
+      'activity.loadError': 'Failed to load activity, please try again',
+      'activity.retry': 'Retry',
+      'activity.loadMore': 'Scroll to load more…',
+      'activity.action.unknown': 'Unknown action',
+
+      // Memories page
+      'memories.title': '💭 On This Day',
+      'memories.subtitle': '{{date}} Memories',
+      'memories.files': ' · {{count}} media files',
+      'memories.loadError': 'Failed to load memories, please try again',
+      'memories.reload': 'Reload',
+      'memories.empty': 'No memories yet',
+      'memories.empty.hint': 'No historical photos or videos on this day',
+      'memories.empty.footerHint': 'Upload more content, and future today will have memories ✨',
+      'memories.thisYear': 'This year',
+      'memories.lastYear': 'Last year',
+      'memories.yearBefore': 'Year before last',
+      'memories.yearsAgo': '{{n}} years ago',
+      'memories.year': '{{year}}',
+      'memories.fileCount': '{{count}} files',
+      'memories.footer': '💡 Check back every day for different memories',
+
+      // Discover page
+      'discover.title': '✨ Discover',
+      'discover.total': '{{total}} media files',
+      'discover.hint': 'Browse recently uploaded images and videos',
+      'discover.loadError': 'Failed to load, please try again',
+      'discover.reload': 'Reload',
+      'discover.empty': 'No media files yet',
+      'discover.empty.hint': 'Upload some images or videos to get started',
+      'discover.loading': 'Loading more...',
     }
   },
   'ja': {
@@ -702,6 +802,56 @@ const resources = {
 
       // ScrollToTop
       'scrollToTop': 'トップへ戻る',
+
+      // Activity page
+      'activity.title': '📊 アクティビティログ',
+      'activity.tab.activity': '操作記録',
+      'activity.tab.traffic': 'トラフィック',
+      'activity.traffic.total': '30日間総トラフィック',
+      'activity.traffic.requests': '30日間リクエスト数',
+      'activity.traffic.avg': '1日平均',
+      'activity.traffic.daily': '日別トラフィック',
+      'activity.traffic.count': '{{count}}回',
+      'activity.action.upload': 'アップロード',
+      'activity.action.delete': '削除',
+      'activity.action.rename': '名前変更',
+      'activity.action.move': '移動',
+      'activity.action.mkdir': '新規フォルダ',
+      'activity.action.restore': '復元',
+      'activity.action.purge': '完全削除',
+      'activity.empty': 'アクティビティがありません',
+      'activity.empty.hint': 'ファイル操作を行うとここに表示されます',
+      'activity.loadError': 'アクティビティの読み込みに失敗しました。再試行してください',
+      'activity.retry': '再試行',
+      'activity.loadMore': 'スクロールしてさらに読み込む…',
+      'activity.action.unknown': '不明な操作',
+
+      // Memories page
+      'memories.title': '💭 この日',
+      'memories.subtitle': '{{date}} の思い出',
+      'memories.files': ' · {{count}} 個のメディアファイル',
+      'memories.loadError': '思い出の読み込みに失敗しました。再試行してください',
+      'memories.reload': '再読み込み',
+      'memories.empty': 'まだ思い出はありません',
+      'memories.empty.hint': 'この日には過去の写真や動画はありません',
+      'memories.empty.footerHint': 'もっとコンテンツをアップロードすると、いつか今日に思い出が現れます ✨',
+      'memories.thisYear': '今年',
+      'memories.lastYear': '去年',
+      'memories.yearBefore': '一昨年',
+      'memories.yearsAgo': '{{n}} 年前',
+      'memories.year': '{{year}} 年',
+      'memories.fileCount': '{{count}} 個のファイル',
+      'memories.footer': '💡 毎日開いてみると、さまざまな思い出に出会えます',
+
+      // Discover page
+      'discover.title': '✨ 発見',
+      'discover.total': '合計 {{total}} 個のメディアファイル',
+      'discover.hint': '最近アップロードされた画像や動画を閲覧',
+      'discover.loadError': '読み込みに失敗しました。再試行してください',
+      'discover.reload': '再読み込み',
+      'discover.empty': 'メディアファイルがありません',
+      'discover.empty.hint': '画像や動画をアップロードして開始しましょう',
+      'discover.loading': 'さらに読み込み中...',
     }
   },
   'ko': {
@@ -926,6 +1076,56 @@ const resources = {
 
       // ScrollToTop
       'scrollToTop': '맨 위로',
+
+      // Activity page
+      'activity.title': '📊 활동 로그',
+      'activity.tab.activity': '작업 기록',
+      'activity.tab.traffic': '트래픽',
+      'activity.traffic.total': '30일 총 트래픽',
+      'activity.traffic.requests': '30일 요청 수',
+      'activity.traffic.avg': '일일 평균',
+      'activity.traffic.daily': '일일 트래픽',
+      'activity.traffic.count': '{{count}}회',
+      'activity.action.upload': '업로드',
+      'activity.action.delete': '삭제',
+      'activity.action.rename': '이름 변경',
+      'activity.action.move': '이동',
+      'activity.action.mkdir': '새 폴더',
+      'activity.action.restore': '복원',
+      'activity.action.purge': '영구 삭제',
+      'activity.empty': '활동 기록이 없습니다',
+      'activity.empty.hint': '파일 작업을 수행하면 여기에 표시됩니다',
+      'activity.loadError': '활동 기록을 불러오지 못했습니다. 다시 시도해주세요',
+      'activity.retry': '재시도',
+      'activity.loadMore': '스크롤하여 더 불러오기…',
+      'activity.action.unknown': '알 수 없는 작업',
+
+      // Memories page
+      'memories.title': '💭 오늘의 추억',
+      'memories.subtitle': '{{date}} 추억',
+      'memories.files': ' · {{count}}개의 미디어 파일',
+      'memories.loadError': '추억을 불러오지 못했습니다. 다시 시도해주세요',
+      'memories.reload': '다시 로드',
+      'memories.empty': '아직 추억이 없습니다',
+      'memories.empty.hint': '이 날의 옛 사진이나 동영상이 없습니다',
+      'memories.empty.footerHint': '더 많은 콘텐츠를 업로드하면 미래의 오늘에 추억이 생깁니다 ✨',
+      'memories.thisYear': '올해',
+      'memories.lastYear': '작년',
+      'memories.yearBefore': '재작년',
+      'memories.yearsAgo': '{{n}}년 전',
+      'memories.year': '{{year}}년',
+      'memories.fileCount': '{{count}}개 파일',
+      'memories.footer': '💡 매일 열어보면 다양한 추억을 만날 수 있습니다',
+
+      // Discover page
+      'discover.title': '✨ 발견',
+      'discover.total': '총 {{total}}개의 미디어 파일',
+      'discover.hint': '최근 업로드된 이미지와 비디오 둘러보기',
+      'discover.loadError': '불러오기 실패, 다시 시도해주세요',
+      'discover.reload': '다시 불러오기',
+      'discover.empty': '미디어 파일이 없습니다',
+      'discover.empty.hint': '이미지나 비디오를 업로드하여 시작하세요',
+      'discover.loading': '더 불러오는 중...',
     }
   }
 };

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getMemories, getThumbUrl, type MemoryYear, type DiscoverFile } from '../api';
 
 interface Props {
@@ -9,12 +10,12 @@ interface Props {
 
 import { formatSize } from '../utils';
 
-/** Friendly label for "years ago" */
-function yearsAgoLabel(n: number): string {
-  if (n === 0) return '今年';
-  if (n === 1) return '去年';
-  if (n === 2) return '前年';
-  return `${n} 年前`;
+/** Friendly label for "years ago" — call with t() inside component */
+function yearsAgoLabel(t: (key: string, opts?: any) => string, n: number): string {
+  if (n === 0) return t('memories.thisYear');
+  if (n === 1) return t('memories.lastYear');
+  if (n === 2) return t('memories.yearBefore');
+  return t('memories.yearsAgo', { n });
 }
 
 /** Format mtime for Memories display with Chinese locale */
@@ -81,6 +82,7 @@ function MemoriesVideoPoster({ file }: { file: { path: string; mime: string; mti
 }
 
 export default function MemoriesPage({ onClose, onNavigate, onOpenFile }: Props) {
+  const { t } = useTranslation();
   const [memories, setMemories] = useState<MemoryYear[]>([]);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState('');
@@ -98,7 +100,7 @@ export default function MemoriesPage({ onClose, onNavigate, onOpenFile }: Props)
       setTotal(data.total);
     } catch (err) {
       console.error('Memories load error:', err);
-      setLoadError('加载回忆失败，请重试');
+      setLoadError(t('memories.loadError'));
     } finally {
       setLoading(false);
     }
@@ -132,10 +134,10 @@ export default function MemoriesPage({ onClose, onNavigate, onOpenFile }: Props)
             </svg>
           </button>
           <div className="flex-1">
-            <h1 className="text-lg font-semibold">💭 那年今日</h1>
+            <h1 className="text-lg font-semibold">{t('memories.title')}</h1>
             <p className="text-xs text-gray-400">
-              {date && `${date} 的回忆`}
-              {total > 0 && ` · ${total} 个媒体文件`}
+              {date && t('memories.subtitle', { date })}
+              {total > 0 && t('memories.files', { count: total })}
             </p>
           </div>
         </div>
@@ -154,7 +156,7 @@ export default function MemoriesPage({ onClose, onNavigate, onOpenFile }: Props)
               onClick={loadMemories}
               className="mt-4 px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors"
             >
-              重新加载
+              {t('memories.reload')}
             </button>
           </div>
         )}
@@ -172,9 +174,9 @@ export default function MemoriesPage({ onClose, onNavigate, onOpenFile }: Props)
             <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p className="text-lg font-medium">暂无回忆</p>
-            <p className="text-sm">这一天没有历史照片或视频</p>
-            <p className="text-xs text-gray-300 mt-2">上传更多内容，未来的今天会有回忆 ✨</p>
+            <p className="text-lg font-medium">{t('memories.empty')}</p>
+            <p className="text-sm">{t('memories.empty.hint')}</p>
+            <p className="text-xs text-gray-300 mt-2">{t('memories.empty.footerHint')}</p>
           </div>
         )}
 
@@ -186,10 +188,10 @@ export default function MemoriesPage({ onClose, onNavigate, onOpenFile }: Props)
               <span className="text-2xl">{yearsAgoEmoji(group.yearsAgo)}</span>
               <div>
                 <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">
-                  {group.year} 年
+                  {t('memories.year', { year: group.year })}
                 </h2>
                 <p className="text-sm text-gray-400">
-                  {yearsAgoLabel(group.yearsAgo)} · {group.files.length} 个文件
+                  {yearsAgoLabel(t, group.yearsAgo)} · {t('memories.fileCount', { count: group.files.length })}
                 </p>
               </div>
             </div>
@@ -244,7 +246,7 @@ export default function MemoriesPage({ onClose, onNavigate, onOpenFile }: Props)
         {/* Footer hint */}
         {!loading && !loadError && memories.length > 0 && (
           <div className="text-center py-8 text-gray-300 dark:text-gray-600 text-xs">
-            💡 每天打开看看，会有不同的回忆出现
+            {t('memories.footer')}
           </div>
         )}
       </div>
