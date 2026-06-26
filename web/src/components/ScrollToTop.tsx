@@ -63,11 +63,14 @@ export default function ScrollToTop({ scrollRef }: { scrollRef?: React.RefObject
 
   const scrollTo = () => {
     const el = scrollRef?.current;
-    const top = goingDown ? 999999 : 0; // scroll to bottom or top
     if (el) {
-      el.scrollTo({ top, behavior: 'smooth' });
+      const target = goingDown ? el.scrollHeight : 0;
+      el.scrollTo({ top: target, behavior: 'smooth' });
     } else {
-      window.scrollTo({ top, behavior: 'smooth' });
+      const target = goingDown
+        ? document.documentElement.scrollHeight
+        : 0;
+      window.scrollTo({ top: target, behavior: 'smooth' });
     }
   };
 

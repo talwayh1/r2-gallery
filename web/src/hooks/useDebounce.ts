@@ -36,6 +36,13 @@ export function useDebouncedCallback<T extends (...args: any[]) => void>(
   const callbackRef = useRef(callback);
   callbackRef.current = callback;
 
+  // Clear pending timer when delay changes — prevents stale execution
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [delay]);
+
   // Cleanup timer on unmount
   useEffect(() => {
     return () => {
