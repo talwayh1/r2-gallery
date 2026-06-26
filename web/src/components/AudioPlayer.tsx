@@ -39,6 +39,8 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
   const [showPlaylist, setShowPlaylist] = useState(false);
   const [playedIndices, setPlayedIndices] = useState<Set<number>>(new Set([currentIndex]));
   const lastScrollY = useRef(0);
+  const playlistRef = useRef<HTMLDivElement>(null);
+  const currentTrackRef = useRef<HTMLButtonElement>(null);
   // Refs to avoid stale closures in event handlers attached to <audio>
   const goNextRef = useRef<() => void>(() => {});
   const goPrevRef = useRef<() => void>(() => {});
@@ -147,6 +149,13 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
       mini,
     }));
   }, [currentIndex, shuffle, loop, playbackRate, mini]);
+
+  // Auto-scroll playlist to current track when opened or when track changes while visible
+  useEffect(() => {
+    if (showPlaylist && currentTrackRef.current && playlistRef.current) {
+      currentTrackRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [showPlaylist, currentIndex]);
 
   const togglePlay = useCallback(() => {
     if (audioRef.current) {
@@ -527,11 +536,32 @@ export default function AudioPlayer({ tracks, currentIndex, onTrackChange, onClo
 
       {/* Playlist panel */}
       {showPlaylist && (
-        <div className="absolute bottom-full left-0 right-0 max-h-[40vh] overflow-y-auto bg-gray-900/95 backdrop-blur-xl border-t border-white/10">
+        <div ref={playlistRef} className="absolute bottom-full left-0 right-0 max-h-[40vh] overflow-y-auto bg-gray-900/95 backdrop-blur-xl border-t border-white/10">
           <div className="p-2">
+            {/* Header with jump-to-current */}
+            <div className="flex items-center justify-between px-3 py-1.5 mb-1">
+              <span className="text-xs text-white/40 font-medium">播放列表 ({tracks.length})</span>
+              {tracks.length > 3 && (
+                <button
+                  onClick={() => {
+                    if (currentTrackRef.current && playlistRef.current) {
+                      currentTrackRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    }
+                  }}
+                  className="flex items-center gap-1 text-[11px] text-blue-400 hover:text-blue-300 transition-colors"
+                  title="滚动到当前歌曲"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z" />
+                  </svg>
+                  <span>当前</span>
+                </button>
+              )}
+            </div>
             {tracks.map((t, i) => (
               <button
                 key={t.path}
+                ref={i === currentIndex ? currentTrackRef : undefined}
                 onClick={() => { onTrackChange(i); setShowPlaylist(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
                   i === currentIndex ? 'bg-blue-500/20 text-blue-400' : 'text-white/70 hover:bg-white/5'
