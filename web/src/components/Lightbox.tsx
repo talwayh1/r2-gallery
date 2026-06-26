@@ -71,6 +71,8 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   const [copied, setCopied] = useState(false);
   const [directUrlCopied, setDirectUrlCopied] = useState(false);
   const [imageCopied, setImageCopied] = useState(false);
+  const [videoDimensions, setVideoDimensions] = useState<{ w: number; h: number } | null>(null);
+  const [videoDuration, setVideoDuration] = useState<number>(0);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
@@ -291,12 +293,16 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
   const isZoomed = scale > 1.05;
 
-  // Reset retry count, error, and loading states when navigating to a new image
+  // Reset retry count, error, loading states, and video metadata when navigating to a new file
   useEffect(() => {
     retryCountRef.current = 0;
     setAutoRetrying(false);
     setImageError(false);
     setImageLoaded(false);
+    // Clear video metadata immediately when navigating between files,
+    // before the new VideoPlayer fires its loadedmetadata event
+    setVideoDimensions(null);
+    setVideoDuration(0);
   }, [current?.path]);
 
   // Preload adjacent full-resolution images so next/prev navigation feels instant.
@@ -2443,6 +2449,19 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 <span>{formatSize(current.size)}</span>
               </div>
             ) : null}
+            {/* Video metadata: resolution + duration */}
+            {isVideo && videoDimensions && (
+              <div className="flex justify-between gap-4">
+                <span className="text-white/40">尺寸</span>
+                <span>{videoDimensions.w} × {videoDimensions.h} px</span>
+              </div>
+            )}
+            {isVideo && videoDuration > 0 && (
+              <div className="flex justify-between gap-4">
+                <span className="text-white/40">时长</span>
+                <span>{formatTime(videoDuration)}</span>
+              </div>
+            )}
             {imageDimensions && (
               <div className="flex justify-between gap-4">
                 <span className="text-white/40">尺寸</span>
@@ -2755,6 +2774,14 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
         </div>
       )}
 
+      {/* Video metadata badge — resolution + duration */}
+      {isVideo && videoDimensions && (
+        <div className="absolute bottom-4 left-4 bg-black/60 text-white/80 text-xs px-2.5 py-1 rounded-full z-10 pointer-events-none select-none whitespace-nowrap">
+          {videoDimensions.w}×{videoDimensions.h}
+          {videoDuration > 0 && <span className="text-white/40 ml-1.5">{formatTime(videoDuration)}</span>}
+        </div>
+      )}
+
       {/* Desktop zoom hint */}
       {isImage && !isZoomed && !slideshowPlaying && (
         <div className={`absolute bottom-6 left-1/2 -translate-x-1/2 hidden md:flex items-center gap-2 text-white/20 text-xs pointer-events-none select-none transition-opacity duration-200 ${!uiVisible ? 'opacity-0' : ''}`}>
@@ -2966,6 +2993,10 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 autoplay={true}
                 loop={true}
                 onEnded={goNext}
+                onMetadata={(meta) => {
+                  setVideoDimensions({ w: meta.videoWidth, h: meta.videoHeight });
+                  setVideoDuration(meta.duration);
+                }}
               />
             </Suspense>
           </div>

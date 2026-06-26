@@ -7,15 +7,22 @@ const VOLUME_STEP = 0.1;
 const DOUBLE_TAP_THRESHOLD_MS = 300;
 const DOUBLE_TAP_MAX_DIST_PX = 40;
 
+interface VideoMetadata {
+  duration: number;
+  videoWidth: number;
+  videoHeight: number;
+}
+
 interface Props {
   path: string;
   name: string;
   autoplay?: boolean;
   loop?: boolean;
   onEnded?: () => void;
+  onMetadata?: (meta: VideoMetadata) => void;
 }
 
-export default function VideoPlayer({ path, name, autoplay = true, loop = false, onEnded }: Props) {
+export default function VideoPlayer({ path, name, autoplay = true, loop = false, onEnded, onMetadata }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
@@ -107,7 +114,14 @@ export default function VideoPlayer({ path, name, autoplay = true, loop = false,
         setBuffered(video.buffered.end(video.buffered.length - 1));
       }
     };
-    const onLoadedMetadata = () => setDuration(video.duration);
+    const onLoadedMetadata = () => {
+      setDuration(video.duration);
+      onMetadata?.({
+        duration: video.duration,
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+      });
+    };
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
     const onEndedHandler = () => { setPlaying(false); onEnded?.(); };
