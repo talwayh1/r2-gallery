@@ -88,9 +88,29 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
   // Lock body scroll when search overlay is open
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
+    const prevOverscroll = document.body.style.overscrollBehavior;
     document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'none';
     return () => {
       document.body.style.overflow = prevOverflow;
+      document.body.style.overscrollBehavior = prevOverscroll;
+    };
+  }, []);
+
+  // Close on Android hardware back button (popstate)
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  useEffect(() => {
+    const handlePopState = () => onCloseRef.current();
+    window.addEventListener('popstate', handlePopState);
+    // Push a history state so popstate fires when user presses back
+    window.history.pushState({ search: true }, '');
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      // Only pop the state we pushed if it's still the current one
+      if (window.history.state?.search === true) {
+        window.history.back();
+      }
     };
   }, []);
 
