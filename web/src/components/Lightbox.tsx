@@ -17,6 +17,15 @@ import { formatSize, getAspectRatio } from '../utils';
 import type { FileItem } from '../types';
 const KeyboardShortcutsLightbox = lazy(() => import('./KeyboardShortcuts'));
 
+// Image formats browsers cannot natively render in an <img> tag
+const BROWSER_UNSUPPORTED_IMAGE_MIMES = new Set([
+  'image/tiff', 'image/vnd.adobe.photoshop',
+  'image/x-adobe-dng', 'image/heic', 'image/heif',
+]);
+
+// Runtime check for Web Share API support (TypeScript's DOM types always define navigator.share)
+const supportsNativeShare = typeof navigator !== 'undefined' && typeof (navigator as any).share === 'function';
+
 interface MediaItem {
   path: string;
   mime: string;
@@ -1424,10 +1433,6 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     current.mime === 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
   // Image formats browsers cannot natively render in an <img> tag
-  const BROWSER_UNSUPPORTED_IMAGE_MIMES = new Set([
-    'image/tiff', 'image/vnd.adobe.photoshop',
-    'image/x-adobe-dng', 'image/heic', 'image/heif',
-  ]);
   const isBrowserUnsupportedImage = isImage && BROWSER_UNSUPPORTED_IMAGE_MIMES.has(current.mime);
 
   // Audio playlist — collect all audio items for the AudioPlayer
@@ -2552,6 +2557,19 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                     复制图片
                   </>
                 )}
+              </button>
+            )}
+
+            {/* Native Share (via Web Share API) */}
+            {supportsNativeShare && (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleNativeShare(); }}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors text-xs bg-white/5 hover:bg-white/10 text-white/50"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                分享
               </button>
             )}
 
