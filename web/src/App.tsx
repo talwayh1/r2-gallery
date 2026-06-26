@@ -39,6 +39,7 @@ import SkeletonGrid from './components/SkeletonGrid';
 import ScrollToTop from './components/ScrollToTop';
 import { PullToRefreshIndicator, usePullToRefresh } from './hooks/usePullToRefresh';
 import EmptyState from './components/EmptyState';
+import OfflineBanner from './components/OfflineBanner';
 
 // Lazy-loaded components (not needed for first paint)
 const Lightbox = lazy(() => import('./components/Lightbox'));
@@ -1308,6 +1309,8 @@ export default function App() {
         >
           {/* Pull-to-refresh indicator (mobile only) */}
           {isMobile && <PullToRefreshIndicator pullDistance={ptr.pullDistance} refreshing={ptr.refreshing} />}
+
+          <OfflineBanner />
 
           {/* Type filter bar - mobile: horizontal scroll, desktop: normal */}
           <div className={`mb-3 ${isMobile ? 'overflow-x-auto scrollbar-none scroll-fade-mask -mx-2 px-2' : 'hidden sm:block'}`}>
