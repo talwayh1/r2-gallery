@@ -1517,24 +1517,28 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
   return (
     <div
       ref={swipeRef}
-      style={swipeClosing ? {
-        transform: `translate(${swipeDragX}px, ${window.innerHeight * 1.2}px) scale(0.92)`,
-        opacity: 0,
-        transition: 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.35s ease',
-      } : closing ? {
-        opacity: 0,
-        transform: 'scale(0.95)',
-        transition: 'opacity 0.25s ease, transform 0.25s ease',
-      } : (swipeDragY > 0 || swipeDragX !== 0) ? {
-        transform: `translate(${swipeDragX}px, ${swipeDragY}px) scale(${swipeDragY > 0 ? Math.max(0.92, 1 - swipeDragY / (window.innerHeight * 0.6)) : 1})`,
-        opacity: swipeDragY > 0 ? Math.max(0.5, 1 - swipeDragY / (window.innerHeight * 0.5)) : 1,
-        transition: 'none',
-      } : {
-        transform: 'translate(0px, 0px) scale(1)',
-        opacity: 1,
-        transition: 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.35s ease',
-      }}
       className={`fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm touch-pan-y ${!cursorVisible && isVideo ? 'cursor-none' : ''}`}
+      style={swipeClosing ? {
+          transform: `translate(${swipeDragX}px, ${window.innerHeight * 1.2}px) scale(0.92)`,
+          opacity: 0,
+          transition: 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.35s ease',
+          overscrollBehaviorY: 'contain',
+        } : closing ? {
+          opacity: 0,
+          transform: 'scale(0.95)',
+          transition: 'opacity 0.25s ease, transform 0.25s ease',
+          overscrollBehaviorY: 'contain',
+        } : (swipeDragY > 0 || swipeDragX !== 0) ? {
+          transform: `translate(${swipeDragX}px, ${swipeDragY}px) scale(${swipeDragY > 0 ? Math.max(0.92, 1 - swipeDragY / (window.innerHeight * 0.6)) : 1})`,
+          opacity: swipeDragY > 0 ? Math.max(0.5, 1 - swipeDragY / (window.innerHeight * 0.5)) : 1,
+          transition: 'none',
+          overscrollBehaviorY: 'contain',
+        } : {
+          transform: 'translate(0px, 0px) scale(1)',
+          opacity: 1,
+          transition: 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.35s ease',
+          overscrollBehaviorY: 'contain',
+        }}
       onClick={(e) => {
         // Skip click if it was synthesized from a swipe gesture (mobile)
         if (wasSwipingRef.current) return;
@@ -1593,8 +1597,8 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
 
       {/* Swipe-down drag handle (mobile only) — visual hint that you can swipe down to close */}
       {isMobile && (
-        <div className={`absolute top-2 left-1/2 -translate-x-1/2 z-10 transition-opacity duration-200 ${!uiVisible ? 'opacity-0' : ''}`}>
-          <div className="w-10 h-1 rounded-full bg-white/30" />
+        <div className={`absolute top-2 left-1/2 -translate-x-1/2 z-10 transition-all duration-200 ${!uiVisible ? 'opacity-0' : ''}`}>
+          <div className="w-12 h-1.5 rounded-full bg-white/40" />
         </div>
       )}
 
