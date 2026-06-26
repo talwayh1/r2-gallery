@@ -155,6 +155,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     goPrev: () => {},
     goNext: () => {},
     handleCopyFileName: () => {},
+    handleCopyPath: () => {},
     handleCopyImage: () => {},
     goPrev10: () => {},
     goNext10: () => {},
@@ -1016,6 +1017,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     goPrev,
     goNext,
     handleCopyFileName,
+    handleCopyPath,
     handleCopyImage,
     goPrev10,
     goNext10,
@@ -1121,6 +1123,9 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
       } else if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
         kb.handleCopyFileName();
+      } else if (e.key === 'p' || e.key === 'P') {
+        e.preventDefault();
+        kb.handleCopyPath();
       } else if (e.key === 'c' || e.key === 'C') {
         if (kb.isImage) {
           e.preventDefault();
@@ -1976,6 +1981,18 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 )}
                 <span>{nameCopied ? '已复制' : '文件名'}</span>
               </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleCopyPath(); }}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors text-xs shrink-0 ${pathCopied ? 'text-green-400' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
+                title={pathCopied ? '已复制!' : '复制路径 (P)'}
+              >
+                {pathCopied ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7c-2 0-3 1-3 3z" /></svg>
+                )}
+                <span>{pathCopied ? '已复制' : '路径'}</span>
+              </button>
               {/* Slideshow settings */}
               <button
                 onClick={(e) => { e.stopPropagation(); setShowSlideshowMenu(!showSlideshowMenu); setShowMoreTools(false); }}
@@ -2384,6 +2401,22 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
           ) : (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          )}
+        </button>
+        {/* Copy file path */}
+        <button
+          onClick={(e) => { e.stopPropagation(); handleCopyPath(); }}
+          className={`p-2 rounded-lg transition-colors ${pathCopied ? 'text-green-400' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+          title={pathCopied ? '已复制!' : '复制路径 (P)'}
+        >
+          {pathCopied ? (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7c-2 0-3 1-3 3z" />
             </svg>
           )}
         </button>

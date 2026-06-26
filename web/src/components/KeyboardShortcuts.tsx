@@ -69,6 +69,8 @@ const shortcutSections: ShortcutSection[] = [
       { keys: ['Esc'], descriptionKey: 'kbd.lightbox_close' },
       { keys: ['I'], descriptionKey: 'kbd.lightbox_info' },
       { keys: ['C'], descriptionKey: 'kbd.lightbox_copy_image' },
+      { keys: ['N'], descriptionKey: 'kbd.lightbox_copy_name' },
+      { keys: ['P'], descriptionKey: 'kbd.lightbox_copy_path' },
       { keys: ['D'], descriptionKey: 'kbd.lightbox_download' },
       { keys: ['M'], descriptionKey: 'kbd.lightbox_tools' },
       { keys: ['Space', 'S'], descriptionKey: 'kbd.lightbox_slideshow' },
