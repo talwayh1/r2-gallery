@@ -238,10 +238,14 @@ export default function DiscoverPage({ onClose, onNavigate, onOpenFile }: Props)
           )}
         </div>
 
-        {/* Initial loading */}
+        {/* Initial loading skeleton — masonry grid matching column layout */}
         {loading && files.length === 0 && !loadError && (
-          <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+          <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 xl:columns-6 gap-3 space-y-3">
+            {Array.from({ length: 24 }, (_, i) => (
+              <div key={i} className="break-inside-avoid rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+                <div className="shimmer" style={{ aspectRatio: `${0.7 + Math.random() * 0.6}` }} />
+              </div>
+            ))}
           </div>
         )}
       </div>

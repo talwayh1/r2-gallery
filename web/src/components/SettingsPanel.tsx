@@ -135,7 +135,7 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
           ))}
         </div>
         <div className="flex-1 overflow-auto p-4">
-          {activeTab === 'settings' && (
+          {activeTab === 'settings' && (<>
             <div className="space-y-4 max-w-xl">
               {/* Search filter */}
               <div className="sticky top-0 z-10 -mx-4 px-4 pb-2 bg-white dark:bg-gray-900 border-b dark:border-gray-700 mb-4">
@@ -177,9 +177,6 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                   <option value="shuffle">随机</option>
                 </select>
               </div>}
-              {matchesSearch(['保存', 'save', '设置']) && <button onClick={handleSaveSettings} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-                保存设置
-              </button>}
               <hr className="dark:border-gray-700" />
               {matchesSearch(['登录', 'login', '按钮', '隐藏']) && <>
               <div className="flex items-center justify-between">
@@ -501,7 +498,13 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
               </div>
               </>}
             </div>
-          )}
+            {/* Always-visible save button — sticky at bottom, never hidden by search filter */}
+            <div className="sticky bottom-0 -mx-4 px-4 py-3 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent dark:from-gray-900 dark:via-gray-900">
+              <button onClick={handleSaveSettings} className="w-full py-3 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-medium rounded-xl transition-colors shadow-md">
+                保存设置
+              </button>
+            </div>
+          </>)}
 
           {activeTab === 'users' && (
             <div className="space-y-4 max-w-xl">
