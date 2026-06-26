@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { useConfirm } from '../hooks/useConfirm';
 import type { LayoutMode, ThemeMode, SortMode } from '../types';
@@ -109,6 +109,112 @@ const LANGUAGES = [
   { code: 'ja', label: '日本語' },
   { code: 'ko', label: '한국어' },
 ];
+
+// Mobile breadcrumb component — horizontally scrollable clickable path trail
+function MobileBreadcrumbs({
+  dir,
+  breadcrumbs,
+  fileCount,
+  dirCount,
+  onNavigate,
+}: {
+  dir: string;
+  breadcrumbs: string[];
+  fileCount?: number;
+  dirCount?: number;
+  onNavigate: (path: string) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to the end (current directory) after mount and on path change
+  const scrollToEnd = useCallback(() => {
+    requestAnimationFrame(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    scrollToEnd();
+  }, [breadcrumbs.length, scrollToEnd]);
+
+  // Back to parent
+  const goToParent = useCallback(() => {
+    if (!dir) return;
+    const parent = dir.split('/').slice(0, -1).join('/');
+    onNavigate(parent);
+  }, [dir, onNavigate]);
+
+  // Click-handler for non-last breadcrumb segments
+  const navigateTo = useCallback(
+    (partPath: string) => {
+      scrollToEnd(); // allow the new breadcrumbs to auto-scroll after navigation
+      onNavigate(partPath);
+    },
+    [onNavigate, scrollToEnd],
+  );
+
+  // Hand-touch scroll: after user manually scrolls, auto-scroll on next dir change only
+  const handleScroll = useRef<{ userScrolled: boolean }>({ userScrolled: false });
+
+  return (
+    <div
+      className="sm:hidden flex items-center gap-0.5 min-w-0 overflow-x-auto no-scrollbar"
+      style={{ scrollbarWidth: 'none' }}
+      ref={scrollRef}
+      onScroll={() => {
+        handleScroll.current.userScrolled = true;
+      }}
+    >
+      {/* Back to parent button */}
+      <button
+        onClick={!dir ? undefined : goToParent}
+        className="flex-shrink-0 p-1 rounded-md text-gray-400 dark:text-gray-500 hover:text-blue-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        title={dir ? '点击前往上级目录' : undefined}
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+      </button>
+      {/* Breadcrumb segments */}
+      {breadcrumbs.length > 0 ? (
+        breadcrumbs.map((part, i) => {
+          const isLast = i === breadcrumbs.length - 1;
+          const partPath = breadcrumbs.slice(0, i + 1).join('/');
+          return (
+            <span key={i} className="flex items-center gap-0.5 flex-shrink-0">
+              <span className="text-gray-300 dark:text-gray-600 text-xs">/</span>
+              <button
+                onClick={() => (isLast ? null : navigateTo(partPath))}
+                className={`text-xs font-medium rounded px-1 py-0.5 transition-colors whitespace-nowrap ${
+                  isLast
+                    ? 'text-gray-800 dark:text-gray-100 cursor-default'
+                    : 'text-blue-500 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30'
+                }`}
+                title={isLast ? part : `前往 ${partPath}`}
+              >
+                {part}
+              </button>
+            </span>
+          );
+        })
+      ) : (
+        <span className="text-xs font-medium text-gray-800 dark:text-gray-100 px-1 whitespace-nowrap">R2 Gallery</span>
+      )}
+      {/* File / directory count badge */}
+      {(fileCount !== undefined || dirCount !== undefined) && (
+        <span className="ml-1 flex-shrink-0 text-[10px] text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700/50 rounded-full px-1.5 py-0.5 leading-none whitespace-nowrap">
+          {fileCount !== undefined && fileCount > 0
+            ? `${fileCount}个文件`
+            : dirCount !== undefined && dirCount > 0
+              ? `${dirCount}个目录`
+              : ''}
+        </span>
+      )}
+    </div>
+  );
+}
 
 export default function Header({
   dir, layout, theme, search, user, sidebarOpen, sortBy, sortOrder, typeFilter, isMobile, fileCount, dirCount, loading,
@@ -301,24 +407,14 @@ export default function Header({
         })}
       </nav>
 
-      {/* Mobile-only title — clickable to navigate to parent */}
-      <button
-        onClick={() => {
-          if (!dir) return;
-          const parent = dir.split('/').slice(0, -1).join('/');
-          onNavigate(parent);
-        }}
-        className="sm:hidden text-sm font-medium min-w-0 flex-shrink hover:text-blue-500 transition-colors"
-        title={dir ? '点击前往上级目录' : undefined}
-      >
-        <svg className="w-4 h-4 inline-block flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-        <span className="truncate ml-1">{breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1] : 'R2 Gallery'}</span>
-        {(fileCount !== undefined || dirCount !== undefined) && (
-          <span className="ml-1.5 text-[11px] text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700/50 rounded-full px-1.5 py-0.5 leading-none whitespace-nowrap flex-shrink-0">
-            {fileCount !== undefined && fileCount > 0 ? `${fileCount}个文件` : dirCount !== undefined && dirCount > 0 ? `${dirCount}个目录` : ''}
-          </span>
-        )}
-      </button>
+      {/* Mobile-only horizontal breadcrumb trail — full clickable path */}
+      <MobileBreadcrumbs
+        dir={dir}
+        breadcrumbs={breadcrumbs}
+        fileCount={fileCount}
+        dirCount={dirCount}
+        onNavigate={onNavigate}
+      />
 
       <div className="flex-1" />
 
