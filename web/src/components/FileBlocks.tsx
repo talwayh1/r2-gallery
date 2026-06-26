@@ -325,6 +325,31 @@ export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavig
             role="menu"
             aria-label="右键菜单"
           >
+            <button
+              className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 ${
+                selected.has(contextMenu.path)
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : ''
+              }`}
+              onClick={() => { handleToggleSelect(contextMenu.path); setContextMenu(null); }}
+            >
+              {selected.has(contextMenu.path) ? (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  取消选择
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  选择
+                </>
+              )}
+            </button>
+            <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
             {!contextMenu.isDir && (
               <button
                 className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"

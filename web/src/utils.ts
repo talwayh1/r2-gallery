@@ -85,6 +85,26 @@ export function getAspectRatio(w: number, h: number): string {
 }
 
 /**
+ * Generate a deterministic pastel HSL color from a file path string.
+ * Each path always gets the same color — used for thumbnail loading placeholders
+ * so each file has a unique, pleasant background color while the image loads.
+ *
+ * @param path  The file path used to derive the color
+ * @returns     An HSL color string, e.g. "hsl(142, 72%, 78%)"
+ */
+export function getColorFromPath(path: string): string {
+  let hash = 0;
+  for (let i = 0; i < path.length; i++) {
+    hash = ((hash << 5) - hash) + path.charCodeAt(i);
+    hash = hash | 0; // Force 32-bit integer
+  }
+  const hue = Math.abs(hash) % 360;
+  const sat = 62 + (Math.abs(hash >> 8) % 16);  // 62–78%
+  const light = 74 + (Math.abs(hash >> 16) % 12); // 74–86%
+  return `hsl(${hue}, ${sat}%, ${light}%)`;
+}
+
+/**
  * Lightweight classnames helper — joins truthy class values with spaces.
  * Accepts strings, falsy values, and nested arrays of the same.
  * No external dependency needed; mirrors clsx for common use cases.

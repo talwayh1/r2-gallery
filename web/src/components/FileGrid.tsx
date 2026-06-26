@@ -4,7 +4,7 @@ import { getFileUrl, getThumbUrl, moveItem, copyFile, duplicateFile, downloadZip
 import { useFolderThumbnails } from '../hooks/useFolderThumbnails';
 import { useVirtualGrid } from '../hooks/useVirtualGrid';
 import { toast } from '../hooks/useToast';
-import { formatSize, formatDate, getKindOrder } from '../utils';
+import { formatSize, formatDate, getKindOrder, getColorFromPath } from '../utils';
 import ShareDialog from './ShareDialog';
 import FileTypeIcon from './FileTypeIcon';
 import EmptyState from './EmptyState';
@@ -170,11 +170,12 @@ function getMimeLabel(mime: string): string {
  * Image thumbnail with loading skeleton, fade-in, and error fallback.
  * Uses native <img> with loading="lazy" for efficient loading.
  */
-function ImageThumbnail({ src, alt, priority }: { src: string; alt: string; priority?: boolean }) {
+function ImageThumbnail({ src, alt, path, priority }: { src: string; alt: string; path?: string; priority?: boolean }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const retryTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const bgColor = useMemo(() => path ? getColorFromPath(path) : undefined, [path]);
 
   useEffect(() => {
     return () => retryTimers.current.forEach(clearTimeout);
@@ -182,7 +183,8 @@ function ImageThumbnail({ src, alt, priority }: { src: string; alt: string; prio
 
   if (error) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500">
+      <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-500"
+        style={bgColor ? { backgroundColor: bgColor } : undefined}>
         <svg className="w-8 h-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
             d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -207,8 +209,13 @@ function ImageThumbnail({ src, alt, priority }: { src: string; alt: string; prio
 
   return (
     <>
-      {/* Shimmer placeholder — visible until image loads */}
-      {!loaded && <div className="shimmer absolute inset-0 rounded-xl" />}
+      {/* Color-based placeholder — visible until image loads */}
+      {!loaded && (
+        <div
+          className="absolute inset-0 rounded-xl shimmer"
+          style={bgColor ? { backgroundColor: bgColor } : undefined}
+        />
+      )}
       <img
         key={retryCount}
         src={src}
@@ -569,6 +576,7 @@ function VirtualFileGrid({
                   <ImageThumbnail
                     src={getThumbUrl(file.path, file.mtime)}
                     alt={file.name}
+                    path={file.path}
                     priority={idx < columns}
                   />
                 ) : isVideo ? (
@@ -1258,6 +1266,35 @@ export default function FileGrid({ files, dirs, dirCounts, dirMtimes, currentDir
             role="menu"
             aria-label="右键菜单"
           >
+            {/* Select / Unselect — also enters selection mode on mobile */}
+            <button
+              className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 ${
+                contextMenu.path && selected.has(contextMenu.path)
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : ''
+              }`}
+              onClick={() => {
+                onSelect?.(contextMenu.path);
+                setContextMenu(null);
+              }}
+            >
+              {contextMenu.path && selected.has(contextMenu.path) ? (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  取消选择
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  选择
+                </>
+              )}
+            </button>
+            <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
             {!contextMenu.isDir && (
               <button
                 className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
