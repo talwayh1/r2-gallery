@@ -805,6 +805,14 @@ export default function App() {
   }, []);
 
   const handleLightboxDelete = async (path: string) => {
+    // Optimistic UI: remove from local state immediately
+    const fileName = path.split('/').pop() || '';
+    setFiles(prev => {
+      const next = { ...prev };
+      delete next[fileName];
+      return next;
+    });
+
     try {
       await deleteItems([path]);
       toast('success', `已删除 1 个项目`, 6000, {
@@ -823,7 +831,10 @@ export default function App() {
       // Close lightbox — the current file is gone
       setLightbox(null);
     } catch (e) {
+      // Rollback: reload to restore optimistically removed items on failure
       toast('error', `删除失败: ${(e as Error).message}`);
+      loadFiles(dir);
+      setLightbox(null);
     }
   };
 
@@ -859,6 +870,19 @@ export default function App() {
     });
     if (!confirmed) return;
 
+    // Optimistic UI: remove from local state immediately for snappy feedback
+    const removedNames = new Set(paths.map(p => p.split('/').pop() || p));
+    setFiles(prev => {
+      const next: Record<string, FileItem> = {};
+      for (const [name, file] of Object.entries(prev)) {
+        if (!removedNames.has(name)) {
+          next[name] = file;
+        }
+      }
+      return next;
+    });
+    setSelected(new Set());
+
     try {
       await deleteItems(paths);
       // Show toast with undo button (longer duration)
@@ -874,9 +898,11 @@ export default function App() {
           }
         },
       });
-      loadFiles(dir);
+      loadFiles(dir); // Background refresh for consistency
     } catch (e) {
+      // Rollback: reload to restore optimistically removed items on failure
       toast('error', `删除失败: ${(e as Error).message}`);
+      loadFiles(dir);
     }
   };
 
