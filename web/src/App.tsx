@@ -1153,6 +1153,7 @@ export default function App() {
         isMobile={isMobile}
         fileCount={Object.keys(files).length}
         dirCount={dirs.length}
+        loading={loading}
         onNavigate={navigate}
         onLayoutChange={(l) => {
           const labels: Record<string, string> = { grid: '网格', list: '列表', imagelist: '图片列表', columns: '列', blocks: '块', rows: '行' };
