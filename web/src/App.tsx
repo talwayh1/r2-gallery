@@ -28,6 +28,9 @@ const CreateFolder = lazy(() => import('./components/CreateFolder'));
 const MoveToFolder = lazy(() => import('./components/MoveToFolder'));
 const InstallPrompt = lazy(() => import('./components/InstallPrompt'));
 
+const LAYOUT_MODES: LayoutMode[] = ['grid', 'list', 'imagelist', 'columns', 'blocks', 'rows'];
+const LAYOUT_LABELS: Record<LayoutMode, string> = { grid: '网格', list: '列表', imagelist: '图片列表', columns: '列', blocks: '块', rows: '行' };
+
 // TypeFilter: static import (matchFilter used in useMemo, component small enough to keep in main chunk)
 import RenameDialog from './components/RenameDialog';
 import TypeFilter, { matchFilter } from './components/TypeFilter';
@@ -392,23 +395,19 @@ export default function App() {
         }
       } else if (e.key === 'g' || e.key === 'G') {
         e.preventDefault();
-        const layouts: LayoutMode[] = ['grid', 'list', 'imagelist', 'columns', 'blocks', 'rows'];
-        const labels: Record<LayoutMode, string> = { grid: '网格', list: '列表', imagelist: '图片列表', columns: '列', blocks: '块', rows: '行' };
-        const idx = layouts.indexOf(layout);
-        const next = layouts[(idx + 1) % layouts.length];
+        const idx = LAYOUT_MODES.indexOf(layout);
+        const next = LAYOUT_MODES[(idx + 1) % LAYOUT_MODES.length];
         setLayout(next);
         localStorage.setItem('layout', next);
-        toast('info', `布局: ${labels[next]}`);
+        toast('info', `布局: ${LAYOUT_LABELS[next]}`);
       } else if (e.key >= '1' && e.key <= '6') {
         e.preventDefault();
-        const layoutMap: LayoutMode[] = ['grid', 'list', 'imagelist', 'columns', 'blocks', 'rows'];
-        const labels: Record<LayoutMode, string> = { grid: '网格', list: '列表', imagelist: '图片列表', columns: '列', blocks: '块', rows: '行' };
         const idx = parseInt(e.key) - 1;
-        const newLayout = layoutMap[idx];
+        const newLayout = LAYOUT_MODES[idx];
         if (newLayout && newLayout !== layout) {
           setLayout(newLayout);
           localStorage.setItem('layout', newLayout);
-          toast('info', `布局: ${labels[newLayout]}`);
+          toast('info', `布局: ${LAYOUT_LABELS[newLayout]}`);
         }
       } else if (e.key === 't' || e.key === 'T') {
         if (!e.ctrlKey && !e.metaKey) {

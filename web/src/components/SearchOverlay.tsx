@@ -346,6 +346,18 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setSelectedIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === 'PageDown') {
+      e.preventDefault();
+      setSelectedIndex((i) => Math.min(i + 10, Math.max(results.length - 1, 0)));
+    } else if (e.key === 'PageUp') {
+      e.preventDefault();
+      setSelectedIndex((i) => Math.max(i - 10, 0));
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      setSelectedIndex(0);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      setSelectedIndex(Math.max(results.length - 1, 0));
     } else if ((e.key === 'y' || e.key === 'Y') && (e.ctrlKey || e.metaKey)) {
       // Ctrl+Y / Cmd+Y — copy filename of selected result
       e.preventDefault();
@@ -709,6 +721,7 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
         {/* Footer hint */}
         <div className="flex items-center gap-4 px-5 py-2.5 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-400">
           <span className="flex items-center gap-1"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">↑↓</kbd> 导航</span>
+          <span className="flex items-center gap-1 hidden sm:flex"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">PgUp/PgDn</kbd> 跳转</span>
           <span className="flex items-center gap-1"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">↵</kbd> 打开</span>
           <span className="flex items-center gap-1 hidden sm:flex"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">^Y</kbd> 复制文件名</span>
           <span className="flex items-center gap-1 hidden sm:flex"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">^↵</kbd> 新标签页</span>
