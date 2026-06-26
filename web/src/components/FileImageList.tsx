@@ -27,11 +27,11 @@ interface Props {
   onSelect?: (path: string) => void;
   hasMore?: boolean;
   loadingMore?: boolean;
+  loadMoreError?: string | null;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   search?: string;
 }
-
 
 /**
  * Video thumbnail for list views — loads poster image from /api/thumb.
@@ -70,7 +70,7 @@ function VideoListThumb({ path, mtime }: { path: string; mtime?: number }) {
   );
 }
 
-export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, onLoadMore, selected: externalSelected, onSelect, hasMore, loadingMore, sortBy: sortByProp, sortOrder: sortOrderProp, search }: Props) {
+export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, onLoadMore, selected: externalSelected, onSelect, hasMore, loadingMore, loadMoreError, sortBy: sortByProp, sortOrder: sortOrderProp, search }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
@@ -128,14 +128,14 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
   const onLoadMoreRef = useRef(onLoadMore);
   onLoadMoreRef.current = onLoadMore;
   useEffect(() => {
-    if (!sentinelRef.current || !onLoadMoreRef.current || !hasMore) return;
+    if (!sentinelRef.current || !onLoadMoreRef.current || !hasMore || loadMoreError) return;
     const observer = new IntersectionObserver(
       (entries) => { if (entries[0].isIntersecting) onLoadMoreRef.current?.(); },
       { rootMargin: '400px' }
     );
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [hasMore]); // Intentionally omit onLoadMore — ref avoids observer re-creation
+  }, [hasMore, loadMoreError]); // Intentionally omit onLoadMore — ref avoids observer re-creation
 
   // Client-side sort
   const sortKey: 'name' | 'size' | 'mtime' | 'kind' | 'shuffle' = (['name', 'size', 'mtime', 'kind', 'shuffle'].includes(sortByProp ?? '') ? sortByProp! : 'name') as 'name' | 'size' | 'mtime' | 'kind' | 'shuffle';
@@ -393,7 +393,15 @@ export default function FileImageList({ files, dirs, dirMtimes, currentDir, onNa
           {/* Infinite scroll sentinel — inside scroll container so it triggers correctly */}
           {hasMore && (
             <div ref={sentinelRef} className="flex items-center justify-center py-8">
-              {loadingMore ? <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" /> : <span className="text-sm text-gray-400">滚动加载更多…</span>}
+              {loadMoreError ? (
+                <button onClick={onLoadMore} className="text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400 underline underline-offset-2 transition-colors">
+                  加载失败，点击重试
+                </button>
+              ) : loadingMore ? (
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
+              ) : (
+                <span className="text-sm text-gray-400">滚动加载更多…</span>
+              )}
             </div>
           )}
         </div>

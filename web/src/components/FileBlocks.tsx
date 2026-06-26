@@ -27,13 +27,14 @@ interface Props {
   onLoadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
+  loadMoreError?: string | null;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   search?: string;
 }
 
 
-export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, sortBy: sortByProp, sortOrder: sortOrderProp, search }: Props) {
+export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, onRename, onMove, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, loadMoreError, sortBy: sortByProp, sortOrder: sortOrderProp, search }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; isDir: boolean } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
@@ -77,15 +78,19 @@ export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavig
   const handleTouchEnd = () => { longPressCancelled.current = true; clearLongPress(); };
 
   const sentinelRef = useRef<HTMLDivElement>(null);
+  // Use a ref for onLoadMore to avoid observer re-creation when the parent's
+  // loadingMore state toggles (which changes onLoadMore's identity via useCallback).
+  const onLoadMoreRef = useRef(onLoadMore);
+  onLoadMoreRef.current = onLoadMore;
   useEffect(() => {
-    if (!sentinelRef.current || !onLoadMore || !hasMore) return;
+    if (!sentinelRef.current || !onLoadMoreRef.current || !hasMore || loadMoreError) return;
     const observer = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting) onLoadMore(); },
+      (entries) => { if (entries[0].isIntersecting) onLoadMoreRef.current?.(); },
       { rootMargin: '400px' }
     );
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [onLoadMore, hasMore]);
+  }, [hasMore, loadMoreError]); // Intentionally omit onLoadMore — ref avoids observer re-creation
 
   // Client-side sort
   const sortKey: 'name' | 'size' | 'mtime' | 'kind' | 'shuffle' = (['name', 'size', 'mtime', 'kind', 'shuffle'].includes(sortByProp ?? '') ? sortByProp! : 'name') as 'name' | 'size' | 'mtime' | 'kind' | 'shuffle';
@@ -294,7 +299,15 @@ export default function FileBlocks({ files, dirs, dirMtimes, currentDir, onNavig
 
       {hasMore && (
         <div ref={sentinelRef} className="flex items-center justify-center py-8">
-          {loadingMore ? <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" /> : <span className="text-sm text-gray-400">滚动加载更多…</span>}
+          {loadMoreError ? (
+            <button onClick={onLoadMore} className="text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400 underline underline-offset-2 transition-colors">
+              加载失败，点击重试
+            </button>
+          ) : loadingMore ? (
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
+          ) : (
+            <span className="text-sm text-gray-400">滚动加载更多…</span>
+          )}
         </div>
       )}
 

@@ -70,6 +70,7 @@ interface Props {
   onLoadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
+  loadMoreError?: string | null;
   /** Parent sort from Header */
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
@@ -78,7 +79,7 @@ interface Props {
 }
 
 
-export default function FileColumns({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, sortBy: sortByProp, sortOrder: sortOrderProp, search }: Props) {
+export default function FileColumns({ files, dirs, dirMtimes, currentDir, onNavigate, onOpen, onDelete, selected: externalSelected, onSelect, onLoadMore, hasMore, loadingMore, loadMoreError, sortBy: sortByProp, sortOrder: sortOrderProp, search }: Props) {
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const folderThumbs = useFolderThumbnails(dirs, currentDir);
 
@@ -125,15 +126,19 @@ export default function FileColumns({ files, dirs, dirMtimes, currentDir, onNavi
   };
 
   const sentinelRef = useRef<HTMLDivElement>(null);
+  // Use a ref for onLoadMore to avoid observer re-creation when the parent's
+  // loadingMore state toggles (which changes onLoadMore's identity via useCallback).
+  const onLoadMoreRef = useRef(onLoadMore);
+  onLoadMoreRef.current = onLoadMore;
   useEffect(() => {
-    if (!sentinelRef.current || !onLoadMore || !hasMore) return;
+    if (!sentinelRef.current || !onLoadMoreRef.current || !hasMore || loadMoreError) return;
     const observer = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting) onLoadMore(); },
+      (entries) => { if (entries[0].isIntersecting) onLoadMoreRef.current?.(); },
       { rootMargin: '400px' }
     );
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [onLoadMore, hasMore]);
+  }, [hasMore, loadMoreError]); // Intentionally omit onLoadMore — ref avoids observer re-creation
 
   return (
     <>
@@ -228,7 +233,15 @@ export default function FileColumns({ files, dirs, dirMtimes, currentDir, onNavi
 
       {hasMore && (
         <div ref={sentinelRef} className="flex items-center justify-center py-8">
-          {loadingMore ? <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" /> : <span className="text-sm text-gray-400">滚动加载更多…</span>}
+          {loadMoreError ? (
+            <button onClick={onLoadMore} className="text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400 underline underline-offset-2 transition-colors">
+              加载失败，点击重试
+            </button>
+          ) : loadingMore ? (
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
+          ) : (
+            <span className="text-sm text-gray-400">滚动加载更多…</span>
+          )}
         </div>
       )}
 
