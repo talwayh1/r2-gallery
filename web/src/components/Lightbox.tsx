@@ -2,6 +2,7 @@ import { useEffect, useCallback, useState, useRef, useMemo, lazy, Suspense } fro
 import { getFileUrl, getThumbUrl, getExif, saveFile, uploadCustomThumb, getId3, type ExifData, type Id3Data } from '../api';
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
 import { toast } from '../hooks/useToast';
+import { hapticFeedback } from '../utils/mobile';
 
 // Lazy-load media/text editors — most Lightbox sessions are for images only,
 // so defer these until the user actually navigates to a video/audio/text file.
@@ -1627,6 +1628,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
             {/* Close button */}
             <button
               onClick={(e) => { e.stopPropagation(); handleClose(); }}
+              onPointerDown={() => hapticFeedback()}
               className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
               title="关闭 (Esc)"
             >
@@ -1645,6 +1647,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
             {/* Fullscreen toggle */}
             <button
               onClick={toggleFullscreen}
+              onPointerDown={() => hapticFeedback()}
               className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
               title={isFullscreen ? '退出全屏 (F)' : '全屏显示 (F)'}
             >
@@ -1664,6 +1667,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
               <>
                 <button
                   onClick={(e) => { e.stopPropagation(); setScale((s) => Math.min(s * 1.3, 8)); }}
+                  onPointerDown={() => hapticFeedback()}
                   className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
                   title="放大 (+)"
                 >
@@ -1673,6 +1677,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); const ns = scale / 1.3; if (ns <= 1.05) resetZoom(); else setScale(ns); }}
+                  onPointerDown={() => hapticFeedback()}
                   className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
                   title="缩小 (-)"
                 >
@@ -1684,6 +1689,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 {imageLoaded && imageDimensions ? (
                   <button
                     onClick={(e) => { e.stopPropagation(); handleZoomActualSize(); }}
+                    onPointerDown={() => hapticFeedback()}
                     className="px-1.5 py-1 text-xs font-mono font-bold text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
                     title="实际大小 (1:1)"
                   >
@@ -1694,6 +1700,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 {imageLoaded && imageDimensions ? (
                   <button
                     onClick={(e) => { e.stopPropagation(); handleZoomFitWidth(); }}
+                    onPointerDown={() => hapticFeedback()}
                     className="px-1.5 py-1 text-xs font-bold text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0 font-mono"
                     title="适配宽度 (2)"
                   >
@@ -1703,6 +1710,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 {isZoomed && (
                   <button
                     onClick={(e) => { e.stopPropagation(); resetZoom(); }}
+                    onPointerDown={() => hapticFeedback()}
                     className="p-2 text-blue-400 hover:text-blue-300 hover:bg-white/10 rounded-lg transition-colors shrink-0"
                     title="重置缩放 (0)"
                   >
@@ -1724,6 +1732,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
             {/* Slideshow play/pause */}
             <button
               onClick={(e) => { e.stopPropagation(); toggleSlideshow(); }}
+              onPointerDown={() => hapticFeedback()}
               className={`p-2 rounded-lg transition-colors shrink-0 ${slideshowPlaying ? 'text-blue-400 bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
               title={slideshowPlaying ? '暂停幻灯片 (Space)' : '播放幻灯片 (Space)'}
             >
@@ -1737,6 +1746,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
             {/* Info toggle */}
             <button
               onClick={(e) => { e.stopPropagation(); setShowInfo(!showInfo); }}
+              onPointerDown={() => hapticFeedback()}
               className={`p-2 rounded-lg transition-colors shrink-0 ${showInfo ? 'text-blue-400 bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
               title="文件信息 (I)"
             >
@@ -1748,6 +1758,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
             {'share' in navigator && (
               <button
                 onClick={(e) => { e.stopPropagation(); handleNativeShare(); }}
+                onPointerDown={() => hapticFeedback()}
                 className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
                 title="分享"
               >
@@ -1773,6 +1784,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
                 <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
                 <button
                   onClick={(e) => { e.stopPropagation(); handleDeleteConfirm(); }}
+                  onPointerDown={() => hapticFeedback()}
                   disabled={deleting}
                   className={`p-2 text-red-400/70 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors shrink-0 ${deleting ? 'opacity-50 animate-pulse' : ''}`}
                   title="删除 (Delete)"
@@ -1787,6 +1799,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
             <div className="relative shrink-0">
               <button
                 onClick={(e) => { e.stopPropagation(); setShowMoreTools(!showMoreTools); }}
+                onPointerDown={() => hapticFeedback()}
                 className={`p-2 rounded-lg transition-colors ${showMoreTools ? 'text-blue-400 bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
                 title="更多操作 (M)"
               >
@@ -2759,7 +2772,7 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
           else if (!isVideo && !isAudio && !isPdf && !isText && !isZoomed) handleClose();
         }}
         onMouseDown={handleMouseDown}
-        style={{ cursor: isZoomed ? 'grab' : 'default' }}
+        style={{ cursor: isZoomed ? 'grab' : 'default', overscrollBehavior: 'contain' }}
       >
         {isImage ? (
           <>

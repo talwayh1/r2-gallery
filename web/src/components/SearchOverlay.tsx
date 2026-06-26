@@ -205,6 +205,8 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
       addRecentSearch(query);
       setRecentSearches(getRecentSearches());
       doSearch(query, undefined, typeFilter);
+      // Dismiss virtual keyboard on mobile for better UX
+      inputRef.current?.blur();
     }
   };
 

@@ -891,10 +891,13 @@ export default function Header({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
-                type="text"
+                type="search"
                 value={search}
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder="筛选文件名..."
+                enterKeyHint="done"
+                inputMode="search"
+                autoComplete="off"
                 className="flex-1 bg-transparent text-sm outline-none text-gray-700 dark:text-gray-200 placeholder-gray-400"
                 autoFocus
               />
