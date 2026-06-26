@@ -1161,6 +1161,8 @@ export default function App() {
         onLoginClick={() => setShowLogin(true)}
         onShortcutsClick={() => setShowShortcuts(true)}
         onCreateFolder={user ? () => setShowCreateFolder(true) : undefined}
+        onUpload={user ? () => uploadDropzoneRef.current?.openFileDialog() : undefined}
+        onUploadFolder={user ? () => uploadDropzoneRef.current?.openDirectoryDialog() : undefined}
         onSearchClick={() => setShowSearch(true)}
         onDiscoverClick={() => setShowDiscover(true)}
         onMemoriesClick={() => setShowMemories(true)}

@@ -39,6 +39,8 @@ interface Props {
   hideLoginButton?: boolean;
   selectMode?: boolean;
   onSelectModeToggle?: () => void;
+  onUpload?: () => void;
+  onUploadFolder?: () => void;
   onDelete?: (paths: string[]) => void;
   /** Ref to the scrollable main content element — used to auto-dismiss the mobile filter bar on scroll */
   scrollRef?: React.RefObject<HTMLElement | null>;
@@ -110,7 +112,7 @@ export default function Header({
   dir, layout, theme, search, user, sidebarOpen, sortBy, sortOrder, typeFilter, isMobile, fileCount, dirCount,
   onNavigate, onLayoutChange, onThemeToggle, onSearchChange,
   onSidebarToggle, onLogout, onRefresh, onLoginClick, onShortcutsClick,
-  onCreateFolder, onSearchClick, onDiscoverClick, onMemoriesClick, onStatsClick, onSettingsClick, onTrashClick, onActivityClick, onSortChange, onTypeFilterChange, hideLoginButton, selectMode, onSelectModeToggle, onDelete, scrollRef,
+  onCreateFolder, onSearchClick, onDiscoverClick, onMemoriesClick, onStatsClick, onSettingsClick, onTrashClick, onActivityClick, onSortChange, onTypeFilterChange, hideLoginButton, selectMode, onSelectModeToggle, onUpload, onUploadFolder, onDelete, scrollRef,
 }: Props) {
   const breadcrumbs = dir ? dir.split('/') : [];
   const confirm = useConfirm();
@@ -471,6 +473,32 @@ export default function Header({
               </button>
             )}
 
+            {/* Upload files (admin only) */}
+            {user && onUpload && (
+              <button
+                onClick={onUpload}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                title="上传文件"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+              </button>
+            )}
+            {/* Upload folder (admin only) */}
+            {user && onUploadFolder && (
+              <button
+                onClick={onUploadFolder}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                title="上传文件夹"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 12v6m0 0l-3-3m3 3l3-3" />
+                </svg>
+              </button>
+            )}
+
             {/* Stats (admin only) */}
             {user && onStatsClick && (
               <button
@@ -772,6 +800,16 @@ export default function Header({
                 {user && onCreateFolder && (
                   <button onClick={() => { onCreateFolder(); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
                     <span className="flex items-center"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg></span><span>新建文件夹</span>
+                  </button>
+                )}
+                {user && onUpload && (
+                  <button onClick={() => { onUpload(); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <span className="flex items-center"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg></span><span>上传文件</span>
+                  </button>
+                )}
+                {user && onUploadFolder && (
+                  <button onClick={() => { onUploadFolder(); closeMore(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <span className="flex items-center"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 12v6m0 0l-3-3m3 3l3-3" /></svg></span><span>上传文件夹</span>
                   </button>
                 )}
                 {user && onStatsClick && (

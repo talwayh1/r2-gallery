@@ -237,6 +237,17 @@ export default function Lightbox({ items, index, onClose, onNavigate, onDelete, 
     return () => mq.removeEventListener('change', handler);
   }, []);
 
+  // Show a brief toast hint about keyboard shortcuts once per browser
+  useEffect(() => {
+    const KEY = 'r2g_lightbox_shortcut_hint';
+    if (localStorage.getItem(KEY)) return;
+    localStorage.setItem(KEY, '1');
+    const timer = setTimeout(() => {
+      toast('info', '按 ? 查看键盘快捷键', 4000);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Cursor auto-hide for video (3s idle)
   const [cursorVisible, setCursorVisible] = useState(true);
   const cursorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
