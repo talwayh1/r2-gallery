@@ -470,6 +470,9 @@ export default function App() {
         } else if (showActivity) {
           e.preventDefault();
           setShowActivity(false);
+        } else if (sidebarOpen) {
+          e.preventDefault();
+          setSidebarOpen(false);
         }
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         // Delete — delete selected files
@@ -579,11 +582,21 @@ export default function App() {
           e.preventDefault();
           handleBatchDownload();
         }
+      } else if (e.altKey && e.key >= '1' && e.key <= '5') {
+        // Alt+1-5 — switch type filter: All (1), Image (2), Video (3), Audio (4), Document (5)
+        e.preventDefault();
+        const filterKeys = ['all', 'image', 'video', 'audio', 'document'] as const;
+        const idx = parseInt(e.key) - 1;
+        const newFilter = filterKeys[idx];
+        if (newFilter) {
+          setTypeFilter(newFilter);
+          localStorage.setItem('typeFilter', newFilter);
+        }
       }
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [lightbox, dir, layout, loadFiles, toggleTheme, selected, files, user, filteredFiles, setSidebarOpen]);
+  }, [lightbox, dir, layout, loadFiles, toggleTheme, selected, files, user, filteredFiles, setSidebarOpen, sidebarOpen, setTypeFilter]);
 
   // Scroll position restoration
   const scrollPositions = useRef<Map<string, number>>(new Map());
