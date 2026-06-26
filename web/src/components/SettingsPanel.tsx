@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getSettings, saveSettings, getUsers, createUser, deleteUser, cleanCache, getDiagnostics } from '../api';
+import type { DiagnosticsResult } from '../api';
 import { toast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
 
@@ -13,7 +14,7 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
   const [activeTab, setActiveTab] = useState<'settings' | 'users' | 'diagnostics'>('settings');
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [diagnostics, setDiagnostics] = useState<any>(null);
+  const [diagnostics, setDiagnostics] = useState<DiagnosticsResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [copySeparator, setCopySeparator] = useState(() => localStorage.getItem('copyLinksSeparator') || '\n');
   const [refreshInterval, setRefreshInterval] = useState(() => localStorage.getItem('refreshInterval') || '0');
@@ -164,7 +165,11 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
               <hr className="dark:border-gray-700" />
               <div className="flex items-center justify-between">
                 <span className="text-sm">隐藏登录按钮</span>
-                <button onClick={() => setSettings({ ...settings, hide_login_button: settings.hide_login_button === 'true' ? 'false' : 'true' })}
+                <button
+                  role="switch"
+                  aria-checked={settings.hide_login_button === 'true'}
+                  aria-label="隐藏登录按钮"
+                  onClick={() => setSettings({ ...settings, hide_login_button: settings.hide_login_button === 'true' ? 'false' : 'true' })}
                   className={`w-10 h-5 rounded-full transition-colors relative ${settings.hide_login_button === 'true' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
                   <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.hide_login_button === 'true' ? 'left-5' : 'left-0.5'}`} />
                 </button>
@@ -294,7 +299,11 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
               <h4 className="text-sm font-medium mt-4">视频设置</h4>
               <div className="flex items-center justify-between">
                 <span className="text-sm">视频自动播放</span>
-                <button onClick={() => setSettings({ ...settings, video_autoplay: settings.video_autoplay === 'true' ? 'false' : 'true' })}
+                <button
+                  role="switch"
+                  aria-checked={settings.video_autoplay === 'true'}
+                  aria-label="视频自动播放"
+                  onClick={() => setSettings({ ...settings, video_autoplay: settings.video_autoplay === 'true' ? 'false' : 'true' })}
                   className={`w-10 h-5 rounded-full transition-colors relative ${settings.video_autoplay === 'true' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
                   <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.video_autoplay === 'true' ? 'left-5' : 'left-0.5'}`} />
                 </button>
@@ -357,14 +366,22 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
               <h4 className="text-sm font-medium mt-4">拖拽行为</h4>
               <div className="flex items-center justify-between">
                 <span className="text-sm">拖拽时复制 (而非移动)</span>
-                <button onClick={() => setSettings({ ...settings, drag_copy: settings.drag_copy === 'true' ? 'false' : 'true' })}
+                <button
+                  role="switch"
+                  aria-checked={settings.drag_copy === 'true'}
+                  aria-label="拖拽时复制"
+                  onClick={() => setSettings({ ...settings, drag_copy: settings.drag_copy === 'true' ? 'false' : 'true' })}
                   className={`w-10 h-5 rounded-full transition-colors relative ${settings.drag_copy === 'true' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
                   <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.drag_copy === 'true' ? 'left-5' : 'left-0.5'}`} />
                 </button>
               </div>
               <div className="flex items-center justify-between mt-2">
                 <span className="text-sm">拖拽时提示确认</span>
-                <button onClick={() => setSettings({ ...settings, drag_prompt: settings.drag_prompt === 'true' ? 'false' : 'true' })}
+                <button
+                  role="switch"
+                  aria-checked={settings.drag_prompt === 'true'}
+                  aria-label="拖拽时提示确认"
+                  onClick={() => setSettings({ ...settings, drag_prompt: settings.drag_prompt === 'true' ? 'false' : 'true' })}
                   className={`w-10 h-5 rounded-full transition-colors relative ${settings.drag_prompt === 'true' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
                   <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.drag_prompt === 'true' ? 'left-5' : 'left-0.5'}`} />
                 </button>
@@ -376,7 +393,11 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
               <h4 className="text-sm font-medium mt-4">侧边栏菜单</h4>
               <div className="flex items-center justify-between">
                 <span className="text-sm">启用侧边栏菜单</span>
-                <button onClick={() => setSettings({ ...settings, menu_enabled: settings.menu_enabled === 'false' ? 'true' : 'false' })}
+                <button
+                  role="switch"
+                  aria-checked={settings.menu_enabled !== 'false'}
+                  aria-label="启用侧边栏菜单"
+                  onClick={() => setSettings({ ...settings, menu_enabled: settings.menu_enabled === 'false' ? 'true' : 'false' })}
                   className={`w-10 h-5 rounded-full transition-colors relative ${settings.menu_enabled !== 'false' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
                   <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.menu_enabled !== 'false' ? 'left-5' : 'left-0.5'}`} />
                 </button>
