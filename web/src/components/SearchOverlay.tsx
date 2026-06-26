@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { searchFiles, getFileUrl, getThumbUrl, type SearchResult } from '../api';
-import { formatSize } from '../utils';
+import { formatSize, formatDate } from '../utils';
 import FileTypeIcon from './FileTypeIcon';
 import SafeThumb from './SafeThumb';
 import HighlightText from './HighlightText';
@@ -75,6 +75,8 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; result: SearchResult } | null>(null);
   const typeFilterRef = useRef(typeFilter);
   typeFilterRef.current = typeFilter;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -296,6 +298,34 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     onClose();
   };
 
+  // Copy filename to clipboard with visual feedback
+  const copyFileName = useCallback(async (r: SearchResult, index: number) => {
+    try {
+      await navigator.clipboard.writeText(r.name);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch {
+      // Clipboard API not available
+    }
+  }, []);
+
+  // Copy full path to clipboard with visual feedback
+  const copyPath = useCallback(async (r: SearchResult) => {
+    try {
+      await navigator.clipboard.writeText(r.path);
+    } catch {
+      // Clipboard API not available
+    }
+  }, []);
+
+  // Close context menu on click outside
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handleClick = () => setContextMenu(null);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [contextMenu]);
+
   // Auto-scroll selected result into view on keyboard navigation
   useEffect(() => {
     if (!resultsContainerRef.current || selectedIndex < 0) return;
@@ -316,6 +346,16 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setSelectedIndex((i) => Math.max(i - 1, 0));
+    } else if ((e.key === 'y' || e.key === 'Y') && (e.ctrlKey || e.metaKey)) {
+      // Ctrl+Y / Cmd+Y — copy filename of selected result
+      e.preventDefault();
+      if (results.length > 0 && results[selectedIndex]) {
+        copyFileName(results[selectedIndex], selectedIndex);
+      }
+    } else if (e.key === 'c' && (e.ctrlKey || e.metaKey) && results.length > 0) {
+      // Ctrl+C while on a result (no text selection) — copy full path
+      e.preventDefault();
+      copyPath(results[selectedIndex]);
     } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       if (results.length > 0) {
@@ -482,12 +522,17 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
                 <button
                   key={r.path}
                   data-result-index={i}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                  className={`group w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
                     i === selectedIndex
                       ? 'bg-blue-50 dark:bg-blue-900/30'
                       : 'hover:bg-gray-50 dark:hover:bg-gray-800'
                   }`}
                   onClick={(e) => handleResultClick(r, e)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setContextMenu({ x: e.clientX, y: e.clientY, result: r });
+                  }}
                   onMouseEnter={() => setSelectedIndex(i)}
                   title="Ctrl+Click 在新标签页打开"
                 >
@@ -521,6 +566,12 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
                         </span>
                       )}
                       {r.size > 0 && <span className="ml-2">{formatSize(r.size)}</span>}
+                      {r.mtime > 0 && <span className="text-[10px] text-gray-300 dark:text-gray-600">·</span>}
+                      {r.mtime > 0 && (
+                        <span title={new Date(r.mtime * 1000).toLocaleString()} className="text-gray-300 dark:text-gray-600">
+                          {formatDate(r.mtime)}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -535,6 +586,33 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     )}
+                  </div>
+
+                  {/* Copy filename button (visible on hover/selected) */}
+                  <div className={
+                    i === selectedIndex
+                      ? 'shrink-0 opacity-100 transition-opacity'
+                      : 'shrink-0 opacity-0 group-hover:opacity-100 transition-opacity'
+                  }>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); copyFileName(r, i); }}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        copiedIndex === i
+                          ? 'text-green-500 bg-green-50 dark:bg-green-900/20'
+                          : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                      title="复制文件名 (Ctrl+Y)"
+                    >
+                      {copiedIndex === i ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                        </svg>
+                      )}
+                    </button>
                   </div>
                 </button>
               ))}
@@ -632,10 +710,63 @@ export default function SearchOverlay({ onClose, onNavigate, onOpenFile }: Props
         <div className="flex items-center gap-4 px-5 py-2.5 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-400">
           <span className="flex items-center gap-1"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">↑↓</kbd> 导航</span>
           <span className="flex items-center gap-1"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">↵</kbd> 打开</span>
+          <span className="flex items-center gap-1 hidden sm:flex"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">^Y</kbd> 复制文件名</span>
           <span className="flex items-center gap-1 hidden sm:flex"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">^↵</kbd> 新标签页</span>
           <span className="flex items-center gap-1 hidden sm:flex"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">Alt+1–4</kbd> 筛选</span>
           <span className="flex items-center gap-1"><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">esc</kbd> 关闭</span>
         </div>
+
+        {/* Right-click context menu */}
+        {contextMenu && (
+          <div
+            className="fixed z-[60] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 min-w-[180px] animate-fade-in"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                copyFileName(contextMenu.result, results.findIndex(r => r.path === contextMenu.result.path));
+                setContextMenu(null);
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+              <span>复制文件名</span>
+              <kbd className="ml-auto text-[10px] text-gray-400 dark:text-gray-500">Ctrl+Y</kbd>
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                copyPath(contextMenu.result);
+                setContextMenu(null);
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              <span>复制完整路径</span>
+              <kbd className="ml-auto text-[10px] text-gray-400 dark:text-gray-500">Ctrl+C</kbd>
+            </button>
+            <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(getFileUrl(contextMenu.result.path), '_blank');
+                setContextMenu(null);
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              <span>新标签页打开</span>
+              <kbd className="ml-auto text-[10px] text-gray-400 dark:text-gray-500">Ctrl+↵</kbd>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
