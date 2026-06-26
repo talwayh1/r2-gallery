@@ -18,7 +18,14 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
   const [loading, setLoading] = useState(false);
   const [copySeparator, setCopySeparator] = useState(() => localStorage.getItem('copyLinksSeparator') || '\n');
   const [refreshInterval, setRefreshInterval] = useState(() => localStorage.getItem('refreshInterval') || '0');
+  const [settingsSearch, setSettingsSearch] = useState('');
   const confirm = useConfirm();
+
+  const matchesSearch = (terms: string[]) => {
+    const q = settingsSearch.toLowerCase().trim();
+    if (!q) return true;
+    return terms.some(t => t.toLowerCase().includes(q));
+  };
 
   useEffect(() => {
     loadSettings();
@@ -130,7 +137,18 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
         <div className="flex-1 overflow-auto p-4">
           {activeTab === 'settings' && (
             <div className="space-y-4 max-w-xl">
-              <div>
+              {/* Search filter */}
+              <div className="sticky top-0 z-10 -mx-4 px-4 pb-2 bg-white dark:bg-gray-900 border-b dark:border-gray-700 mb-4">
+                <input
+                  type="text"
+                  value={settingsSearch}
+                  onChange={(e) => setSettingsSearch(e.target.value)}
+                  placeholder="🔍 搜索设置项..."
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
+                  name="settings-filter"
+                />
+              </div>
+              {matchesSearch(['布局', 'layout', '默认布局']) && <div>
                 <label className="block text-sm font-medium mb-1">默认布局</label>
                 <select
                   value={settings.layout || 'grid'}
@@ -144,8 +162,8 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                   <option value="imagelist">图片列表</option>
                   <option value="blocks">块</option>
                 </select>
-              </div>
-              <div>
+              </div>}
+              {matchesSearch(['排序', 'sort', '默认排序']) && <div>
                 <label className="block text-sm font-medium mb-1">默认排序</label>
                 <select
                   value={settings.sort || 'name'}
@@ -158,11 +176,12 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                   <option value="kind">类型</option>
                   <option value="shuffle">随机</option>
                 </select>
-              </div>
-              <button onClick={handleSaveSettings} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+              </div>}
+              {matchesSearch(['保存', 'save', '设置']) && <button onClick={handleSaveSettings} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
                 保存设置
-              </button>
+              </button>}
               <hr className="dark:border-gray-700" />
+              {matchesSearch(['登录', 'login', '按钮', '隐藏']) && <>
               <div className="flex items-center justify-between">
                 <span className="text-sm">隐藏登录按钮</span>
                 <button
@@ -175,8 +194,10 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                 </button>
               </div>
               <p className="text-xs text-gray-500">隐藏后可通过 ?login=1 访问登录页</p>
+              </>}
               <hr className="dark:border-gray-700" />
 
+              {matchesSearch(['上传', 'upload', '文件类型', '文件存在', '大小', '重命名']) && <>
               {/* Upload restrictions */}
               <h4 className="text-sm font-medium mt-4">上传限制</h4>
               <div>
@@ -212,8 +233,10 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                   <option value="fail">拒绝上传</option>
                 </select>
               </div>
+              </>}
               <hr className="dark:border-gray-700" />
 
+              {matchesSearch(['缓存', 'cache', '清理', '间隔']) && <>
               {/* Cache settings */}
               <h4 className="text-sm font-medium mt-4">缓存设置</h4>
               <div>
@@ -227,14 +250,16 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                 />
                 <p className="text-xs text-gray-500 mt-1">0 = 禁用自动清理</p>
               </div>
+              </>}
               <hr className="dark:border-gray-700" />
 
-              <button onClick={handleCleanCache} disabled={loading} className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50">
+              {matchesSearch(['缓存', 'cache', '清理', '手动']) && <button onClick={handleCleanCache} disabled={loading} className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50">
                 {loading ? '清理中...' : '手动清理缓存'}
-              </button>
+              </button>}
 
               <hr className="dark:border-gray-700" />
 
+              {matchesSearch(['文件过滤', '过滤', 'filter', '正则', '包含', '排除', '目录']) && <>
               {/* File/Folder Filters */}
               <h4 className="text-sm font-medium mt-4">文件过滤</h4>
               <div>
@@ -277,9 +302,11 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                   className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
                 />
               </div>
+              </>}
 
               <hr className="dark:border-gray-700" />
 
+              {matchesSearch(['启动路径', '启动', '路径', '初始', '目录', 'start', 'path']) && <>
               {/* Start Path */}
               <h4 className="text-sm font-medium mt-4">启动路径</h4>
               <div>
@@ -292,9 +319,11 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                   className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm"
                 />
               </div>
+              </>}
 
               <hr className="dark:border-gray-700" />
 
+              {matchesSearch(['视频', 'video', '自动播放']) && <>
               {/* Video Autoplay */}
               <h4 className="text-sm font-medium mt-4">视频设置</h4>
               <div className="flex items-center justify-between">
@@ -308,9 +337,11 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                   <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.video_autoplay === 'true' ? 'left-5' : 'left-0.5'}`} />
                 </button>
               </div>
+              </>}
 
               <hr className="dark:border-gray-700" />
 
+              {matchesSearch(['下载', 'download', '复制', '分隔符', '模式', '链接']) && <>
               {/* Download Mode */}
               <h4 className="text-sm font-medium mt-4">下载设置</h4>
               <div>
@@ -338,9 +369,11 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                 </select>
                 <p className="text-xs text-gray-500 mt-1">批量复制链接时使用此分隔符连接多个链接</p>
               </div>
+              </>}
 
               <hr className="dark:border-gray-700" />
 
+              {matchesSearch(['刷新', 'refresh', '自动刷新', '间隔']) && <>
               {/* Auto-refresh Interval */}
               <h4 className="text-sm font-medium mt-4">自动刷新</h4>
               <div>
@@ -359,9 +392,11 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                 </select>
                 <p className="text-xs text-gray-500 mt-1">页面在后台时自动刷新文件列表数据</p>
               </div>
+              </>}
 
               <hr className="dark:border-gray-700" />
 
+              {matchesSearch(['拖拽', 'drag', '复制', '移动', '提示', '确认']) && <>
               {/* Drag Behavior */}
               <h4 className="text-sm font-medium mt-4">拖拽行为</h4>
               <div className="flex items-center justify-between">
@@ -386,9 +421,11 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                   <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.drag_prompt === 'true' ? 'left-5' : 'left-0.5'}`} />
                 </button>
               </div>
+              </>}
 
               <hr className="dark:border-gray-700" />
 
+              {matchesSearch(['菜单', 'menu', '侧边栏', '侧边', '深度', '排序']) && <>
               {/* Menu Settings */}
               <h4 className="text-sm font-medium mt-4">侧边栏菜单</h4>
               <div className="flex items-center justify-between">
@@ -424,9 +461,11 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                   <option value="date_desc">日期降序</option>
                 </select>
               </div>
+              </>}
 
               <hr className="dark:border-gray-700" />
 
+              {matchesSearch(['缓存', 'cache', '图片', 'localStorage', 'JavaScript']) && <>
               {/* Image Cache Controls */}
               <h4 className="text-sm font-medium mt-4">图片缓存</h4>
               <div className="flex items-center justify-between">
@@ -443,9 +482,11 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                   <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.javascript_cache !== 'false' ? 'left-5' : 'left-0.5'}`} />
                 </button>
               </div>
+              </>}
 
               <hr className="dark:border-gray-700" />
 
+              {matchesSearch(['样式', 'css', '自定义', 'CSS']) && <>
               {/* Custom CSS */}
               <h4 className="text-sm font-medium mt-4">自定义样式</h4>
               <div>
@@ -458,6 +499,7 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                   className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm font-mono"
                 />
               </div>
+              </>}
             </div>
           )}
 

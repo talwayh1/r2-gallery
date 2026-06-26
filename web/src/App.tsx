@@ -583,7 +583,7 @@ export default function App() {
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [lightbox, dir, layout, loadFiles, toggleTheme, selected.size, files, user, filteredFiles, setSidebarOpen]);
+  }, [lightbox, dir, layout, loadFiles, toggleTheme, selected, files, user, filteredFiles, setSidebarOpen]);
 
   // Scroll position restoration
   const scrollPositions = useRef<Map<string, number>>(new Map());
